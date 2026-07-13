@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>TURBO MAZE 🏁</title>
+<style>
+  html, body { margin:0; padding:0; height:100%; overflow:hidden; background:#0b0e15; overscroll-behavior:none; }
+  canvas { display:block; touch-action:none; -webkit-user-select:none; user-select:none; }
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<script>
+"use strict";
+/* ================================================================
+   TURBO MAZE — a drift-racing maze game for a 7-year-old sigma
+   Built by dad (+ Claude). One file, no deps, works on a tablet.
+   ================================================================
+
+   🔧 TWEAK ZONE — change stuff here with your kid! 🔧            */
+const CONFIG = {
+  title:      "TURBO MAZE",        // 👈 let him rename the game!
+  subtitle:   "DRIFT EDITION",
+  playerName: "",                  // 👈 his name → goes on the license plate
+  carColor:   "#ff4757",           // 👈 the car! try "#3ddc55" (tractor green)
+  stripe:     "#ffe9a3",
+  easyMode:   false,               // true = slower goober, more nitro
+};
+// Words the game yells. Keep 'em short — he's 7. Add your own!
+const YELLS = {
+  drift:  ["SHEESH!", "NICE DRIFT!", "SO SIGMA!", "OOOOH!", "CLEAN!"],
+  coin:   ["+AURA", "W!", "CHA-CHING!", "YOINK!"],
+  nitro:  ["ZOOM!", "TURBO!!", "FULL SEND!", "WEEEE!"],
+  bonk:   ["BONK!", "OOF!", "WHOOPS!"],
+  goober: ["YOINKED!", "HEY!!", "GET HIM!"],
+  win:    ["GG!", "EZ CLAP!", "GOATED!", "VICTORY ROYALE!", "ABSOLUTE W!"],
+  key:    ["GOT KEY!"], door: ["CLICK!"],
+};
+/* =============== end tweak zone =============== */
+
+const TAU = Math.PI * 2;
+const CELL = 110;                 // world pixels per maze cell
+const clamp = (v,a,b)=> v<a?a : v>b?b : v;
+const lerp  = (a,b,t)=> a+(b-a)*t;
+const dist  = (x1,y1,x2,y2)=> Math.hypot(x2-x1, y2-y1);
+const rand  = (a,b)=> a + Math.random()*(b-a);
+const pick  = arr => arr[(Math.random()*arr.length)|0];
+const angDiff = (a,b)=> { let d=(b-a)%TAU; if(d>Math.PI)d-=TAU; if(d<-Math.PI)d+=TAU; return d; };
+const easeOut = t => 1-Math.pow(1-t,3);
+
+/* ----------------------------------------------------------------
+   LEVELS — drawn in ASCII so you two can design them together.
+   # wall   . road   S start   F finish   c coin   n nitro can
+   k key    D locked door      G timed gate        * boost pad
+   (hazard patrol paths are listed per level as [col,row] waypoints)
+   ---------------------------------------------------------------- */
+const LEVELS = [
+{ name:"FIRST RACE", emoji:"🏁", hue:"#ffb742", par:26, grid:[
+"################",
+"#SS....##......#",
+"#SS.c..##..c...#",
+"####...##...####",
+"#......c.......#",
+"#..####..####..#",
+"#..#  #..#  #..#",
+"#..####..####..#",
+"#......c....FF.#",
+"#.....##....FF.#",
+"################",
+]},
+{ name:"COIN ALLEY", emoji:"🪙", hue:"#9ae64a", par:40, grid:[
+"##################",
+"#SS......#....c..#",
+"#SS.####.#.####..#",
+"#...#c...#.#..#..#",
+"#...#.#####.#.#..#",
+"#.c.#.......#.c..#",
+"#...#.#####.#....#",
+"#.###.#...#.####.#",
+"#.#c..#.n.#....#.#",
+"#.#.###...###..#.#",
+"#.#.....c....#.#.#",
+"#.############.#.#",
+"#......c.....FF..#",
+"#............FF..#",
+"##################",
+]},
+{ name:"KEY QUEST", emoji:"🗝️", hue:"#ff6a5e", par:55, grid:[
+"####################",
+"#SS....#...c...#...#",
+"#SS.##.#.#####.#.#.#",
+"#...##.#.#...#...#.#",
+"##.###...#.#.#####.#",
+"#..#...###.#.....#.#",
+"#.##.#.#c..#####.#.#",
+"#.#..#.#.###...#.#.#",
+"#.#.##.#...#.#.#.#.#",
+"#.#.#c.###.#.#...#.#",
+"#.#.#.## n #.##.##.#",
+"#...#.##...#.c#..#.#",
+"#.###.#####.#.##.#.#",
+"#.#k..#...#.#.#..#.#",
+"#.#####.#.#.#.#.##.#",
+"#....c..#...#.#..D.#",
+"########.####.##.D.#",
+"#......c......#.FF.#",
+"#.............#.FF.#",
+"####################",
+]},
+{ name:"GATE CITY", emoji:"🚧", hue:"#b98cff", par:45, grid:[
+"####################",
+"#SS...*....G...c...#",
+"#SS........G.......#",
+"###.######.####.####",
+"#c..#....#....#....#",
+"#.###.##.####.##.#.#",
+"#.#...##....#.c#.#.#",
+"#.#.####.##.#.##.#.#",
+"#.#....#.#c.#....#.#",
+"#.####.#.#..######.#",
+"#..c.#.#.##.......G#",
+"####.#.#..#######.G#",
+"#....#.##.#.....#..#",
+"#.####.#..#.###.##.#",
+"#.*....#.c#.#n#....#",
+"#.###.##.##.#.###.##",
+"#...#.c#.#..#..*..F#",
+"##..#..#....##....F#",
+"####################",
+]},
+{ name:"BOSS ROAD", emoji:"👾", hue:"#53e0ff", par:75, grid:[
+"######################",
+"#SS......c...#...c...#",
+"#SS.########.#.###.#.#",
+"#...#........#...#.#.#",
+"#.#.#.########.#.#.#.#",
+"#.#.#.#......#.#.#.#.#",
+"#.#.#.#.####.#.#...#.#",
+"#.#...#.#c...#.####.##",
+"#.#####.#.####....#..#",
+"#.#...c.#....####.##.#",
+"#.#.#####G##....#..#.#",
+"#.#.#....G.####.##.#.#",
+"#.#.#.##.#....#.c..#.#",
+"#.#.#..#.####.####.#.#",
+"#.#.##.#....#....#.#.#",
+"#.#..#.####.####.#.#.#",
+"#.##.#..c.#..n#..#.#.#",
+"#..#.####.##.#.###.#.#",
+"##.#....#..#.#.#...#.#",
+"#..####.##.#.#.#.###.#",
+"#.k#..c.#..#.c.#..D.F#",
+"#..#....#......#..D.F#",
+"######################",
+], hazards:[ {path:[[10,3],[10,9],[4,9],[4,3]], speed:105} ]},
+];
+
+/* ---------------------------------------------------------------- */
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+let W=0, H=0, DPR=1;
+function resize(){
+  DPR = Math.min(2, window.devicePixelRatio||1);
+  W = window.innerWidth; H = window.innerHeight;
+  cv.width = W*DPR; cv.height = H*DPR;
+  cv.style.width = W+"px"; cv.style.height = H+"px";
+}
+window.addEventListener("resize", resize); resize();
+
+/* ---------------- save data ---------------- */
+let store = { unlocked:1, stars:{}, aura:0, coinsBank:0, muted:false };
+try { const s = localStorage.getItem("turboMaze"); if(s) store = Object.assign(store, JSON.parse(s)); } catch(e){}
+function save(){ try { localStorage.setItem("turboMaze", JSON.stringify(store)); } catch(e){} }
+
+/* ---------------- audio (all synth, no files) ---------------- */
+const AU = {
+  ctx:null, master:null, engine:null, engineGain:null, driftGain:null, started:false,
+  init(){
+    if(this.started) return;
+    try{
+      this.ctx = new (window.AudioContext||window.webkitAudioContext)();
+      this.master = this.ctx.createGain();
+      this.master.gain.value = store.muted ? 0 : 0.5;
+      this.master.connect(this.ctx.destination);
+      // engine hum
+      const osc = this.ctx.createOscillator(); osc.type="sawtooth"; osc.frequency.value=60;
+      const osc2 = this.ctx.createOscillator(); osc2.type="square"; osc2.frequency.value=61;
+      const lp = this.ctx.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=280;
+      this.engineGain = this.ctx.createGain(); this.engineGain.gain.value=0;
+      osc.connect(lp); osc2.connect(lp); lp.connect(this.engineGain); this.engineGain.connect(this.master);
+      osc.start(); osc2.start(); this.engine = [osc, osc2];
+      // drift hiss
+      const buf = this.ctx.createBuffer(1, this.ctx.sampleRate, this.ctx.sampleRate);
+      const d = buf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+      const noise = this.ctx.createBufferSource(); noise.buffer=buf; noise.loop=true;
+      const bp = this.ctx.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=900; bp.Q.value=0.6;
+      this.driftGain = this.ctx.createGain(); this.driftGain.gain.value=0;
+      noise.connect(bp); bp.connect(this.driftGain); this.driftGain.connect(this.master);
+      noise.start();
+      this.started = true;
+    }catch(e){}
+  },
+  setEngine(speed, boosting){
+    if(!this.started) return;
+    const t = this.ctx.currentTime;
+    const f = 55 + speed*0.16 + (boosting?40:0);
+    this.engine[0].frequency.setTargetAtTime(f, t, 0.05);
+    this.engine[1].frequency.setTargetAtTime(f*1.007, t, 0.05);
+    this.engineGain.gain.setTargetAtTime(speed>5 ? 0.05 : 0.015, t, 0.1);
+  },
+  setDrift(on){ if(this.started) this.driftGain.gain.setTargetAtTime(on?0.06:0, this.ctx.currentTime, 0.05); },
+  beep(freq, dur, type, vol, slideTo){
+    if(!this.started || store.muted) return;
+    const t = this.ctx.currentTime;
+    const o = this.ctx.createOscillator(); o.type = type||"square"; o.frequency.value = freq;
+    if(slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t+dur);
+    const g = this.ctx.createGain(); g.gain.setValueAtTime(vol||0.12, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t+dur);
+    o.connect(g); g.connect(this.master); o.start(t); o.stop(t+dur+0.02);
+  },
+  coin(){ this.beep(880,0.09,"square",0.1); setTimeout(()=>this.beep(1318,0.12,"square",0.1), 60); },
+  key(){ [660,880,1108].forEach((f,i)=> setTimeout(()=>this.beep(f,0.15,"triangle",0.14), i*90)); },
+  door(){ this.beep(160,0.25,"triangle",0.2,80); },
+  bonk(){ this.beep(140,0.18,"triangle",0.25,50); },
+  goober(){ this.beep(300,0.3,"sawtooth",0.14,90); },
+  nitro(){ this.beep(200,0.4,"sawtooth",0.1,700); },
+  star(i){ this.beep(660+i*220, 0.25, "triangle", 0.16); },
+  ui(){ this.beep(520,0.06,"square",0.07); },
+  win(){ [523,659,784,1046,784,1046,1318,1568].forEach((f,i)=> setTimeout(()=>this.beep(f, i>5?0.4:0.14, "triangle", 0.14), i*110)); },
+  toggleMute(){ store.muted=!store.muted; save(); if(this.master) this.master.gain.value = store.muted?0:0.5; },
+};
+
+/* ---------------- input: keyboard + touch ---------------- */
+const input = { vec:{x:0,y:0}, nitro:false, hasTouch:false, joy:null, taps:[] };
+const keys = {};
+window.addEventListener("keydown", e=>{
+  if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key)) e.preventDefault();
+  AU.init();
+  if(!keys[e.key]) {
+    if(e.key==="Enter"||e.key===" ") input.taps.push({screen:true});
+    if(e.key==="m"||e.key==="M") AU.toggleMute();
+    if(e.key==="p"||e.key==="P") togglePause();
+  }
+  keys[e.key]=true;
+});
+window.addEventListener("keyup", e=> keys[e.key]=false);
+function keyVec(){
+  let x=0,y=0;
+  if(keys.ArrowLeft||keys.a||keys.A) x-=1;
+  if(keys.ArrowRight||keys.d||keys.D) x+=1;
+  if(keys.ArrowUp||keys.w||keys.W) y-=1;
+  if(keys.ArrowDown||keys.s||keys.S) y+=1;
+  const m = Math.hypot(x,y)||1;
+  return {x:x/m*Math.min(1,Math.hypot(x,y)), y:y/m*Math.min(1,Math.hypot(x,y))};
+}
+// touch: left side = floating joystick, right side = nitro
+let touches = {};
+cv.addEventListener("touchstart", e=>{
+  e.preventDefault(); AU.init(); input.hasTouch = true;
+  for(const t of e.changedTouches){
+    const x=t.clientX, y=t.clientY;
+    input.taps.push({x, y});
+    if(game.state==="play"){
+      if(x < W*0.55 && !input.joy) { input.joy = {id:t.identifier, ox:x, oy:y, x, y}; }
+      else { touches[t.identifier]="nitro"; input.nitro=true; }
+    }
+  }
+},{passive:false});
+cv.addEventListener("touchmove", e=>{
+  e.preventDefault();
+  for(const t of e.changedTouches){
+    if(input.joy && t.identifier===input.joy.id){ input.joy.x=t.clientX; input.joy.y=t.clientY; }
+  }
+},{passive:false});
+function endTouch(e){
+  e.preventDefault();
+  for(const t of e.changedTouches){
+    if(input.joy && t.identifier===input.joy.id) input.joy=null;
+    if(touches[t.identifier]==="nitro"){ delete touches[t.identifier]; if(!Object.keys(touches).length) input.nitro=false; }
+  }
+}
+cv.addEventListener("touchend", endTouch, {passive:false});
+cv.addEventListener("touchcancel", endTouch, {passive:false});
+cv.addEventListener("mousedown", e=>{ AU.init(); input.taps.push({x:e.clientX, y:e.clientY}); });
+window.addEventListener("contextmenu", e=> e.preventDefault());
+function readInput(){
+  const k = keyVec();
+  let jx=0, jy=0;
+  if(input.joy){
+    const dx=input.joy.x-input.joy.ox, dy=input.joy.y-input.joy.oy;
+    const m=Math.hypot(dx,dy);
+    if(m>8){ const c=Math.min(1,m/48); jx=dx/m*c; jy=dy/m*c; }
+  }
+  input.vec.x = Math.abs(jx)>Math.abs(k.x)?jx:k.x;
+  input.vec.y = Math.abs(jy)>Math.abs(k.y)?jy:k.y;
+  if(keys[" "]) input.nitro = true;
+  else if(!Object.keys(touches).length) input.nitro = false;
+}
+
+/* ---------------- game state ---------------- */
+const game = {
+  state:"title",       // title | map | play | clear | pause
+  levelIx:0, lv:null,
+  t:0, playT:0,
+  car:null, coins:[], pads:[], gates:[], goobers:[], key:null, doors:[],
+  finish:null, startCell:null,
+  cols:0, rows:0, solid:null, road:[],
+  groundCv:null, skidCv:null, skidCtx:null,
+  flow:null, objective:null,
+  cam:{x:0,y:0}, shake:0,
+  parts:[], floats:[], stickers:[], confetti:[],
+  coinsGot:0, coinsAll:0, hasKey:false, auraRun:0, driftT:0, bonks:0,
+  clearData:null, hintT:0,
+  attract:{a:0},
+};
+
+function newCar(x,y,heading){
+  return { x, y, vx:0, vy:0, heading, speed:0, nitroMeter:70,
+    drifting:false, spinT:0, invuln:0, sq:1, sqv:0, trail:[], boost:0 };
+}
+
+/* ---------------- level loading ---------------- */
+function loadLevel(ix){
+  const L = LEVELS[ix];
+  game.levelIx = ix; game.lv = L;
+  const g = L.grid;
+  game.rows = g.length; game.cols = g[0].length;
+  game.solid = []; game.road = []; game.coins=[]; game.pads=[]; game.gates=[]; game.doors=[]; game.goobers=[]; game.key=null;
+  game.coinsGot=0; game.hasKey=false; game.auraRun=0; game.playT=0; game.bonks=0; game.driftT=0;
+  game.parts=[]; game.floats=[]; game.stickers=[]; game.confetti=[]; game.hintT=0;
+  let sx=1, sy=1, fx=1, fy=1;
+  for(let r=0;r<game.rows;r++){
+    game.solid[r]=[];
+    for(let c=0;c<game.cols;c++){
+      const ch = g[r][c]||"#";
+      const wall = ch==="#";
+      game.solid[r][c] = wall?1:0;
+      if(!wall) game.road.push([c,r]);
+      const wx=(c+0.5)*CELL, wy=(r+0.5)*CELL;
+      if(ch==="S"){ sx=wx; sy=wy; game.startCell=[c,r]; }
+      if(ch==="F"){ fx=wx; fy=wy; game.finish={c,r,x:wx,y:wy}; }
+      if(ch==="c") game.coins.push({x:wx,y:wy,got:false,ph:Math.random()*TAU});
+      if(ch==="n") game.coins.push({x:wx,y:wy,got:false,ph:Math.random()*TAU,nitro:true});
+      if(ch==="*") game.pads.push({c,r,x:wx,y:wy});
+      if(ch==="G") game.gates.push({c,r,x:wx,y:wy,ph:(c+r)%2?0:Math.PI,open:1});
+      if(ch==="D") game.doors.push({c,r,x:wx,y:wy,anim:0});
+      if(ch==="k") game.key={x:wx,y:wy,got:false};
+    }
+  }
+  // doors + closed gates are solid until opened (handled in isSolid)
+  game.coinsAll = game.coins.filter(c=>!c.nitro).length;
+  // face the car toward open road
+  let head = 0;
+  const [sc,sr] = game.startCell;
+  if(!isWallCell(sc+1,sr) || !isWallCell(sc+2,sr)) head = 0;
+  else if(!isWallCell(sc,sr+1)) head = Math.PI/2;
+  game.car = newCar(sx, sy, head);
+  game.cam.x = sx; game.cam.y = sy;
+  (L.hazards||[]).forEach(h=>{
+    game.goobers.push({ path:h.path.map(p=>[(p[0]+0.5)*CELL,(p[1]+0.5)*CELL]),
+      seg:0, x:(h.path[0][0]+0.5)*CELL, y:(h.path[0][1]+0.5)*CELL,
+      speed:(CONFIG.easyMode? h.speed*0.7 : h.speed), ph:Math.random()*TAU });
+  });
+  prerenderGround(L);
+  const sk = document.createElement("canvas");
+  sk.width = game.cols*CELL; sk.height = game.rows*CELL;
+  game.skidCv = sk; game.skidCtx = sk.getContext("2d");
+  updateObjective(true);
+  game.state = "play";
+  sticker(L.emoji+" "+L.name, L.hue);
+  setTimeout(()=> game.state==="play" && sticker("GO GO GO!", "#ffffff"), 900);
+}
+
+function isWallCell(c,r){
+  if(c<0||r<0||c>=game.cols||r>=game.rows) return true;
+  return !!game.solid[r][c];
+}
+function isSolid(c,r){
+  if(isWallCell(c,r)) return true;
+  for(const d of game.doors) if(d.c===c && d.r===r && d.anim<1) return true;
+  for(const g of game.gates) if(g.c===c && g.r===r && g.open<0.5) return true;
+  return false;
+}
+
+/* BFS flow field toward current objective (for the helper arrow) */
+function updateObjective(force){
+  let target;
+  if(game.key && !game.key.got) target = game.key;
+  else if(game.doors.length && game.doors.some(d=>d.anim<1) && game.hasKey) target = game.doors.find(d=>d.anim<1);
+  else target = game.finish;
+  if(!force && game.objective===target) return;
+  game.objective = target;
+  const tc = clamp(Math.floor(target.x/CELL),0,game.cols-1), tr = clamp(Math.floor(target.y/CELL),0,game.rows-1);
+  const dst = Array.from({length:game.rows},()=>new Array(game.cols).fill(-1));
+  const q=[[tc,tr]]; dst[tr][tc]=0;
+  while(q.length){
+    const [c,r]=q.shift();
+    for(const [dc,dr] of [[1,0],[-1,0],[0,1],[0,-1]]){
+      const nc=c+dc, nr=r+dr;
+      if(nc<0||nr<0||nc>=game.cols||nr>=game.rows) continue;
+      if(game.solid[nr][nc]) continue;             // hint path ignores doors/gates
+      if(dst[nr][nc]!==-1) continue;
+      dst[nr][nc]=dst[r][c]+1; q.push([nc,nr]);
+    }
+  }
+  game.flow = dst;
+}
+
+/* ---------------- pre-rendered ground + walls ---------------- */
+function prerenderGround(L){
+  const w = game.cols*CELL, h = game.rows*CELL;
+  const g = document.createElement("canvas"); g.width=w; g.height=h;
+  const x = g.getContext("2d");
+  // asphalt (road is the LIGHT surface — walls go near-black so the maze pops)
+  x.fillStyle = "#232a3d"; x.fillRect(0,0,w,h);
+  for(let i=0;i<w*h/900;i++){
+    x.fillStyle = Math.random()<0.5 ? "rgba(255,255,255,0.035)" : "rgba(0,0,0,0.3)";
+    x.fillRect(Math.random()*w, Math.random()*h, rand(1,3), rand(1,3));
+  }
+  // warm lamp pools on road
+  for(const [c,r] of game.road){
+    if((c*7+r*13)%9===0){
+      const gr = x.createRadialGradient((c+0.5)*CELL,(r+0.5)*CELL,8,(c+0.5)*CELL,(r+0.5)*CELL,CELL*0.9);
+      gr.addColorStop(0,"rgba(255,180,92,0.10)"); gr.addColorStop(1,"rgba(255,180,92,0)");
+      x.fillStyle = gr; x.fillRect((c-1)*CELL,(r-1)*CELL,CELL*3,CELL*3);
+    }
+  }
+  // center dashes on straights
+  x.strokeStyle = "rgba(255,255,255,0.07)"; x.lineWidth=4; x.setLineDash([16,20]);
+  for(const [c,r] of game.road){
+    if(!isWallCell(c+1,r) && !isWallCell(c-1,r) && isWallCell(c,r-1) && isWallCell(c,r+1)){
+      x.beginPath(); x.moveTo(c*CELL,(r+0.5)*CELL); x.lineTo((c+1)*CELL,(r+0.5)*CELL); x.stroke();
+    }
+    if(!isWallCell(c,r+1) && !isWallCell(c,r-1) && isWallCell(c-1,r) && isWallCell(c+1,r)){
+      x.beginPath(); x.moveTo((c+0.5)*CELL,r*CELL); x.lineTo((c+0.5)*CELL,(r+1)*CELL); x.stroke();
+    }
+  }
+  x.setLineDash([]);
+  // start + finish checkers
+  const checker = (cc,rr,col)=>{
+    for(let i=0;i<8;i++) for(let j=0;j<8;j++){
+      if((i+j)%2) continue;
+      x.fillStyle = col;
+      x.fillRect(cc*CELL+i*CELL/8, rr*CELL+j*CELL/8, CELL/8, CELL/8);
+    }
+  };
+  for(let r=0;r<game.rows;r++) for(let c=0;c<game.cols;c++){
+    const ch = L.grid[r][c];
+    if(ch==="S") checker(c,r,"rgba(255,255,255,0.06)");
+    if(ch==="F") checker(c,r,"rgba(255,255,255,0.16)");
+  }
+  // boost pads (chevrons)
+  for(const p of game.pads){
+    x.save(); x.translate(p.x,p.y);
+    const horiz = !isWallCell(p.c+1,p.r) || !isWallCell(p.c-1,p.r);
+    if(!horiz) x.rotate(Math.PI/2);
+    x.strokeStyle = L.hue; x.lineWidth = 7; x.lineCap="round"; x.globalAlpha=0.75;
+    for(let i=-1;i<=1;i++){
+      x.beginPath(); x.moveTo(i*22-9, -18); x.lineTo(i*22+9, 0); x.lineTo(i*22-9, 18); x.stroke();
+    }
+    x.restore();
+  }
+  // walls: dark blocks + hue edge light + night windows
+  for(let r=0;r<game.rows;r++) for(let c=0;c<game.cols;c++){
+    if(!game.solid[r][c]) continue;
+    const px=c*CELL, py=r*CELL;
+    x.fillStyle = "#0b0d15"; x.fillRect(px,py,CELL,CELL);
+    x.fillStyle = "#161b2b"; x.fillRect(px,py,CELL,10);
+    // neon curb light on edges facing road
+    x.fillStyle = L.hue; x.globalAlpha = 0.5;
+    if(!isWallCell(c,r+1)) x.fillRect(px, py+CELL-4, CELL, 4);
+    if(!isWallCell(c,r-1)) x.fillRect(px, py, CELL, 4);
+    if(!isWallCell(c+1,r)) x.fillRect(px+CELL-4, py, 4, CELL);
+    if(!isWallCell(c-1,r)) x.fillRect(px, py, 4, CELL);
+    x.globalAlpha = 1;
+    // lit windows
+    const seed = (c*31+r*17)%10;
+    if(seed<3){
+      x.fillStyle = seed===0 ? "rgba(255,190,110,0.5)" : "rgba(170,210,255,0.28)";
+      const n = 2+seed;
+      for(let i=0;i<n;i++) x.fillRect(px+18+((i*37+r*11)%(CELL-44)), py+22+((i*53+c*7)%(CELL-50)), 9, 12);
+    }
+  }
+  game.groundCv = g;
+}
+
+/* ---------------- car physics ---------------- */
+function updateCar(dt){
+  const car = game.car;
+  const iv = input.vec;
+  const hasInput = Math.hypot(iv.x,iv.y) > 0.15;
+  const boosting = input.nitro && car.nitroMeter>0 && hasInput;
+
+  if(car.spinT>0){ car.spinT-=dt; car.heading += dt*12; }
+  else if(hasInput){
+    const want = Math.atan2(iv.y, iv.x);
+    const sp = Math.hypot(car.vx, car.vy);
+    const tRate = lerp(9, 3.1, clamp(sp/460,0,1));   // nimble slow, wide fast
+    const d = angDiff(car.heading, want);
+    car.heading += clamp(d, -tRate*dt, tRate*dt);
+  }
+  const maxSp = boosting? 660 : 400;
+  const accel = boosting? 1300 : 750;
+  if(hasInput && car.spinT<=0){
+    car.vx += Math.cos(car.heading)*accel*dt * Math.hypot(iv.x,iv.y);
+    car.vy += Math.sin(car.heading)*accel*dt * Math.hypot(iv.x,iv.y);
+  }
+  // split velocity into forward + lateral, grip eats lateral (drift = less grip)
+  const fx=Math.cos(car.heading), fy=Math.sin(car.heading);
+  let fwd = car.vx*fx + car.vy*fy;
+  let latX = car.vx - fwd*fx, latY = car.vy - fwd*fy;
+  const sp = Math.hypot(car.vx,car.vy);
+  const turningHard = hasInput && Math.abs(angDiff(car.heading, Math.atan2(iv.y,iv.x))) > 0.55;
+  const grip = (turningHard && sp>230) ? 2.4 : 8.5;
+  const latK = Math.exp(-grip*dt);
+  latX*=latK; latY*=latK;
+  fwd *= hasInput ? Math.exp(-0.35*dt) : Math.exp(-2.2*dt);
+  car.vx = fwd*fx + latX; car.vy = fwd*fy + latY;
+  const spd2 = Math.hypot(car.vx,car.vy);
+  if(spd2 > maxSp){ car.vx *= maxSp/spd2; car.vy *= maxSp/spd2; }
+
+  // drift state
+  const slip = spd2>200 ? Math.abs(angDiff(car.heading, Math.atan2(car.vy,car.vx))) : 0;
+  const wasDrift = car.drifting;
+  car.drifting = slip>0.32 && spd2>210;
+  if(car.drifting){
+    game.driftT += dt;
+    if(((game.driftT*10)|0) % 4 === 0) spark(car);
+    skid(car);
+    if(!wasDrift && Math.random()<0.6) float(pick(YELLS.drift), car.x, car.y-34, game.lv.hue);
+    game.auraRun += dt*6;
+  }
+  AU.setDrift(car.drifting);
+
+  // nitro
+  if(boosting){
+    car.nitroMeter = Math.max(0, car.nitroMeter - dt*30);
+    if(car.boost<=0){ AU.nitro(); if(Math.random()<0.5) float(pick(YELLS.nitro), car.x, car.y-40, "#7ef7ff"); }
+    car.boost = 0.12;
+    flame(car);
+  } else {
+    car.nitroMeter = Math.min(100, car.nitroMeter + dt*(CONFIG.easyMode?14:9));
+    car.boost = Math.max(0, car.boost-dt);
+  }
+  AU.setEngine(spd2, boosting);
+
+  // move with wall collisions (sub-stepped)
+  const steps = Math.max(1, Math.ceil(spd2*dt/9));
+  for(let i=0;i<steps;i++){
+    car.x += car.vx*dt/steps; car.y += car.vy*dt/steps;
+    collideWalls(car);
+  }
+
+  // squash spring
+  car.sqv += (1-car.sq)*260*dt; car.sqv *= Math.exp(-14*dt); car.sq += car.sqv*dt;
+  car.invuln = Math.max(0, car.invuln-dt);
+
+  // trail
+  car.trail.unshift({x:car.x, y:car.y, a:car.heading});
+  if(car.trail.length>13) car.trail.pop();
+
+  // exhaust puffs
+  if(spd2>40 && Math.random()<0.3)
+    puff(car.x-Math.cos(car.heading)*20, car.y-Math.sin(car.heading)*20, "rgba(160,170,200,0.2)");
+}
+
+function collideWalls(car){
+  const R = 13;
+  const c0 = Math.floor((car.x-R)/CELL), c1 = Math.floor((car.x+R)/CELL);
+  const r0 = Math.floor((car.y-R)/CELL), r1 = Math.floor((car.y+R)/CELL);
+  for(let r=r0;r<=r1;r++) for(let c=c0;c<=c1;c++){
+    if(!isSolid(c,r)) continue;
+    const bx=c*CELL, by=r*CELL;
+    const px = clamp(car.x, bx, bx+CELL), py = clamp(car.y, by, by+CELL);
+    const dx = car.x-px, dy = car.y-py;
+    const d2 = dx*dx+dy*dy;
+    if(d2 >= R*R) continue;
+    let nx, ny, pen;
+    if(d2>0.0001){ const d=Math.sqrt(d2); nx=dx/d; ny=dy/d; pen=R-d; }
+    else { // center inside block — push along smallest axis
+      const l=car.x-bx, rr=bx+CELL-car.x, t=car.y-by, b=by+CELL-car.y;
+      const m=Math.min(l,rr,t,b);
+      nx = m===l?-1 : m===rr?1 : 0; ny = m===t?-1 : m===b?1 : 0; pen = m+R;
+    }
+    car.x += nx*pen; car.y += ny*pen;
+    const vn = car.vx*nx + car.vy*ny;
+    if(vn<0){
+      const impact = -vn;
+      car.vx -= (1.35)*vn*nx; car.vy -= (1.35)*vn*ny;   // soft bounce
+      if(impact>230){
+        game.shake = Math.min(10, game.shake+impact/60);
+        car.sq = 0.68; AU.bonk();
+        for(let i=0;i<8;i++) debris(px,py);
+        if(Math.random()<0.5) float(pick(YELLS.bonk), car.x, car.y-36, "#ffd0d0");
+        scuff(car);
+      }
+    }
+  }
+}
+
+/* ---------------- entities ---------------- */
+function updateEntities(dt){
+  const car = game.car;
+  // coins (with a little magnet)
+  for(const cn of game.coins){
+    if(cn.got) continue;
+    if(cn.cool){ cn.cool = Math.max(0, cn.cool-dt); if(cn.cool>0) continue; }
+    const d = dist(car.x,car.y,cn.x,cn.y);
+    if(d<95){ cn.x = lerp(cn.x, car.x, dt*6); cn.y = lerp(cn.y, car.y, dt*6); }
+    if(d<34){
+      cn.got = true;
+      if(cn.nitro){
+        car.nitroMeter = 100; AU.nitro();
+        float("NITRO FULL!", cn.x, cn.y-20, "#7ef7ff");
+        for(let i=0;i<10;i++) puff(cn.x,cn.y,"rgba(126,247,255,0.5)");
+      } else {
+        game.coinsGot++; game.auraRun += 10; store.coinsBank++;
+        AU.coin();
+        float(Math.random()<0.3 ? pick(YELLS.coin) : "+10", cn.x, cn.y-20, "#ffd76a");
+        for(let i=0;i<8;i++) sparkle(cn.x,cn.y);
+      }
+    }
+  }
+  // key
+  if(game.key && !game.key.got && dist(car.x,car.y,game.key.x,game.key.y)<40){
+    game.key.got = true; game.hasKey = true; AU.key();
+    sticker("🗝️ "+pick(YELLS.key), "#ffd76a");
+    updateObjective(true);
+  }
+  // doors
+  for(const d of game.doors){
+    if(d.anim>=1 || !game.hasKey) continue;
+    if(dist(car.x,car.y,d.x,d.y) < CELL*1.1){
+      d.opening = true;
+    }
+    if(d.opening){ d.anim = Math.min(1, d.anim + dt*1.6);
+      if(d.anim>=1){ AU.door(); sticker(pick(YELLS.door), game.lv.hue); updateObjective(true);
+        for(let i=0;i<12;i++) sparkle(d.x,d.y); }
+    }
+  }
+  // gates
+  for(const g of game.gates){
+    g.ph += dt;
+    const cyc = (g.ph % 3.2) / 3.2;         // 3.2s cycle
+    const target = cyc < 0.55 ? 1 : 0;      // open 55% of the time
+    g.open = lerp(g.open, target, dt*8);
+  }
+  // boost pads
+  for(const p of game.pads){
+    if(Math.floor(car.x/CELL)===p.c && Math.floor(car.y/CELL)===p.r){
+      if(!p.cool){
+        p.cool = 0.9;
+        const sp = Math.hypot(car.vx,car.vy)||1;
+        car.vx += car.vx/sp*330; car.vy += car.vy/sp*330;
+        car.nitroMeter = Math.min(100, car.nitroMeter+25);
+        car.sq = 1.25; AU.nitro(); game.shake = Math.min(6, game.shake+3);
+        float("BOOST!", car.x, car.y-40, game.lv.hue);
+      }
+    }
+    if(p.cool) p.cool = Math.max(0, p.cool-dt);
+  }
+  // goobers
+  for(const gb of game.goobers){
+    const [tx,ty] = gb.path[(gb.seg+1)%gb.path.length];
+    const d = dist(gb.x,gb.y,tx,ty);
+    if(d<6) gb.seg = (gb.seg+1)%gb.path.length;
+    else { gb.x += (tx-gb.x)/d*gb.speed*dt; gb.y += (ty-gb.y)/d*gb.speed*dt; }
+    gb.ph += dt*7;
+    if(car.invuln<=0 && dist(car.x,car.y,gb.x,gb.y)<38){
+      car.invuln = 1.6; car.spinT = 0.55; car.sq = 0.6;
+      game.bonks++; game.shake = 9; AU.goober();
+      sticker("👾 "+pick(YELLS.goober), "#ff8fe0");
+      // he yoinks coins — they scatter onto nearby road for re-grabbing (gentle mischief)
+      const steal = Math.min(3, game.coinsGot);
+      game.coinsGot -= steal; store.coinsBank = Math.max(0, store.coinsBank-steal);
+      const near = game.road.filter(([c,r])=>{
+        const wx=(c+0.5)*CELL, wy=(r+0.5)*CELL, dd=dist(wx,wy,car.x,car.y);
+        return dd>CELL*0.9 && dd<CELL*2.8;
+      });
+      for(let i=0;i<steal;i++){
+        const [cc,rr] = near.length? pick(near) : [Math.floor(car.x/CELL), Math.floor(car.y/CELL)];
+        game.coins.push({x:(cc+0.5)*CELL+rand(-18,18), y:(rr+0.5)*CELL+rand(-18,18), got:false, ph:Math.random()*TAU, cool:1.0});
+      }
+      const kb = 260; const ka = Math.atan2(car.y-gb.y, car.x-gb.x);
+      car.vx += Math.cos(ka)*kb; car.vy += Math.sin(ka)*kb;
+    }
+  }
+  // finish
+  if(dist(car.x,car.y,game.finish.x,game.finish.y) < CELL*0.75) levelClear();
+  // helper arrow timer
+  const spd = Math.hypot(car.vx,car.vy);
+  game.hintT = spd<60 ? game.hintT+dt : Math.max(0, game.hintT-dt*2);
+}
+function levelClear(){
+  const L = game.lv;
+  const timeOk = game.playT <= L.par;
+  const allCoins = game.coinsGot >= game.coinsAll;
+  const stars = 1 + (timeOk?1:0) + (allCoins?1:0);
+  const bonus = 50 + stars*25;
+  game.auraRun += bonus;
+  store.aura += Math.round(game.auraRun);
+  const prev = store.stars[game.levelIx]||0;
+  store.stars[game.levelIx] = Math.max(prev, stars);
+  store.unlocked = Math.max(store.unlocked, Math.min(LEVELS.length, game.levelIx+2));
+  save();
+  game.clearData = { stars, t:0, time:game.playT, timeOk, allCoins, aura:Math.round(game.auraRun), shown:0 };
+  game.state = "clear";
+  AU.win();
+  for(let i=0;i<130;i++) game.confetti.push({
+    x:W/2+rand(-60,60), y:H*0.35, vx:rand(-260,260), vy:rand(-460,-90),
+    rot:rand(0,TAU), vr:rand(-8,8), w:rand(6,13), h:rand(8,16),
+    col:pick([L.hue,"#ffd76a","#ff8fe0","#7ef7ff","#f4f6ff"]), t:0
+  });
+}
+
+/* ---------------- fx ---------------- */
+function puff(x,y,col){ game.parts.push({x,y,vx:rand(-24,24),vy:rand(-24,24),t:0,life:rand(0.4,0.8),size:rand(4,10),col,fade:true}); }
+function spark(car){
+  const a = car.heading+Math.PI+rand(-0.6,0.6);
+  game.parts.push({x:car.x+Math.cos(a)*16, y:car.y+Math.sin(a)*16, vx:Math.cos(a)*rand(60,190), vy:Math.sin(a)*rand(60,190), t:0, life:rand(0.2,0.45), size:rand(2,4), col:pick(["#ffd76a","#ffb742","#fff2c0"]) });
+}
+function sparkle(x,y){ game.parts.push({x,y,vx:rand(-130,130),vy:rand(-170,40),t:0,life:rand(0.3,0.6),size:rand(2,5),col:pick(["#ffd76a","#fff4cc","#ffffff"]),grav:true}); }
+function debris(x,y){ game.parts.push({x,y,vx:rand(-160,160),vy:rand(-160,160),t:0,life:rand(0.2,0.5),size:rand(2,4),col:"#8b93ad"}); }
+function flame(car){
+  const a = car.heading+Math.PI;
+  game.parts.push({x:car.x+Math.cos(a)*20+rand(-3,3), y:car.y+Math.sin(a)*20+rand(-3,3), vx:Math.cos(a)*rand(120,240), vy:Math.sin(a)*rand(120,240), t:0, life:rand(0.12,0.3), size:rand(4,9), col:pick(["#7ef7ff","#4ac6ff","#e0fbff"]) });
+}
+function skid(car){
+  const k = game.skidCtx; if(!k) return;
+  const px = Math.cos(car.heading+Math.PI/2), py = Math.sin(car.heading+Math.PI/2);
+  const bx = car.x-Math.cos(car.heading)*10, by = car.y-Math.sin(car.heading)*10;
+  k.fillStyle = "rgba(10,10,14,0.24)";
+  for(const s of [-1,1]){ k.beginPath(); k.arc(bx+px*7*s, by+py*7*s, 2.6, 0, TAU); k.fill(); }
+}
+function scuff(car){
+  const k = game.skidCtx; if(!k) return;
+  k.fillStyle = "rgba(10,10,14,0.3)";
+  for(let i=0;i<4;i++){ k.beginPath(); k.arc(car.x+rand(-9,9), car.y+rand(-9,9), rand(1.5,3), 0, TAU); k.fill(); }
+}
+function float(txt,x,y,col){ game.floats.push({txt,x,y,t:0,col:col||"#fff"}); }
+function sticker(txt,col){ game.stickers.push({txt,col:col||"#fff",t:0}); }
+function updateFx(dt){
+  game.parts = game.parts.filter(p=>{ p.t+=dt; p.x+=p.vx*dt; p.y+=p.vy*dt; if(p.grav)p.vy+=500*dt; return p.t<p.life; });
+  game.floats = game.floats.filter(f=>{ f.t+=dt; f.y-=34*dt; return f.t<0.95; });
+  if(game.stickers.length){ game.stickers[0].t+=dt; if(game.stickers[0].t>1.1) game.stickers.shift(); }
+  game.confetti = game.confetti.filter(c=>{ c.t+=dt; c.x+=c.vx*dt; c.y+=c.vy*dt; c.vy+=560*dt; c.rot+=c.vr*dt; return c.y<H+40 && c.t<4; });
+  game.shake = Math.max(0, game.shake - dt*22);
+}
+
+/* ---------------- drawing ---------------- */
+function drawWorld(dt){
+  const car = game.car;
+  // camera with lookahead
+  const lead = 0.22;
+  game.cam.x = lerp(game.cam.x, car.x+car.vx*lead, 1-Math.exp(-5*dt));
+  game.cam.y = lerp(game.cam.y, car.y+car.vy*lead, 1-Math.exp(-5*dt));
+  const wW = game.cols*CELL, wH = game.rows*CELL;
+  let cx = game.cam.x, cy = game.cam.y;
+  if(wW>W) cx = clamp(cx, W/2-40, wW-W/2+40); else cx = wW/2;
+  if(wH>H) cy = clamp(cy, H/2-40, wH-H/2+40); else cy = wH/2;
+  const sx = (Math.random()*2-1)*game.shake, sy = (Math.random()*2-1)*game.shake;
+
+  ctx.save();
+  ctx.translate(Math.round(W/2-cx+sx), Math.round(H/2-cy+sy));
+  ctx.drawImage(game.groundCv, 0, 0);
+  ctx.drawImage(game.skidCv, 0, 0);
+
+  drawFinish();
+  for(const d of game.doors) drawDoor(d);
+  for(const g of game.gates) drawGate(g);
+  for(const cn of game.coins) if(!cn.got) drawCoin(cn);
+  if(game.key && !game.key.got) drawKey(game.key);
+  for(const gb of game.goobers) drawGoober(gb);
+  drawHintArrow();
+  drawCar(car);
+  // particles
+  for(const p of game.parts){
+    ctx.globalAlpha = 1-p.t/p.life;
+    ctx.fillStyle = p.col;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.size*(p.fade?1+p.t*2:1), 0, TAU); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  // floaters
+  for(const f of game.floats){
+    ctx.globalAlpha = 1-f.t;
+    ctx.font = "800 20px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+    ctx.textAlign="center";
+    ctx.lineWidth=4; ctx.strokeStyle="rgba(10,12,20,0.85)"; ctx.strokeText(f.txt, f.x, f.y);
+    ctx.fillStyle = f.col; ctx.fillText(f.txt, f.x, f.y);
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+function drawCar(car){
+  // motion trail
+  for(let i=car.trail.length-1;i>=2;i--){
+    const t = car.trail[i], a = (1-i/car.trail.length)*0.14;
+    ctx.save(); ctx.translate(t.x,t.y); ctx.rotate(t.a);
+    ctx.globalAlpha = a; ctx.fillStyle = CONFIG.carColor;
+    ctx.beginPath(); ctx.roundRect(-16,-9,32,18,6); ctx.fill();
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+  ctx.save();
+  ctx.translate(car.x, car.y);
+  // underglow
+  ctx.fillStyle = game.lv.hue; ctx.globalAlpha = 0.3;
+  ctx.beginPath(); ctx.ellipse(0, 0, 24, 17, 0, 0, TAU); ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.rotate(car.heading);
+  const sq = clamp(car.sq, 0.55, 1.35);
+  ctx.scale(sq, 2-sq>1.3?1.3:2-sq);
+  if(car.invuln>0 && (car.invuln*10|0)%2) ctx.globalAlpha = 0.4;
+  // headlight cones
+  ctx.fillStyle = "rgba(255,240,190,0.13)";
+  for(const s of [-1,1]){
+    ctx.beginPath(); ctx.moveTo(16, 5*s); ctx.lineTo(85, 22*s); ctx.lineTo(85, 2*s); ctx.closePath(); ctx.fill();
+  }
+  // wheels
+  ctx.fillStyle = "#151824";
+  for(const [wx,wy] of [[-10,-10],[-10,10],[9,-10],[9,10]]) { ctx.beginPath(); ctx.roundRect(wx-4,wy-3,8,6,2); ctx.fill(); }
+  // body
+  ctx.fillStyle = CONFIG.carColor;
+  ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,7); ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.12)";
+  ctx.beginPath(); ctx.roundRect(-17,-9.5,34,8,7); ctx.fill();
+  // racing stripe
+  ctx.fillStyle = CONFIG.stripe;
+  ctx.fillRect(-17,-2.4,34,4.8);
+  // cabin
+  ctx.fillStyle = "#1b2233";
+  ctx.beginPath(); ctx.roundRect(-6,-6.5,12,13,4); ctx.fill();
+  ctx.fillStyle = "rgba(160,220,255,0.4)";
+  ctx.beginPath(); ctx.roundRect(3,-5.5,3.4,11,2); ctx.fill();
+  // spoiler
+  ctx.fillStyle = "#20283c";
+  ctx.fillRect(-19,-8,4,16);
+  // lights
+  ctx.fillStyle = "#fff2c0";
+  ctx.fillRect(15,-7,3,4); ctx.fillRect(15,3,3,4);
+  ctx.fillStyle = car.boost>0 ? "#ff8f8f" : "#c23a4a";
+  ctx.fillRect(-18,-7,2.6,4); ctx.fillRect(-18,3,2.6,4);
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
+function drawCoin(cn){
+  const s = Math.abs(Math.sin(game.t*3+cn.ph));
+  const bob = Math.sin(game.t*2.4+cn.ph)*3;
+  ctx.save(); ctx.translate(cn.x, cn.y+bob);
+  if(cn.nitro){
+    ctx.font = "26px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.scale(0.6+s*0.4, 1);
+    ctx.fillText("⚡", 0, 0);
+  } else {
+    ctx.scale(0.35+s*0.65, 1);
+    ctx.fillStyle = "#e8a930"; ctx.beginPath(); ctx.arc(0,0,11,0,TAU); ctx.fill();
+    ctx.fillStyle = "#ffd76a"; ctx.beginPath(); ctx.arc(0,-1.5,9.5,0,TAU); ctx.fill();
+    ctx.fillStyle = "#e8a930"; ctx.font="900 11px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText("A", 0, -1);
+  }
+  ctx.restore();
+}
+function drawKey(k){
+  const bob = Math.sin(game.t*2.6)*4;
+  ctx.save(); ctx.translate(k.x, k.y+bob);
+  ctx.font = "30px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.rotate(Math.sin(game.t*2)*0.2);
+  ctx.fillText("🗝️", 0, 0);
+  ctx.restore();
+  const pr = 20+Math.sin(game.t*4)*4;
+  ctx.strokeStyle = "rgba(255,215,106,0.5)"; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.arc(k.x, k.y+bob, pr, 0, TAU); ctx.stroke();
+}
+function drawDoor(d){
+  if(d.anim>=1) return;
+  const px = d.c*CELL, py = d.r*CELL;
+  const h = CELL*(1-d.anim);
+  ctx.fillStyle = "#3a2f18";
+  ctx.fillRect(px+4, py+CELL-h+4, CELL-8, Math.max(0,h-8));
+  ctx.strokeStyle = "#ffd76a"; ctx.lineWidth = 4;
+  ctx.strokeRect(px+8, py+CELL-h+8, CELL-16, Math.max(0,h-16));
+  if(d.anim<0.1){
+    ctx.font = "26px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText("🔒", px+CELL/2, py+CELL/2);
+  }
+}
+function drawGate(g){
+  const px = g.c*CELL, py = g.r*CELL;
+  const closed = 1-g.open;
+  if(closed<0.03) { // little base markers so pads are visible when open
+    ctx.fillStyle = "rgba(255,90,90,0.5)";
+    ctx.fillRect(px+2, py+2, 8, 8); ctx.fillRect(px+CELL-10, py+CELL-10, 8, 8);
+    return;
+  }
+  const h = CELL*closed;
+  ctx.save();
+  ctx.translate(px, py+CELL/2-h/2);
+  ctx.fillStyle = "#d8dbe6";
+  ctx.fillRect(0, 0, CELL, h);
+  ctx.fillStyle = "#ff5a5a";
+  const stripes = 5;
+  for(let i=0;i<stripes;i++){
+    ctx.save(); ctx.beginPath(); ctx.rect(0,0,CELL,h); ctx.clip();
+    ctx.translate(i*CELL/stripes*1.4 - 20, 0); ctx.rotate(0.5);
+    ctx.fillRect(0,-30,16,h+80);
+    ctx.restore();
+  }
+  ctx.strokeStyle = "#20242f"; ctx.lineWidth=3; ctx.strokeRect(1.5,1.5,CELL-3,h-3);
+  ctx.restore();
+}
+function drawGoober(gb){
+  const bounce = Math.abs(Math.sin(gb.ph))*8;
+  ctx.save();
+  ctx.translate(gb.x, gb.y);
+  ctx.fillStyle = "rgba(0,0,0,0.3)";
+  ctx.beginPath(); ctx.ellipse(0, 14, 16-bounce*0.4, 5, 0, 0, TAU); ctx.fill();
+  ctx.translate(0, -bounce);
+  const sq = 1+Math.sin(gb.ph)*0.12;
+  ctx.scale(2-sq, sq);
+  ctx.font = "34px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText("👾", 0, 0);
+  ctx.restore();
+}
+function drawFinish(){
+  const f = game.finish;
+  const pr = CELL*0.55 + Math.sin(game.t*3.5)*6;
+  ctx.strokeStyle = game.lv.hue; ctx.globalAlpha = 0.8; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.arc(f.x, f.y, pr, 0, TAU); ctx.stroke();
+  ctx.globalAlpha = 0.3;
+  ctx.beginPath(); ctx.arc(f.x, f.y, pr*0.7, 0, TAU); ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.font = "34px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText("🏁", f.x, f.y-Math.abs(Math.sin(game.t*2.8))*6);
+}
+function drawHintArrow(){
+  if(game.hintT < 1.6 && game.playT > 4) return;   // show at level start + when stuck
+  if(!game.flow) return;
+  const car = game.car;
+  const c = clamp(Math.floor(car.x/CELL),0,game.cols-1), r = clamp(Math.floor(car.y/CELL),0,game.rows-1);
+  let best=null, bd=game.flow[r]?game.flow[r][c]:-1;
+  if(bd<0) return;
+  for(const [dc,dr] of [[1,0],[-1,0],[0,1],[0,-1]]){
+    const nc=c+dc, nr=r+dr;
+    if(nc<0||nr<0||nc>=game.cols||nr>=game.rows) continue;
+    const v = game.flow[nr][nc];
+    if(v>=0 && v<bd){ bd=v; best=[dc,dr]; }
+  }
+  const ang = best ? Math.atan2(best[1],best[0]) : Math.atan2(game.objective.y-car.y, game.objective.x-car.x);
+  const pulse = 1+Math.sin(game.t*5)*0.15;
+  ctx.save();
+  ctx.translate(car.x + Math.cos(ang)*62, car.y + Math.sin(ang)*62);
+  ctx.rotate(ang); ctx.scale(pulse,pulse);
+  ctx.globalAlpha = 0.85;
+  ctx.fillStyle = "#f4f6ff";
+  ctx.strokeStyle = "rgba(12,14,22,0.8)"; ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(12,0); ctx.lineTo(-7,-9); ctx.lineTo(-3,0); ctx.lineTo(-7,9); ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
+/* ---------------- HUD ---------------- */
+function roundedPanel(x,y,w,h,r,fill){
+  ctx.fillStyle = fill||"rgba(14,17,26,0.82)";
+  ctx.beginPath(); ctx.roundRect(x,y,w,h,r); ctx.fill();
+}
+function drawHUD(){
+  const car = game.car;
+  const pad = 12, top = 10;
+  ctx.textBaseline = "middle";
+  // aura counter (left)
+  roundedPanel(pad, top, 168, 44, 12);
+  ctx.font = "900 21px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#ffd76a";
+  ctx.fillText("✦", pad+14, top+23);
+  ctx.fillStyle = "#f4f6ff";
+  ctx.fillText("AURA  " + Math.round(store.aura + game.auraRun), pad+34, top+23);
+  // coins (left 2)
+  roundedPanel(pad, top+52, 116, 40, 12);
+  ctx.fillStyle = "#ffd76a"; ctx.beginPath(); ctx.arc(pad+22, top+72, 9, 0, TAU); ctx.fill();
+  ctx.fillStyle = "#e8a930"; ctx.font="900 10px sans-serif"; ctx.textAlign="center"; ctx.fillText("A", pad+22, top+72);
+  ctx.fillStyle = "#f4f6ff"; ctx.font = "800 19px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.textAlign="left";
+  ctx.fillText(game.coinsGot + "/" + game.coinsAll, pad+40, top+72);
+  // key badge
+  if(game.hasKey){
+    roundedPanel(pad+124, top+52, 44, 40, 12);
+    ctx.font = "20px sans-serif"; ctx.textAlign="center";
+    ctx.fillText("🗝️", pad+146, top+73);
+  }
+  // stopwatch (center-top, small + friendly)
+  const tStr = game.playT.toFixed(1)+"s";
+  ctx.font = "800 19px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  const late = game.playT > game.lv.par;
+  roundedPanel(W/2-56, top, 112, 38, 12);
+  ctx.textAlign="center";
+  ctx.fillStyle = late ? "#8b93ad" : "#f4f6ff";
+  ctx.fillText("⏱ " + tStr, W/2, top+20);
+  // level tag (right)
+  ctx.font = "800 18px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  const tag = game.lv.emoji+" "+(game.levelIx+1)+" · "+game.lv.name;
+  const tw = ctx.measureText(tag).width+30;
+  roundedPanel(W-pad-tw-96, top, tw, 38, 12);
+  ctx.fillStyle = game.lv.hue;
+  ctx.fillText(tag, W-pad-tw/2-96, top+20);
+  // pause + mute buttons (right, big touch targets)
+  drawIconBtn(W-pad-88, top, 40, store.muted?"🔇":"🔊", "mute");
+  drawIconBtn(W-pad-42, top, 40, "⏸️", "pause");
+  // nitro meter (bottom center-left)
+  const nw = Math.min(280, W*0.36), nx = input.hasTouch ? W/2-nw/2 : pad, ny = H-40;
+  roundedPanel(nx, ny-14, nw, 30, 15);
+  ctx.fillStyle = "rgba(126,247,255,0.14)";
+  ctx.beginPath(); ctx.roundRect(nx+5, ny-9, (nw-10), 20, 10); ctx.fill();
+  const nf = car.nitroMeter/100;
+  if(nf>0.02){
+    ctx.fillStyle = car.nitroMeter>25? "#7ef7ff" : "#ff9a6a";
+    ctx.beginPath(); ctx.roundRect(nx+5, ny-9, (nw-10)*nf, 20, 10); ctx.fill();
+  }
+  ctx.fillStyle = "#0e111a"; ctx.font = "900 15px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.textAlign="center";
+  ctx.fillText("⚡ NITRO", nx+nw/2, ny+1);
+  // touch controls
+  if(input.hasTouch){
+    if(input.joy){
+      ctx.globalAlpha = 0.35;
+      ctx.strokeStyle="#f4f6ff"; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(input.joy.ox, input.joy.oy, 48, 0, TAU); ctx.stroke();
+      const dx=input.joy.x-input.joy.ox, dy=input.joy.y-input.joy.oy, m=Math.hypot(dx,dy)||1, cl=Math.min(48,m);
+      ctx.globalAlpha = 0.55; ctx.fillStyle="#f4f6ff";
+      ctx.beginPath(); ctx.arc(input.joy.ox+dx/m*cl, input.joy.oy+dy/m*cl, 26, 0, TAU); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    // nitro button
+    const bx = W-74, by = H-84;
+    ctx.globalAlpha = input.nitro? 0.95 : 0.55;
+    ctx.fillStyle = "#7ef7ff";
+    ctx.beginPath(); ctx.arc(bx, by, 46, 0, TAU); ctx.fill();
+    ctx.fillStyle = "#0e111a"; ctx.font="900 17px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.textAlign="center";
+    ctx.fillText("⚡", bx, by-9); ctx.fillText("NITRO", bx, by+11);
+    ctx.globalAlpha = 1;
+  } else if(game.playT < 6){
+    ctx.globalAlpha = clamp(6-game.playT,0,1)*0.7;
+    ctx.fillStyle = "#8b93ad"; ctx.font = "600 15px 'Avenir Next',sans-serif"; ctx.textAlign="center";
+    ctx.fillText("ARROWS / WASD to drive  ·  SPACE = nitro  ·  P = pause", W/2, H-70);
+    ctx.globalAlpha = 1;
+  }
+}
+const hudBtns = [];
+function drawIconBtn(x,y,s,icon,act){
+  roundedPanel(x,y,s,s,12);
+  ctx.font = (s*0.5)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillStyle = "#f4f6ff";
+  ctx.fillText(icon, x+s/2, y+s/2+1);
+  hudBtns.push({x,y,w:s,h:s,act});
+}
+
+/* ---------------- stickers (announcer cards) ---------------- */
+function drawStickers(){
+  if(!game.stickers.length) return;
+  const s = game.stickers[0];
+  const inT = clamp(s.t/0.14, 0, 1), outT = clamp((s.t-0.85)/0.25, 0, 1);
+  const scale = easeOut(inT)*(1-outT*outT*0.5);
+  ctx.save();
+  ctx.translate(W/2, H*0.24);
+  ctx.rotate(-0.04);
+  ctx.scale(scale, scale);
+  ctx.globalAlpha = 1-outT;
+  ctx.font = "900 46px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  const tw = ctx.measureText(s.txt).width;
+  // sticker card: white with hard offset shadow (toy energy)
+  ctx.fillStyle = "rgba(12,14,22,0.9)";
+  ctx.beginPath(); ctx.roundRect(-tw/2-22+6, -34+6, tw+44, 68, 16); ctx.fill();
+  ctx.fillStyle = "#f7f8ff";
+  ctx.beginPath(); ctx.roundRect(-tw/2-22, -34, tw+44, 68, 16); ctx.fill();
+  ctx.fillStyle = s.col==="#ffffff" ? "#12151f" : s.col;
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  // dark text if the color is light-on-white unreadable → outline trick
+  ctx.lineWidth = 5; ctx.strokeStyle = "rgba(12,14,22,0.85)";
+  ctx.strokeText(s.txt, 0, 2);
+  ctx.fillText(s.txt, 0, 2);
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
+/* ---------------- screens ---------------- */
+function nightSky(){
+  ctx.fillStyle = "#0b0e15"; ctx.fillRect(0,0,W,H);
+  for(let i=0;i<90;i++){
+    const x = (i*127.3)%W, y = (i*89.7)%(H*0.7);
+    ctx.globalAlpha = 0.25+0.5*Math.abs(Math.sin(game.t*0.7+i));
+    ctx.fillStyle = i%7? "#aab7d8" : "#ffd76a";
+    ctx.fillRect(x, y, 2, 2);
+  }
+  ctx.globalAlpha = 1;
+}
+function bigTitle(y){
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  const t = CONFIG.title;
+  ctx.save();
+  ctx.translate(W/2, y);
+  ctx.rotate(-0.03);
+  ctx.font = "900 italic "+Math.min(92, W/7)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.fillStyle = "rgba(12,14,22,0.9)"; ctx.fillText(t, 5, 6);
+  ctx.fillStyle = "#ffb742"; ctx.fillText(t, 0, 0);
+  ctx.font = "900 italic "+Math.min(30, W/22)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.fillStyle = "#f4f6ff";
+  const sub = "— "+CONFIG.subtitle+" —";
+  ctx.fillText(sub, 0, Math.min(62, W/10));
+  ctx.restore();
+  // checkered strip
+  const cw = 18, y2 = y+Math.min(95, W/6.2);
+  for(let i=0;i<W/cw+1;i++){
+    ctx.fillStyle = i%2? "rgba(244,246,255,0.85)" : "rgba(12,14,22,0.9)";
+    ctx.fillRect(i*cw, y2, cw, 10);
+  }
+}
+function drawTitle(dt){
+  nightSky();
+  // attract car doing donuts
+  game.attract.a += dt*2.1;
+  const r = Math.min(W,H)*0.26;
+  const ax = W/2 + Math.cos(game.attract.a)*r;
+  const ay = H*0.62 + Math.sin(game.attract.a)*r*0.55;
+  if(!game._attractSk || game._attractSkW!==W){
+    game._attractSk = document.createElement("canvas");
+    game._attractSk.width=W*DPR; game._attractSk.height=H*DPR;
+    game._attractSkW = W;
+  }
+  const sk = game._attractSk.getContext("2d");
+  sk.setTransform(DPR,0,0,DPR,0,0);
+  sk.fillStyle = "rgba(10,10,14,0.2)";
+  sk.beginPath(); sk.arc(ax - Math.cos(game.attract.a+1.2)*12, ay - Math.sin(game.attract.a+1.2)*7, 2.5, 0, TAU); sk.fill();
+  sk.beginPath(); sk.arc(ax - Math.cos(game.attract.a+1.9)*12, ay - Math.sin(game.attract.a+1.9)*7, 2.5, 0, TAU); sk.fill();
+  ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.globalAlpha=0.6;
+  ctx.drawImage(game._attractSk,0,0,W,H); ctx.restore();
+  const fakeCar = { x:ax, y:ay, heading:game.attract.a+Math.PI/2+0.7, sq:1, invuln:0, boost:0, trail:[] };
+  const saveLv = game.lv; game.lv = LEVELS[0];
+  drawCar(fakeCar);
+  game.lv = saveLv;
+  bigTitle(H*0.3);
+  if(CONFIG.playerName){
+    ctx.font = "800 20px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+    ctx.fillStyle = "#8b93ad"; ctx.textAlign="center";
+    ctx.fillText("driver: "+CONFIG.playerName.toUpperCase(), W/2, H*0.3+Math.min(120, W/5));
+  }
+  const pulse = 0.6+0.4*Math.abs(Math.sin(game.t*2.4));
+  ctx.globalAlpha = pulse;
+  ctx.font = "900 26px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.fillStyle = "#f4f6ff"; ctx.textAlign="center";
+  ctx.fillText(input.hasTouch? "TAP TO START" : "PRESS ENTER TO START", W/2, H*0.87);
+  ctx.globalAlpha = 1;
+  for(const tp of input.taps.splice(0)){ AU.ui(); game.state="map"; }
+}
+
+const mapNodes = [];
+function drawMap(){
+  nightSky();
+  ctx.font = "900 italic 40px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.textAlign="center"; ctx.fillStyle="#ffb742";
+  ctx.fillText(CONFIG.title, W/2, 52);
+  // aura bank
+  roundedPanel(12, 12, 150, 40, 12);
+  ctx.font = "800 19px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.textAlign="left";
+  ctx.fillStyle = "#ffd76a"; ctx.fillText("✦", 26, 33);
+  ctx.fillStyle = "#f4f6ff"; ctx.fillText("AURA "+Math.round(store.aura), 44, 33);
+  hudBtns.length = 0;
+  drawIconBtn(W-54, 12, 40, store.muted?"🔇":"🔊", "mute");
+  // winding road with nodes
+  mapNodes.length = 0;
+  const n = LEVELS.length;
+  const mx = Math.max(70, W*0.1), mw = W-mx*2;
+  const cyc = H*0.56, amp = Math.min(90, H*0.14);
+  ctx.strokeStyle = "rgba(139,147,173,0.35)"; ctx.lineWidth = 26; ctx.lineCap="round";
+  ctx.beginPath();
+  for(let i=0;i<n;i++){
+    const x = mx + mw*i/(n-1), y = cyc + Math.sin(i*1.9)*amp;
+    i? ctx.lineTo(x,y) : ctx.moveTo(x,y);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 3; ctx.setLineDash([12,14]);
+  ctx.stroke(); ctx.setLineDash([]);
+  for(let i=0;i<n;i++){
+    const x = mx + mw*i/(n-1), y = cyc + Math.sin(i*1.9)*amp;
+    const unlocked = i < store.unlocked;
+    const stars = store.stars[i]||0;
+    const R = 34;
+    ctx.beginPath(); ctx.arc(x,y,R,0,TAU);
+    ctx.fillStyle = unlocked? "#f4f6ff" : "rgba(60,66,86,0.9)";
+    ctx.fill();
+    if(unlocked && i===store.unlocked-1){
+      ctx.strokeStyle = LEVELS[i].hue; ctx.lineWidth = 4+Math.sin(game.t*4)*1.5;
+      ctx.beginPath(); ctx.arc(x,y,R+7,0,TAU); ctx.stroke();
+    }
+    ctx.font = "900 26px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    if(unlocked){
+      ctx.fillStyle = "#12151f";
+      ctx.fillText(""+(i+1), x, y-6);
+      ctx.font = "15px sans-serif";
+      ctx.fillText(LEVELS[i].emoji, x, y+13);
+    } else {
+      ctx.font = "22px sans-serif";
+      ctx.fillText("🔒", x, y+1);
+    }
+    // stars under node
+    ctx.font = "15px sans-serif";
+    for(let sIx=0;sIx<3;sIx++){
+      ctx.globalAlpha = sIx<stars? 1 : 0.22;
+      ctx.fillText("⭐", x+(sIx-1)*18, y+R+16);
+    }
+    ctx.globalAlpha = 1;
+    if(unlocked) mapNodes.push({x,y,r:R+10,ix:i});
+  }
+  // car parked at current level
+  const cur = Math.min(store.unlocked-1, n-1);
+  const cx2 = mx + mw*cur/(n-1), cy2 = cyc + Math.sin(cur*1.9)*amp;
+  const fakeCar = { x:cx2, y:cy2-58, heading:-0.35+Math.sin(game.t*1.4)*0.06, sq:1, invuln:0, boost:0, trail:[] };
+  const saveLv = game.lv; game.lv = LEVELS[cur]; drawCar(fakeCar); game.lv = saveLv;
+  if(CONFIG.playerName){
+    roundedPanel(cx2-44, cy2-108, 88, 24, 6, "#f4f6ff");
+    ctx.fillStyle="#12151f"; ctx.font="900 14px 'Avenir Next Condensed',sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(CONFIG.playerName.toUpperCase(), cx2, cy2-96);
+  }
+  ctx.font = "600 16px 'Avenir Next',sans-serif"; ctx.fillStyle="#8b93ad"; ctx.textAlign="center";
+  ctx.fillText(input.hasTouch? "tap a level!" : "tap or press ENTER for level "+store.unlocked, W/2, H-30);
+  // input
+  for(const tp of input.taps.splice(0)){
+    if(tp.screen){ AU.ui(); loadLevel(cur); return; }
+    for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){ AU.ui(); if(b.act==="mute")AU.toggleMute(); return; }
+    for(const nd of mapNodes){
+      if(dist(tp.x,tp.y,nd.x,nd.y)<nd.r){ AU.ui(); loadLevel(nd.ix); return; }
+    }
+  }
+}
+
+function drawClear(dt){
+  // frozen world behind
+  drawWorld(0.0001);
+  ctx.fillStyle = "rgba(8,10,16,0.68)"; ctx.fillRect(0,0,W,H);
+  const cd = game.clearData; cd.t += dt;
+  // confetti
+  for(const c of game.confetti){
+    ctx.save(); ctx.translate(c.x,c.y); ctx.rotate(c.rot);
+    ctx.fillStyle = c.col; ctx.fillRect(-c.w/2,-c.h/2,c.w,c.h);
+    ctx.restore();
+  }
+  const panW = Math.min(430, W-40);
+  const px = W/2, py = H*0.46;
+  const inT = easeOut(clamp(cd.t/0.3,0,1));
+  ctx.save();
+  ctx.translate(px, py + (1-inT)*60);
+  ctx.globalAlpha = inT;
+  // GG sticker
+  ctx.rotate(-0.03);
+  ctx.font = "900 italic 74px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  const msg = cd.msg || (cd.msg = pick(YELLS.win));
+  ctx.fillStyle = "rgba(12,14,22,0.9)"; ctx.fillText(msg, 5, -120+5);
+  ctx.fillStyle = "#ffd76a"; ctx.fillText(msg, 0, -120);
+  ctx.rotate(0.03);
+  // stars pop one by one
+  for(let i=0;i<3;i++){
+    const on = i < cd.stars && cd.t > 0.5+i*0.4;
+    if(on && cd.shown<=i){ cd.shown=i+1; AU.star(i); game.shake=4; }
+    const pop = on? easeOut(clamp((cd.t-(0.5+i*0.4))/0.25,0,1)) : 1;
+    ctx.font = (on? 62*pop : 54)+"px sans-serif";
+    ctx.globalAlpha = (on?1:0.18)*inT;
+    ctx.fillText("⭐", (i-1)*78, -38);
+  }
+  ctx.globalAlpha = inT;
+  // stats chips
+  ctx.font = "800 21px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  const chips = [
+    ["● "+game.coinsGot+"/"+game.coinsAll+" COINS", cd.allCoins?"#9ae64a":"#ffd76a"],
+    ["⏱ "+cd.time.toFixed(1)+"s"+(cd.timeOk?"  ⚡FAST":""), cd.timeOk?"#9ae64a":"#f4f6ff"],
+    ["✦ +"+cd.aura+" AURA", "#ffd76a"],
+  ];
+  chips.forEach((ch,i)=>{
+    const y = 26+i*44;
+    roundedPanel(-panW*0.32, y-17, panW*0.64, 36, 12, "rgba(20,24,36,0.92)");
+    ctx.fillStyle = ch[1]; ctx.textAlign="center";
+    ctx.fillText(ch[0], 0, y+1);
+  });
+  ctx.restore();
+  // buttons
+  if(cd.t>1.2){
+    const last = game.levelIx >= LEVELS.length-1;
+    const bw = 168, bh = 62, gap = 18;
+    const bx1 = W/2-bw-gap/2, bx2 = W/2+gap/2, by = py+170;
+    hudBtns.length = 0;
+    drawBigBtn(bx1, by, bw, bh, "🗺 MAP", "map", "rgba(60,66,86,0.95)", "#f4f6ff");
+    if(!last) drawBigBtn(bx2, by, bw, bh, "NEXT ▶", "next", game.lv.hue, "#12151f");
+    else drawBigBtn(bx2, by, bw, bh, "🏆 DONE!", "map", "#ffd76a", "#12151f");
+    for(const tp of input.taps.splice(0)){
+      if(tp.screen){ AU.ui(); if(!last) loadLevel(game.levelIx+1); else game.state="map"; return; }
+      for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){
+        AU.ui();
+        if(b.act==="next") loadLevel(game.levelIx+1);
+        else game.state="map";
+        return;
+      }
+    }
+  } else input.taps.length = 0;
+}
+function drawBigBtn(x,y,w,h,label,act,bg,fg){
+  ctx.fillStyle = "rgba(12,14,22,0.9)";
+  ctx.beginPath(); ctx.roundRect(x+4,y+4,w,h,16); ctx.fill();
+  ctx.fillStyle = bg;
+  ctx.beginPath(); ctx.roundRect(x,y,w,h,16); ctx.fill();
+  ctx.fillStyle = fg;
+  ctx.font = "900 25px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText(label, x+w/2, y+h/2+1);
+  hudBtns.push({x,y,w,h,act});
+}
+
+let paused = false;
+function togglePause(){ if(game.state==="play"){ paused=!paused; AU.ui(); } }
+document.addEventListener("visibilitychange", ()=>{ if(document.hidden && game.state==="play") paused = true; });
+
+/* ---------------- main loop ---------------- */
+let last = performance.now();
+function frame(now){
+  requestAnimationFrame(frame);
+  tick(now);
+}
+function tick(now){
+  const dt = Math.min(0.05, (now-last)/1000); last = now;
+  game.t += dt;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.clearRect(0,0,W,H);
+
+  if(game.state==="title"){ drawTitle(dt); }
+  else if(game.state==="map"){ drawMap(); }
+  else if(game.state==="clear"){ updateFx(dt); drawClear(dt); }
+  else if(game.state==="play"){
+    hudBtns.length = 0;
+    if(!paused){
+      readInput();
+      game.playT += dt;
+      updateCar(dt);
+      updateEntities(dt);
+      updateFx(dt);
+    }
+    if(game.state==="play" || game.state==="clear"){  // levelClear may fire mid-update
+      drawWorld(paused?0.0001:dt);
+      if(game.state==="play"){ drawHUD(); drawStickers(); }
+    }
+    if(paused && game.state==="play"){
+      ctx.fillStyle = "rgba(8,10,16,0.6)"; ctx.fillRect(0,0,W,H);
+      ctx.font = "900 italic 54px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+      ctx.fillStyle="#f4f6ff"; ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText("PAUSED", W/2, H*0.42);
+      hudBtns.length = 0;
+      drawBigBtn(W/2-170, H*0.55, 160, 58, "▶ GO", "resume", "#9ae64a", "#12151f");
+      drawBigBtn(W/2+10, H*0.55, 160, 58, "🗺 MAP", "map", "rgba(60,66,86,0.95)", "#f4f6ff");
+    }
+    // HUD button taps
+    for(const tp of input.taps.splice(0)){
+      if(tp.screen){ if(paused){ paused=false; AU.ui(); } continue; }
+      for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){
+        AU.ui();
+        if(b.act==="mute") AU.toggleMute();
+        if(b.act==="pause") togglePause();
+        if(b.act==="resume") paused=false;
+        if(b.act==="map"){ paused=false; game.state="map"; }
+      }
+    }
+  }
+  // soft vignette
+  if(!game._vig || game._vigW!==W || game._vigH!==H){
+    game._vig = ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*0.45, W/2,H/2, Math.max(W,H)*0.75);
+    game._vig.addColorStop(0,"rgba(8,10,16,0)");
+    game._vig.addColorStop(1,"rgba(8,10,16,0.42)");
+    game._vigW=W; game._vigH=H;
+  }
+  ctx.fillStyle = game._vig; ctx.fillRect(0,0,W,H);
+}
+requestAnimationFrame(frame);
+
+// debug handle (safe to ignore)
+window.__tm = { game, loadLevel, store, CONFIG,
+  step(sec){ paused = false; let n = last; for(let i=0;i<sec*60;i++){ n += 1000/60; tick(n); } } };
+</script>
+</body>
+</html>
