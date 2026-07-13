@@ -29,5 +29,11 @@ The campaign levels are drawn in ASCII right below it — same alphabet the
 builder uses: `#` wall · `.` road · `S` start · `F` finish · `c` coin ·
 `n` nitro · `k` key · `D` door · `G` timed gate · `*` boost pad · `h` goober
 
-## Roadmap
-- **v3:** unlock shop — spend coins on goofy characters + a pet that follows you
+## The garage shop (v3)
+Tap **🛒 SHOP** on the map. Coins you collect in any level bank up and buy:
+- **8 rides:** Red Rocket, Turbo Taxi, Banana, Big Green (a tractor), Glizzy GT,
+  Cart Racer, Skibidi GT (yes, a racing toilet) and The Saucer
+- **4 pets** that chase your car through the maze: Ducky, Buddy, Boo, Rexy
+- **Car number** — every ride wears a roof decal, changeable 0–99 (default: 67, obviously)
+
+First shop visit comes with a grand-opening gift so there's something to buy on day one.

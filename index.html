@@ -186,7 +186,8 @@ function resize(){
 window.addEventListener("resize", resize); resize();
 
 /* ---------------- save data ---------------- */
-let store = { unlocked:1, stars:{}, aura:0, coinsBank:0, muted:false, customLevels:[], nextTrackId:0 };
+let store = { unlocked:1, stars:{}, aura:0, coinsBank:0, muted:false, customLevels:[], nextTrackId:0,
+  ownedCars:["rocket"], car:"rocket", ownedPets:[], pet:null, carNum:67, shopGift:false };
 try { const s = localStorage.getItem("turboMaze"); if(s) store = Object.assign(store, JSON.parse(s)); } catch(e){}
 function save(){ try { localStorage.setItem("turboMaze", JSON.stringify(store)); } catch(e){} }
 
@@ -394,6 +395,7 @@ function startLevel(L, meta){
   if(!isWallCell(sc+1,sr) || !isWallCell(sc+2,sr)) head = 0;
   else if(!isWallCell(sc,sr+1)) head = Math.PI/2;
   game.car = newCar(sx, sy, head);
+  game.pet = { x:sx, y:sy };
   game.cam.x = sx; game.cam.y = sy;
   (L.hazards||[]).forEach(h=>{
     game.goobers.push({ path:h.path.map(p=>[(p[0]+0.5)*CELL,(p[1]+0.5)*CELL]),
@@ -598,6 +600,14 @@ function updateCar(dt){
   car.trail.unshift({x:car.x, y:car.y, a:car.heading});
   if(car.trail.length>13) car.trail.pop();
 
+  // pet chases the car (lags a few trail frames behind)
+  if(store.pet && game.pet){
+    const tgt = car.trail[Math.min(9, car.trail.length-1)];
+    const k = 1-Math.exp(-7*dt);
+    game.pet.x += (tgt.x-game.pet.x)*k;
+    game.pet.y += (tgt.y-game.pet.y)*k;
+  }
+
   // exhaust puffs
   if(spd2>40 && Math.random()<0.3)
     puff(car.x-Math.cos(car.heading)*20, car.y-Math.sin(car.heading)*20, "rgba(160,170,200,0.2)");
@@ -749,11 +759,21 @@ function levelClear(){
   game.clearData = { stars, t:0, time:game.playT, timeOk, allCoins, aura:Math.round(game.auraRun), shown:0 };
   game.state = "clear";
   AU.win();
-  for(let i=0;i<130;i++) game.confetti.push({
-    x:W/2+rand(-60,60), y:H*0.35, vx:rand(-260,260), vy:rand(-460,-90),
+  confettiBurst(W/2, H*0.35, 130, L.hue);
+}
+function confettiBurst(x, y, n, hue){
+  for(let i=0;i<n;i++) game.confetti.push({
+    x:x+rand(-60,60), y, vx:rand(-260,260), vy:rand(-460,-90),
     rot:rand(0,TAU), vr:rand(-8,8), w:rand(6,13), h:rand(8,16),
-    col:pick([L.hue,"#ffd76a","#ff8fe0","#7ef7ff","#f4f6ff"]), t:0
+    col:pick([hue||"#ffb742","#ffd76a","#ff8fe0","#7ef7ff","#f4f6ff"]), t:0
   });
+}
+function drawConfettiScreen(){
+  for(const c of game.confetti){
+    ctx.save(); ctx.translate(c.x,c.y); ctx.rotate(c.rot);
+    ctx.fillStyle = c.col; ctx.fillRect(-c.w/2,-c.h/2,c.w,c.h);
+    ctx.restore();
+  }
 }
 
 /* ---------------- fx ---------------- */
@@ -818,6 +838,16 @@ function drawWorld(dt){
   if(game.key && !game.key.got) drawKey(game.key);
   for(const gb of game.goobers) drawGoober(gb);
   drawHintArrow();
+  if(store.pet && game.pet){
+    const p = PETS.find(p=>p.id===store.pet);
+    if(p){
+      const bob = Math.abs(Math.sin(game.t*7))*4;
+      ctx.fillStyle = "rgba(0,0,0,0.3)";
+      ctx.beginPath(); ctx.ellipse(game.pet.x, game.pet.y+10, 9, 3.5, 0, 0, TAU); ctx.fill();
+      ctx.font = "22px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText(p.emoji, game.pet.x, game.pet.y-4-bob);
+    }
+  }
   drawCar(car);
   // particles
   for(const p of game.parts){
@@ -838,12 +868,143 @@ function drawWorld(dt){
   ctx.restore();
 }
 
+/* ---------------- vehicles & pets (the shop roster) ---------------- */
+const VEHICLES = [
+  { id:"rocket",  name:"RED ROCKET", price:0,  trail:()=>CONFIG.carColor },
+  { id:"taxi",    name:"TURBO TAXI", price:12, trail:()=>"#ffc93c" },
+  { id:"banana",  name:"BANANA",     price:15, trail:()=>"#ffe135" },
+  { id:"tractor", name:"BIG GREEN",  price:20, trail:()=>"#3ddc55", ownWheels:true },
+  { id:"hotdog",  name:"GLIZZY GT",  price:25, trail:()=>"#e8543f" },
+  { id:"cart",    name:"CART RACER", price:30, trail:()=>"#b8c1d8" },
+  { id:"toilet",  name:"SKIBIDI GT", price:35, trail:()=>"#f4f6ff" },
+  { id:"ufo",     name:"THE SAUCER", price:40, trail:()=>"#9ad8ff", ownWheels:true, noLights:true },
+];
+const PETS = [
+  { id:"duck",  name:"DUCKY", price:8,  emoji:"🐤" },
+  { id:"dog",   name:"BUDDY", price:10, emoji:"🐶" },
+  { id:"ghost", name:"BOO",   price:15, emoji:"👻" },
+  { id:"dino",  name:"REXY",  price:20, emoji:"🦖" },
+];
+const vehicleById = id => VEHICLES.find(v=>v.id===id) || VEHICLES[0];
+
+function stdWheels(){
+  ctx.fillStyle = "#151824";
+  for(const [wx,wy] of [[-10,-10],[-10,10],[9,-10],[9,10]]){ ctx.beginPath(); ctx.roundRect(wx-4,wy-3,8,6,2); ctx.fill(); }
+}
+function drawNumDecal(vid){
+  const n = String(store.carNum==null? 67 : store.carNum);
+  ctx.save();
+  ctx.rotate(Math.PI/2);                 // roof number reads across the car
+  if(vid!=="ufo"){
+    ctx.fillStyle = "rgba(247,248,255,0.92)";
+    ctx.beginPath(); ctx.arc(0, 0, 6.5, 0, TAU); ctx.fill();
+  }
+  ctx.fillStyle = "#12151f";
+  ctx.font = "900 8px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(n, 0, 0.5);
+  ctx.restore();
+}
+function drawVehicleBody(vid){
+  if(vid==="taxi"){
+    ctx.fillStyle="#ffc93c"; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,6); ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,0.15)"; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,8,6); ctx.fill();
+    ctx.fillStyle="#12151f";
+    for(let i=0;i<8;i++){ const x=-15+i*4; ctx.fillRect(x, i%2? -9.5:-6.7, 4, 2.8); ctx.fillRect(x, i%2? 6.7:3.9, 4, 2.8); }
+    ctx.fillStyle="#1b2233"; ctx.beginPath(); ctx.roundRect(-6,-6,12,12,4); ctx.fill();
+    ctx.fillStyle="#ffd76a"; ctx.fillRect(-1.5,-2.5,5,5);
+  }
+  else if(vid==="banana"){
+    ctx.fillStyle="#ffe135"; ctx.beginPath(); ctx.roundRect(-17,-7,34,14,7); ctx.fill();
+    ctx.fillStyle="#e8c92e"; ctx.fillRect(-14,1,28,5.5);
+    ctx.strokeStyle="rgba(120,84,40,0.25)"; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(-13,-3); ctx.lineTo(13,-3); ctx.stroke();
+    ctx.fillStyle="#6b4a2f";
+    ctx.beginPath(); ctx.arc(-16.5,0,3,0,TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(16.5,0,2.4,0,TAU); ctx.fill();
+    ctx.fillStyle="#1b2233"; ctx.beginPath(); ctx.roundRect(-5,-4,10,8,3); ctx.fill();
+  }
+  else if(vid==="tractor"){
+    ctx.fillStyle="#151824";
+    ctx.beginPath(); ctx.roundRect(-16,-14,11,9,3); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(-16,5,11,9,3); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(8,-9.5,7,5,2); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(8,4.5,7,5,2); ctx.fill();
+    ctx.fillStyle="#ffd93b";
+    ctx.beginPath(); ctx.arc(-10.5,-9.5,2.2,0,TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(-10.5,9.5,2.2,0,TAU); ctx.fill();
+    ctx.fillStyle="#2f8f3e"; ctx.beginPath(); ctx.roundRect(-13,-7.5,20,15,3); ctx.fill();
+    ctx.fillStyle="#2a7d36"; ctx.beginPath(); ctx.roundRect(3,-5,14,10,3); ctx.fill();
+    ctx.fillStyle="#ffd93b"; ctx.fillRect(3,-1.2,14,2.4);
+    ctx.fillStyle="#1b2233"; ctx.beginPath(); ctx.roundRect(-10,-4.5,9,9,2); ctx.fill();
+    ctx.fillStyle="#8b93ad"; ctx.beginPath(); ctx.arc(5,-6.8,1.7,0,TAU); ctx.fill();
+  }
+  else if(vid==="hotdog"){
+    ctx.fillStyle="#e8b06a"; ctx.beginPath(); ctx.roundRect(-16,-9,32,18,9); ctx.fill();
+    ctx.fillStyle="#d89a50"; ctx.fillRect(-13,3,26,4.5);
+    ctx.fillStyle="#c14b32"; ctx.beginPath(); ctx.roundRect(-19,-4,38,8,4); ctx.fill();
+    ctx.strokeStyle="#ffd93b"; ctx.lineWidth=2; ctx.beginPath();
+    for(let i=0;i<=6;i++) ctx.lineTo(-15+i*5, i%2? -2:2);
+    ctx.stroke();
+  }
+  else if(vid==="cart"){
+    ctx.fillStyle="#b8c1d8"; ctx.beginPath(); ctx.roundRect(-13,-9,29,18,3); ctx.fill();
+    ctx.strokeStyle="rgba(20,25,40,0.3)"; ctx.lineWidth=1;
+    for(let x=-9;x<=13;x+=4.5){ ctx.beginPath(); ctx.moveTo(x,-9); ctx.lineTo(x,9); ctx.stroke(); }
+    for(const y of [-4,1]){ ctx.beginPath(); ctx.moveTo(-13,y); ctx.lineTo(16,y); ctx.stroke(); }
+    ctx.fillStyle="#8b93ad"; ctx.fillRect(-18,-9,4,18);
+    ctx.fillStyle="#e34a4a"; ctx.fillRect(-18,-3.5,3,7);
+  }
+  else if(vid==="toilet"){
+    ctx.fillStyle="#eef1fa"; ctx.beginPath(); ctx.roundRect(-18,-8,11,16,3); ctx.fill();
+    ctx.fillStyle="#d5dbeb"; ctx.fillRect(-18,-8,11,3.5);
+    ctx.fillStyle="#f4f6ff"; ctx.beginPath(); ctx.ellipse(3,0,14,10,0,0,TAU); ctx.fill();
+    ctx.strokeStyle="#c9d0e4"; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.ellipse(3,0,10,7,0,0,TAU); ctx.stroke();
+    ctx.fillStyle="#7ec9ff"; ctx.beginPath(); ctx.ellipse(4,0,5,3.5,0,0,TAU); ctx.fill();
+  }
+  else if(vid==="ufo"){
+    ctx.fillStyle="#6d7690"; ctx.beginPath(); ctx.ellipse(0,0,17,13,0,0,TAU); ctx.fill();
+    ctx.fillStyle="#8892ab"; ctx.beginPath(); ctx.ellipse(0,-1,16,11.5,0,0,TAU); ctx.fill();
+    for(let i=0;i<6;i++){
+      const a = game.t*2.5 + i*TAU/6;
+      ctx.fillStyle = ["#ff6a5e","#ffd76a","#9ae64a","#53e0ff","#ff8fe0","#b98cff"][i];
+      ctx.beginPath(); ctx.arc(Math.cos(a)*12.5, Math.sin(a)*9, 1.8, 0, TAU); ctx.fill();
+    }
+    ctx.fillStyle="#c3cce0"; ctx.beginPath(); ctx.arc(0,-1,7,0,TAU); ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,0.5)"; ctx.beginPath(); ctx.arc(-2,-3,2.4,0,TAU); ctx.fill();
+  }
+  else { // rocket
+    ctx.fillStyle = CONFIG.carColor;
+    ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,7); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.12)";
+    ctx.beginPath(); ctx.roundRect(-17,-9.5,34,8,7); ctx.fill();
+    ctx.fillStyle = CONFIG.stripe;
+    ctx.fillRect(-17,-2.4,34,4.8);
+    ctx.fillStyle = "#1b2233";
+    ctx.beginPath(); ctx.roundRect(-6,-6.5,12,13,4); ctx.fill();
+    ctx.fillStyle = "rgba(160,220,255,0.4)";
+    ctx.beginPath(); ctx.roundRect(3,-5.5,3.4,11,2); ctx.fill();
+    ctx.fillStyle = "#20283c";
+    ctx.fillRect(-19,-8,4,16);
+  }
+}
+function drawVehiclePreview(vid, x, y, scale, alpha){
+  ctx.save(); ctx.translate(x,y); ctx.scale(scale,scale); ctx.rotate(-Math.PI/2);
+  ctx.globalAlpha = alpha==null? 1 : alpha;
+  if(!vehicleById(vid).ownWheels) stdWheels();
+  drawVehicleBody(vid);
+  drawNumDecal(vid);
+  ctx.restore(); ctx.globalAlpha = 1;
+}
 function drawCar(car){
+  const vid = store.car || "rocket";
+  const v = vehicleById(vid);
   // motion trail
   for(let i=car.trail.length-1;i>=2;i--){
     const t = car.trail[i], a = (1-i/car.trail.length)*0.14;
     ctx.save(); ctx.translate(t.x,t.y); ctx.rotate(t.a);
-    ctx.globalAlpha = a; ctx.fillStyle = CONFIG.carColor;
+    ctx.globalAlpha = a; ctx.fillStyle = v.trail();
     ctx.beginPath(); ctx.roundRect(-16,-9,32,18,6); ctx.fill();
     ctx.restore();
   }
@@ -855,38 +1016,29 @@ function drawCar(car){
   ctx.beginPath(); ctx.ellipse(0, 0, 24, 17, 0, 0, TAU); ctx.fill();
   ctx.globalAlpha = 1;
   ctx.rotate(car.heading);
+  if(vid==="ufo"){ const hov = 1+Math.sin(game.t*4)*0.04; ctx.scale(hov,hov); }
   const sq = clamp(car.sq, 0.55, 1.35);
   ctx.scale(sq, 2-sq>1.3?1.3:2-sq);
   if(car.invuln>0 && (car.invuln*10|0)%2) ctx.globalAlpha = 0.4;
-  // headlight cones
+  // headlight cones (the saucer gets one wide beam)
   ctx.fillStyle = "rgba(255,240,190,0.13)";
-  for(const s of [-1,1]){
-    ctx.beginPath(); ctx.moveTo(16, 5*s); ctx.lineTo(85, 22*s); ctx.lineTo(85, 2*s); ctx.closePath(); ctx.fill();
+  if(v.noLights){
+    ctx.fillStyle = "rgba(154,230,140,0.10)";
+    ctx.beginPath(); ctx.moveTo(14,0); ctx.lineTo(85,26); ctx.lineTo(85,-26); ctx.closePath(); ctx.fill();
+  } else {
+    for(const s of [-1,1]){
+      ctx.beginPath(); ctx.moveTo(16, 5*s); ctx.lineTo(85, 22*s); ctx.lineTo(85, 2*s); ctx.closePath(); ctx.fill();
+    }
   }
-  // wheels
-  ctx.fillStyle = "#151824";
-  for(const [wx,wy] of [[-10,-10],[-10,10],[9,-10],[9,10]]) { ctx.beginPath(); ctx.roundRect(wx-4,wy-3,8,6,2); ctx.fill(); }
-  // body
-  ctx.fillStyle = CONFIG.carColor;
-  ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,7); ctx.fill();
-  ctx.fillStyle = "rgba(255,255,255,0.12)";
-  ctx.beginPath(); ctx.roundRect(-17,-9.5,34,8,7); ctx.fill();
-  // racing stripe
-  ctx.fillStyle = CONFIG.stripe;
-  ctx.fillRect(-17,-2.4,34,4.8);
-  // cabin
-  ctx.fillStyle = "#1b2233";
-  ctx.beginPath(); ctx.roundRect(-6,-6.5,12,13,4); ctx.fill();
-  ctx.fillStyle = "rgba(160,220,255,0.4)";
-  ctx.beginPath(); ctx.roundRect(3,-5.5,3.4,11,2); ctx.fill();
-  // spoiler
-  ctx.fillStyle = "#20283c";
-  ctx.fillRect(-19,-8,4,16);
-  // lights
-  ctx.fillStyle = "#fff2c0";
-  ctx.fillRect(15,-7,3,4); ctx.fillRect(15,3,3,4);
-  ctx.fillStyle = car.boost>0 ? "#ff8f8f" : "#c23a4a";
-  ctx.fillRect(-18,-7,2.6,4); ctx.fillRect(-18,3,2.6,4);
+  if(!v.ownWheels) stdWheels();
+  drawVehicleBody(vid);
+  drawNumDecal(vid);
+  if(!v.noLights){
+    ctx.fillStyle = "#fff2c0";
+    ctx.fillRect(15,-7,3,4); ctx.fillRect(15,3,3,4);
+    ctx.fillStyle = car.boost>0 ? "#ff8f8f" : "#c23a4a";
+    ctx.fillRect(-18,-7,2.6,4); ctx.fillRect(-18,3,2.6,4);
+  }
   ctx.restore();
   ctx.globalAlpha = 1;
 }
@@ -1212,6 +1364,10 @@ function drawMap(){
   ctx.font = "800 19px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.textAlign="left";
   ctx.fillStyle = "#ffd76a"; ctx.fillText("✦", 26, 33+safeT);
   ctx.fillStyle = "#f4f6ff"; ctx.fillText("AURA "+Math.round(store.aura), 44, 33+safeT);
+  roundedPanel(12, 58+safeT, 104, 36, 12);
+  ctx.fillStyle="#e8a930"; ctx.beginPath(); ctx.arc(30, 76+safeT, 8, 0, TAU); ctx.fill();
+  ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.arc(30, 75.2+safeT, 7.2, 0, TAU); ctx.fill();
+  ctx.fillStyle = "#f4f6ff"; ctx.fillText(store.coinsBank, 46, 76+safeT);
   hudBtns.length = 0;
   drawIconBtn(W-54, 12+safeT, 40, store.muted?"🔇":"🔊", "mute");
   // winding road with nodes
@@ -1264,15 +1420,23 @@ function drawMap(){
   const cx2 = mx + mw*cur/(n-1), cy2 = cyc + Math.sin(cur*1.9)*amp;
   const fakeCar = { x:cx2, y:cy2-58, heading:-0.35+Math.sin(game.t*1.4)*0.06, sq:1, invuln:0, boost:0, trail:[] };
   const saveLv = game.lv; game.lv = LEVELS[cur]; drawCar(fakeCar); game.lv = saveLv;
+  if(store.pet){
+    const p = PETS.find(p=>p.id===store.pet);
+    if(p){
+      ctx.font="20px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText(p.emoji, cx2-42, cy2-56-Math.abs(Math.sin(game.t*4))*4);
+    }
+  }
   if(CONFIG.playerName){
     roundedPanel(cx2-44, cy2-108, 88, 24, 6, "#f4f6ff");
     ctx.fillStyle="#12151f"; ctx.font="900 14px 'Avenir Next Condensed',sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
     ctx.fillText(CONFIG.playerName.toUpperCase(), cx2, cy2-96);
   }
-  // garage: build button + custom track chips
+  // garage: build + shop buttons, custom track chips
   const gy = H-104-safeB;
-  drawBigBtn(12, gy, 128, 48, "🔨 BUILD", "build", "#ffb742", "#12151f");
-  let gcx = 156;
+  drawBigBtn(12, gy, 118, 48, "🔨 BUILD", "build", "#ffb742", "#12151f");
+  drawBigBtn(138, gy, 110, 48, "🛒 SHOP", "shop", "#7ef7ff", "#12151f");
+  let gcx = 262;
   for(const cl of store.customLevels){
     const st = store.stars["c:"+cl.id]||0;
     roundedPanel(gcx, gy+2, 48, 46, 12, "rgba(20,24,36,0.92)");
@@ -1298,6 +1462,7 @@ function drawMap(){
       AU.ui(); game.importedTrack = null;
       if(b.act==="mute") AU.toggleMute();
       else if(b.act==="build") enterBuilder(null);
+      else if(b.act==="shop") game.state="shop";
       else if(b.act.startsWith("pc:")){ const cl = store.customLevels.find(c=>c.id===+b.act.slice(3)); if(cl) loadCustom(cl, "map"); }
       return;
     }
@@ -1598,17 +1763,138 @@ function drawBuild(dt){
   }
 }
 
+/* ---------------- GARAGE SHOP (v3) ---------------- */
+let shopPending = null;
+function shopAction(a){
+  if(a==="back"){ AU.ui(); game.state="map"; return; }
+  if(a==="num-"||a==="num+"){
+    AU.ui();
+    store.carNum = ((store.carNum==null?67:store.carNum) + (a==="num+"?1:99)) % 100;
+    save(); return;
+  }
+  const kind = a.slice(0,1), id = a.slice(2);
+  const item = kind==="v" ? VEHICLES.find(v=>v.id===id) : PETS.find(p=>p.id===id);
+  if(!item) return;
+  const owned = kind==="v" ? store.ownedCars.includes(id) : store.ownedPets.includes(id);
+  if(owned){
+    AU.key();
+    if(kind==="v"){ store.car = id; sticker("LET'S RIDE!", "#9ae64a"); }
+    else if(store.pet===id){ store.pet = null; sticker("BYE "+item.name+" 👋", "#8b93ad"); }
+    else { store.pet = id; sticker(item.emoji+" "+item.name+" JOINS!", "#9ae64a"); }
+    save(); return;
+  }
+  if(store.coinsBank < item.price){
+    AU.bonk(); shopPending = null;
+    sticker("NEED "+(item.price-store.coinsBank)+" MORE COINS!", "#ff8f8f");
+    return;
+  }
+  if(shopPending && shopPending.act===a){
+    shopPending = null;
+    store.coinsBank -= item.price;
+    if(kind==="v"){ store.ownedCars.push(id); store.car = id; }
+    else { store.ownedPets.push(id); store.pet = id; }
+    save();
+    AU.win();
+    confettiBurst(W/2, H*0.3, 80, "#ffd76a");
+    sticker("UNLOCKED! "+(item.emoji||"")+" "+item.name, "#ffd76a");
+  } else {
+    AU.ui();
+    shopPending = {act:a, t:2.5};
+  }
+}
+function shopCard(x, y, w, h, act, preview, name, price, owned, active){
+  const pending = shopPending && shopPending.act===act;
+  roundedPanel(x, y, w, h, 14, active? "rgba(255,183,66,0.2)" : "rgba(14,17,26,0.85)");
+  if(active || pending){
+    ctx.strokeStyle = pending? "#9ae64a" : "#ffb742";
+    ctx.lineWidth = pending? 3+Math.sin(game.t*8)*1.5 : 2.5;
+    ctx.beginPath(); ctx.roundRect(x+1.5, y+1.5, w-3, h-3, 13); ctx.stroke();
+  }
+  preview(x+w/2, y+h*0.4, owned? 1 : 0.32);
+  ctx.font = "800 13px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillStyle = owned? "#f4f6ff" : "#8b93ad";
+  ctx.fillText(name, x+w/2, y+h-26);
+  if(pending){ ctx.fillStyle="#9ae64a"; ctx.fillText("TAP TO BUY!", x+w/2, y+h-11); }
+  else if(active){ ctx.fillStyle="#ffb742"; ctx.fillText(act.startsWith("p:")? "✓ WITH YOU" : "✓ RIDING", x+w/2, y+h-11); }
+  else if(owned){ ctx.fillStyle="#8b93ad"; ctx.fillText("TAP TO USE", x+w/2, y+h-11); }
+  else {
+    ctx.fillStyle="#e8a930"; ctx.beginPath(); ctx.arc(x+w/2-13, y+h-11, 5, 0, TAU); ctx.fill();
+    ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.arc(x+w/2-13, y+h-11.8, 4.4, 0, TAU); ctx.fill();
+    ctx.fillStyle="#f4f6ff"; ctx.fillText(price, x+w/2+7, y+h-11);
+  }
+  hudBtns.push({x, y, w, h, act});
+}
+function drawShop(dt){
+  nightSky();
+  hudBtns.length = 0;
+  const top = 8+safeT;
+  if(!store.shopGift){
+    store.shopGift = true; store.coinsBank += 20; save();
+    sticker("🎁 GRAND OPENING! +20 COINS", "#ffd76a");
+    confettiBurst(W/2, H*0.3, 90, "#ffd76a");
+    AU.win();
+  }
+  drawIconBtn(12, top, 44, "↩️", "back");
+  ctx.font = "italic 900 28px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillStyle="#ffb742";
+  ctx.fillText("🛒 GARAGE", 68, top+23);
+  const bw2 = 130;
+  roundedPanel(W-12-bw2, top, bw2, 44, 12);
+  ctx.fillStyle="#e8a930"; ctx.beginPath(); ctx.arc(W-12-bw2+22, top+22, 9, 0, TAU); ctx.fill();
+  ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.arc(W-12-bw2+22, top+21, 8, 0, TAU); ctx.fill();
+  ctx.font="900 21px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.fillStyle="#f4f6ff"; ctx.textAlign="left";
+  ctx.fillText(store.coinsBank, W-12-bw2+40, top+23);
+  // layout: 2 rows cars, 1 row pets, number panel
+  let y = top+54;
+  const gap = 8;
+  const cw = Math.min(170, (W-24-gap*3)/4);
+  const gridW = cw*4+gap*3;
+  const x0 = Math.round((W-gridW)/2);
+  const availY = H - y - safeB - 10;
+  const ch2 = Math.max(70, Math.min(96, Math.floor((availY - 62 - gap*3)/3)));
+  VEHICLES.forEach((v,i)=>{
+    const cx3 = x0 + (i%4)*(cw+gap), cy3 = y + ((i/4)|0)*(ch2+gap);
+    shopCard(cx3, cy3, cw, ch2, "v:"+v.id,
+      (px,py,al)=>drawVehiclePreview(v.id, px, py, Math.min(1.4, ch2/72), al),
+      v.name, v.price, store.ownedCars.includes(v.id), store.car===v.id);
+  });
+  y += 2*(ch2+gap);
+  PETS.forEach((p,i)=>{
+    const cx3 = x0 + i*(cw+gap);
+    shopCard(cx3, y, cw, ch2, "p:"+p.id,
+      (px,py,al)=>{ ctx.globalAlpha=al; ctx.font=Math.round(ch2*0.42)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(p.emoji, px, py); ctx.globalAlpha=1; },
+      p.name, p.price, store.ownedPets.includes(p.id), store.pet===p.id);
+  });
+  y += ch2+gap;
+  const nh = 58;
+  roundedPanel(x0, y, gridW, nh, 14);
+  ctx.font="900 16px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.fillStyle="#8b93ad"; ctx.textAlign="left"; ctx.textBaseline="middle";
+  ctx.fillText("CAR NUMBER", x0+16, y+nh/2);
+  const ncx = x0+gridW/2;
+  drawBigBtn(ncx-98, y+7, 46, nh-14, "−", "num-", "rgba(60,66,86,0.95)", "#f4f6ff");
+  ctx.font="900 32px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.fillStyle="#ffd76a"; ctx.textAlign="center";
+  ctx.fillText(String(store.carNum==null?67:store.carNum), ncx, y+nh/2+1);
+  drawBigBtn(ncx+52, y+7, 46, nh-14, "+", "num+", "rgba(60,66,86,0.95)", "#f4f6ff");
+  drawVehiclePreview(store.car, x0+gridW-54, y+nh/2, 1.4);
+  if(shopPending){ shopPending.t -= dt; if(shopPending.t<=0) shopPending = null; }
+  for(const tp of input.taps.splice(0)){
+    if(tp.screen) continue;
+    let hit = false;
+    for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){ shopAction(b.act); hit=true; break; }
+    if(!hit) shopPending = null;
+  }
+}
+
 function drawClear(dt){
   // frozen world behind
   drawWorld(0.0001);
   ctx.fillStyle = "rgba(8,10,16,0.68)"; ctx.fillRect(0,0,W,H);
   const cd = game.clearData; cd.t += dt;
-  // confetti
-  for(const c of game.confetti){
-    ctx.save(); ctx.translate(c.x,c.y); ctx.rotate(c.rot);
-    ctx.fillStyle = c.col; ctx.fillRect(-c.w/2,-c.h/2,c.w,c.h);
-    ctx.restore();
-  }
+  drawConfettiScreen();
   const panW = Math.min(430, W-40);
   const px = W/2, py = H*0.46;
   const inT = easeOut(clamp(cd.t/0.3,0,1));
@@ -1714,6 +2000,7 @@ function tick(now){
   if(game.state==="title"){ drawTitle(dt); }
   else if(game.state==="map"){ drawMap(); updateStickers(dt); drawStickers(); }
   else if(game.state==="build"){ drawBuild(dt); updateStickers(dt); drawStickers(); }
+  else if(game.state==="shop"){ updateFx(dt); drawShop(dt); drawConfettiScreen(); drawStickers(); }
   else if(game.state==="clear"){ updateFx(dt); drawClear(dt); }
   else if(game.state==="play"){
     hudBtns.length = 0;
@@ -1791,6 +2078,7 @@ requestAnimationFrame(frame);
 
 // debug handle (safe to ignore)
 window.__tm = { game, loadLevel, loadCustom, store, CONFIG, bl, enterBuilder, encodeTrack, decodeTrack,
+  shopAction, VEHICLES, PETS,
   step(sec){ paused = false; let n = last; for(let i=0;i<sec*60;i++){ n += 1000/60; tick(n); } } };
 </script>
 </body>
