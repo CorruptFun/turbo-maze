@@ -7,8 +7,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>TURBO MAZE 🏁</title>
 <style>
+  :root { --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px); }
   html, body { margin:0; padding:0; height:100%; overflow:hidden; background:#0b0e15; overscroll-behavior:none; }
-  canvas { display:block; touch-action:none; -webkit-user-select:none; user-select:none; }
+  canvas { display:block; touch-action:none; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
 </style>
 </head>
 <body>
@@ -161,12 +162,26 @@ const LEVELS = [
 /* ---------------------------------------------------------------- */
 const cv = document.getElementById("cv");
 const ctx = cv.getContext("2d");
-let W=0, H=0, DPR=1;
+// roundRect polyfill for older iPads (iOS < 16)
+if(!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect = function(x,y,w,h,r){
+    r = Math.min(Math.abs(r)||0, w/2, h/2);
+    this.moveTo(x+r,y);
+    this.arcTo(x+w,y,x+w,y+h,r); this.arcTo(x+w,y+h,x,y+h,r);
+    this.arcTo(x,y+h,x,y,r); this.arcTo(x,y,x+w,y,r);
+    this.closePath();
+    return this;
+  };
+}
+let W=0, H=0, DPR=1, safeT=0, safeB=0;
 function resize(){
   DPR = Math.min(2, window.devicePixelRatio||1);
   W = window.innerWidth; H = window.innerHeight;
   cv.width = W*DPR; cv.height = H*DPR;
   cv.style.width = W+"px"; cv.style.height = H+"px";
+  const cs = getComputedStyle(document.documentElement);
+  safeT = parseFloat(cs.getPropertyValue("--sat"))||0;
+  safeB = parseFloat(cs.getPropertyValue("--sab"))||0;
 }
 window.addEventListener("resize", resize); resize();
 
@@ -201,7 +216,11 @@ const AU = {
       noise.connect(bp); bp.connect(this.driftGain); this.driftGain.connect(this.master);
       noise.start();
       this.started = true;
+      this.resume();
     }catch(e){}
+  },
+  resume(){ // iOS suspends audio contexts aggressively — poke it on every gesture
+    if(this.ctx && this.ctx.state === "suspended") this.ctx.resume().catch(()=>{});
   },
   setEngine(speed, boosting){
     if(!this.started) return;
@@ -234,7 +253,9 @@ const AU = {
 };
 
 /* ---------------- input: keyboard + touch ---------------- */
-const input = { vec:{x:0,y:0}, nitro:false, hasTouch:false, joy:null, taps:[] };
+const input = { vec:{x:0,y:0}, nitro:false,
+  hasTouch: ("ontouchstart" in window) || navigator.maxTouchPoints>0,
+  joy:null, taps:[] };
 const keys = {};
 window.addEventListener("keydown", e=>{
   if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key)) e.preventDefault();
@@ -259,7 +280,7 @@ function keyVec(){
 // touch: left side = floating joystick, right side = nitro
 let touches = {};
 cv.addEventListener("touchstart", e=>{
-  e.preventDefault(); AU.init(); input.hasTouch = true;
+  e.preventDefault(); AU.init(); AU.resume(); input.hasTouch = true;
   for(const t of e.changedTouches){
     const x=t.clientX, y=t.clientY;
     input.taps.push({x, y});
@@ -972,7 +993,7 @@ function roundedPanel(x,y,w,h,r,fill){
 }
 function drawHUD(){
   const car = game.car;
-  const pad = 12, top = 10;
+  const pad = 12, top = 10 + safeT;
   ctx.textBaseline = "middle";
   // aura counter (left)
   roundedPanel(pad, top, 168, 44, 12);
@@ -1013,7 +1034,7 @@ function drawHUD(){
   drawIconBtn(W-pad-88, top, 40, store.muted?"🔇":"🔊", "mute");
   drawIconBtn(W-pad-42, top, 40, "⏸️", "pause");
   // nitro meter (bottom center-left)
-  const nw = Math.min(280, W*0.36), nx = input.hasTouch ? W/2-nw/2 : pad, ny = H-40;
+  const nw = Math.min(280, W*0.36), nx = input.hasTouch ? W/2-nw/2 : pad, ny = H-40-safeB;
   roundedPanel(nx, ny-14, nw, 30, 15);
   ctx.fillStyle = "rgba(126,247,255,0.14)";
   ctx.beginPath(); ctx.roundRect(nx+5, ny-9, (nw-10), 20, 10); ctx.fill();
@@ -1036,7 +1057,7 @@ function drawHUD(){
       ctx.globalAlpha = 1;
     }
     // nitro button
-    const bx = W-74, by = H-84;
+    const bx = W-74, by = H-84-safeB;
     ctx.globalAlpha = input.nitro? 0.95 : 0.55;
     ctx.fillStyle = "#7ef7ff";
     ctx.beginPath(); ctx.arc(bx, by, 46, 0, TAU); ctx.fill();
@@ -1164,12 +1185,12 @@ function drawMap(){
   ctx.textAlign="center"; ctx.fillStyle="#ffb742";
   ctx.fillText(CONFIG.title, W/2, 52);
   // aura bank
-  roundedPanel(12, 12, 150, 40, 12);
+  roundedPanel(12, 12+safeT, 150, 40, 12);
   ctx.font = "800 19px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.textAlign="left";
-  ctx.fillStyle = "#ffd76a"; ctx.fillText("✦", 26, 33);
-  ctx.fillStyle = "#f4f6ff"; ctx.fillText("AURA "+Math.round(store.aura), 44, 33);
+  ctx.fillStyle = "#ffd76a"; ctx.fillText("✦", 26, 33+safeT);
+  ctx.fillStyle = "#f4f6ff"; ctx.fillText("AURA "+Math.round(store.aura), 44, 33+safeT);
   hudBtns.length = 0;
-  drawIconBtn(W-54, 12, 40, store.muted?"🔇":"🔊", "mute");
+  drawIconBtn(W-54, 12+safeT, 40, store.muted?"🔇":"🔊", "mute");
   // winding road with nodes
   mapNodes.length = 0;
   const n = LEVELS.length;
@@ -1320,7 +1341,10 @@ function drawBigBtn(x,y,w,h,label,act,bg,fg){
 
 let paused = false;
 function togglePause(){ if(game.state==="play"){ paused=!paused; AU.ui(); } }
-document.addEventListener("visibilitychange", ()=>{ if(document.hidden && game.state==="play") paused = true; });
+document.addEventListener("visibilitychange", ()=>{
+  if(document.hidden && game.state==="play") paused = true;
+  if(!document.hidden) AU.resume();
+});
 
 /* ---------------- main loop ---------------- */
 let last = performance.now();
@@ -1333,6 +1357,9 @@ function tick(now){
   game.t += dt;
   ctx.setTransform(DPR,0,0,DPR,0,0);
   ctx.clearRect(0,0,W,H);
+  // tablet held upright → ask for landscape (menus only, never mid-game)
+  const portraitHint = input.hasTouch && H > W*1.15 && (game.state==="title" || game.state==="map");
+  if(portraitHint) input.taps.length = 0;
 
   if(game.state==="title"){ drawTitle(dt); }
   else if(game.state==="map"){ drawMap(); }
@@ -1379,6 +1406,15 @@ function tick(now){
     game._vigW=W; game._vigH=H;
   }
   ctx.fillStyle = game._vig; ctx.fillRect(0,0,W,H);
+  if(portraitHint){
+    ctx.fillStyle = "rgba(8,10,16,0.88)"; ctx.fillRect(0,0,W,H);
+    ctx.save(); ctx.translate(W/2, H*0.42); ctx.rotate(-Math.PI/2 + Math.sin(game.t*2.2)*0.25);
+    ctx.font = "72px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText("📱", 0, 0); ctx.restore();
+    ctx.font = "900 30px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+    ctx.fillStyle = "#f4f6ff"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText("TURN IT SIDEWAYS!", W/2, H*0.42+86);
+  }
 }
 requestAnimationFrame(frame);
 
