@@ -186,7 +186,7 @@ function resize(){
 window.addEventListener("resize", resize); resize();
 
 /* ---------------- save data ---------------- */
-let store = { unlocked:1, stars:{}, aura:0, coinsBank:0, muted:false };
+let store = { unlocked:1, stars:{}, aura:0, coinsBank:0, muted:false, customLevels:[], nextTrackId:0 };
 try { const s = localStorage.getItem("turboMaze"); if(s) store = Object.assign(store, JSON.parse(s)); } catch(e){}
 function save(){ try { localStorage.setItem("turboMaze", JSON.stringify(store)); } catch(e){} }
 
@@ -288,24 +288,32 @@ cv.addEventListener("touchstart", e=>{
       if(x < W*0.55 && !input.joy) { input.joy = {id:t.identifier, ox:x, oy:y, x, y}; }
       else { touches[t.identifier]="nitro"; input.nitro=true; }
     }
+    else if(game.state==="build" && !bl.ptr){ bl.ptr = {id:t.identifier, x, y, stroke:false}; }
   }
 },{passive:false});
 cv.addEventListener("touchmove", e=>{
   e.preventDefault();
   for(const t of e.changedTouches){
     if(input.joy && t.identifier===input.joy.id){ input.joy.x=t.clientX; input.joy.y=t.clientY; }
+    if(bl.ptr && t.identifier===bl.ptr.id){ bl.ptr.x=t.clientX; bl.ptr.y=t.clientY; }
   }
 },{passive:false});
 function endTouch(e){
   e.preventDefault();
   for(const t of e.changedTouches){
     if(input.joy && t.identifier===input.joy.id) input.joy=null;
+    if(bl.ptr && t.identifier===bl.ptr.id){ bl.ptr=null; bl.lastCell=null; }
     if(touches[t.identifier]==="nitro"){ delete touches[t.identifier]; if(!Object.keys(touches).length) input.nitro=false; }
   }
 }
 cv.addEventListener("touchend", endTouch, {passive:false});
 cv.addEventListener("touchcancel", endTouch, {passive:false});
-cv.addEventListener("mousedown", e=>{ AU.init(); input.taps.push({x:e.clientX, y:e.clientY}); });
+cv.addEventListener("mousedown", e=>{
+  AU.init(); input.taps.push({x:e.clientX, y:e.clientY});
+  if(game.state==="build") bl.ptr = {id:"m", x:e.clientX, y:e.clientY, stroke:false};
+});
+window.addEventListener("mousemove", e=>{ if(bl.ptr && bl.ptr.id==="m"){ bl.ptr.x=e.clientX; bl.ptr.y=e.clientY; } });
+window.addEventListener("mouseup", ()=>{ if(bl.ptr && bl.ptr.id==="m"){ bl.ptr=null; bl.lastCell=null; } });
 window.addEventListener("contextmenu", e=> e.preventDefault());
 function readInput(){
   const k = keyVec();
@@ -344,9 +352,16 @@ function newCar(x,y,heading){
 }
 
 /* ---------------- level loading ---------------- */
-function loadLevel(ix){
-  const L = LEVELS[ix];
-  game.levelIx = ix; game.lv = L;
+function loadLevel(ix){ startLevel(LEVELS[ix], {ix}); }
+function loadCustom(cl, from){
+  game.sourceCustom = cl;
+  startLevel(customToLevel(cl), {customId: from==="builder"? null : cl.id, from});
+}
+function startLevel(L, meta){
+  game.levelIx = (meta.ix!==undefined)? meta.ix : -1;
+  game.customId = meta.customId || null;
+  game.fromBuilder = meta.from === "builder";
+  game.lv = L;
   const g = L.grid;
   game.rows = g.length; game.cols = g[0].length;
   game.solid = []; game.road = []; game.coins=[]; game.pads=[]; game.gates=[]; game.doors=[]; game.goobers=[]; game.key=null;
@@ -723,9 +738,13 @@ function levelClear(){
   const bonus = 50 + stars*25;
   game.auraRun += bonus;
   store.aura += Math.round(game.auraRun);
-  const prev = store.stars[game.levelIx]||0;
-  store.stars[game.levelIx] = Math.max(prev, stars);
-  store.unlocked = Math.max(store.unlocked, Math.min(LEVELS.length, game.levelIx+2));
+  const key = game.customId ? "c:"+game.customId : (game.levelIx>=0 ? game.levelIx : null);
+  if(key!==null){
+    const prev = store.stars[key]||0;
+    store.stars[key] = Math.max(prev, stars);
+  }
+  if(!game.customId && game.levelIx>=0)
+    store.unlocked = Math.max(store.unlocked, Math.min(LEVELS.length, game.levelIx+2));
   save();
   game.clearData = { stars, t:0, time:game.playT, timeOk, allCoins, aura:Math.round(game.auraRun), shown:0 };
   game.state = "clear";
@@ -763,10 +782,13 @@ function scuff(car){
 }
 function float(txt,x,y,col){ game.floats.push({txt,x,y,t:0,col:col||"#fff"}); }
 function sticker(txt,col){ game.stickers.push({txt,col:col||"#fff",t:0}); }
+function updateStickers(dt){
+  if(game.stickers.length){ game.stickers[0].t+=dt; if(game.stickers[0].t>1.1) game.stickers.shift(); }
+}
 function updateFx(dt){
   game.parts = game.parts.filter(p=>{ p.t+=dt; p.x+=p.vx*dt; p.y+=p.vy*dt; if(p.grav)p.vy+=500*dt; return p.t<p.life; });
   game.floats = game.floats.filter(f=>{ f.t+=dt; f.y-=34*dt; return f.t<0.95; });
-  if(game.stickers.length){ game.stickers[0].t+=dt; if(game.stickers[0].t>1.1) game.stickers.shift(); }
+  updateStickers(dt);
   game.confetti = game.confetti.filter(c=>{ c.t+=dt; c.x+=c.vx*dt; c.y+=c.vy*dt; c.vy+=560*dt; c.rot+=c.vr*dt; return c.y<H+40 && c.t<4; });
   game.shake = Math.max(0, game.shake - dt*22);
 }
@@ -1025,7 +1047,8 @@ function drawHUD(){
   ctx.fillText("⏱ " + tStr, W/2, top+20);
   // level tag (right)
   ctx.font = "800 18px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-  const tag = game.lv.emoji+" "+(game.levelIx+1)+" · "+game.lv.name;
+  const tag = game.levelIx>=0 ? game.lv.emoji+" "+(game.levelIx+1)+" · "+game.lv.name
+                              : game.lv.emoji+" "+game.lv.name;
   const tw = ctx.measureText(tag).width+30;
   roundedPanel(W-pad-tw-96, top, tw, 38, 12);
   ctx.fillStyle = game.lv.hue;
@@ -1246,15 +1269,332 @@ function drawMap(){
     ctx.fillStyle="#12151f"; ctx.font="900 14px 'Avenir Next Condensed',sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
     ctx.fillText(CONFIG.playerName.toUpperCase(), cx2, cy2-96);
   }
+  // garage: build button + custom track chips
+  const gy = H-104-safeB;
+  drawBigBtn(12, gy, 128, 48, "🔨 BUILD", "build", "#ffb742", "#12151f");
+  let gcx = 156;
+  for(const cl of store.customLevels){
+    const st = store.stars["c:"+cl.id]||0;
+    roundedPanel(gcx, gy+2, 48, 46, 12, "rgba(20,24,36,0.92)");
+    ctx.font = "17px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillStyle="#f4f6ff";
+    ctx.fillText(EMOJIS[cl.emojiIx||0], gcx+24, gy+17);
+    ctx.font = "800 11px 'Avenir Next Condensed',sans-serif";
+    ctx.fillStyle = st? "#ffd76a" : "#8b93ad";
+    ctx.fillText(st? "⭐".repeat(st) : cl.name.replace("TRACK","T"), gcx+24, gy+37);
+    if(game.importedTrack===cl){
+      ctx.strokeStyle="#ffd76a"; ctx.lineWidth=3+Math.sin(game.t*5)*1.5;
+      ctx.beginPath(); ctx.roundRect(gcx-3, gy-1, 54, 52, 14); ctx.stroke();
+    }
+    hudBtns.push({x:gcx,y:gy+2,w:48,h:46,act:"pc:"+cl.id});
+    gcx += 54;
+    if(gcx > W-60) break;
+  }
   ctx.font = "600 16px 'Avenir Next',sans-serif"; ctx.fillStyle="#8b93ad"; ctx.textAlign="center";
-  ctx.fillText(input.hasTouch? "tap a level!" : "tap or press ENTER for level "+store.unlocked, W/2, H-30);
+  ctx.fillText(input.hasTouch? "tap a level!" : "tap or press ENTER for level "+store.unlocked, W/2, H-30-safeB);
   // input
   for(const tp of input.taps.splice(0)){
     if(tp.screen){ AU.ui(); loadLevel(cur); return; }
-    for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){ AU.ui(); if(b.act==="mute")AU.toggleMute(); return; }
+    for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){
+      AU.ui(); game.importedTrack = null;
+      if(b.act==="mute") AU.toggleMute();
+      else if(b.act==="build") enterBuilder(null);
+      else if(b.act.startsWith("pc:")){ const cl = store.customLevels.find(c=>c.id===+b.act.slice(3)); if(cl) loadCustom(cl, "map"); }
+      return;
+    }
     for(const nd of mapNodes){
       if(dist(tp.x,tp.y,nd.x,nd.y)<nd.r){ AU.ui(); loadLevel(nd.ix); return; }
     }
+  }
+}
+
+/* ---------------- LEVEL BUILDER (v2) ---------------- */
+const EMOJIS = ["🦖","🌋","👻","🍕","🌈","🐙","🚀","💎","🐸","⚡"];
+const HUES = ["#ffb742","#9ae64a","#ff6a5e","#b98cff","#53e0ff"];
+const SIZES = [[12,8],[16,10],[20,13]];   // [cols, rows]
+const TOOL_LIST = ["wall","road","c","n","k","D","G","*","h","S","F"];
+const TOOL_ICON = { wall:"🧱", road:"🧽", n:"⚡", k:"🗝️", D:"🔒", G:"🚧", "*":"🔼", h:"👾", S:"🚗", F:"🏁" };
+const bl = { grid:null, cols:0, rows:0, tool:"wall", hueIx:0, emojiIx:0, sizeIx:1,
+  editingId:null, undo:[], ptr:null, lastCell:null, trashT:0, _geo:null };
+
+function freshGrid(cols, rows){
+  const g = [];
+  for(let r=0;r<rows;r++)
+    g.push(Array.from({length:cols}, (_,c)=> (r===0||c===0||r===rows-1||c===cols-1) ? "#" : "."));
+  g[1][1] = "S"; g[rows-2][cols-2] = "F";
+  return g;
+}
+function enterBuilder(cl){
+  if(cl){
+    bl.grid = cl.grid.map(row=>row.split(""));
+    bl.rows = bl.grid.length; bl.cols = bl.grid[0].length;
+    bl.hueIx = cl.hueIx||0; bl.emojiIx = cl.emojiIx||0; bl.editingId = cl.id;
+    bl.sizeIx = Math.max(0, SIZES.findIndex(s=>s[0]===bl.cols && s[1]===bl.rows));
+  } else {
+    bl.sizeIx = 1;
+    const [c,r] = SIZES[1];
+    bl.cols=c; bl.rows=r; bl.grid = freshGrid(c,r);
+    bl.hueIx = (Math.random()*HUES.length)|0;
+    bl.emojiIx = (Math.random()*EMOJIS.length)|0;
+    bl.editingId = null;
+  }
+  bl.undo.length = 0; bl.trashT = 0; bl.tool = "wall"; bl.ptr = null; bl.lastCell = null;
+  game.state = "build";
+}
+function pushUndo(){
+  bl.undo.push(bl.grid.map(r=>r.join("")).join("\n"));
+  if(bl.undo.length>40) bl.undo.shift();
+}
+function popUndo(){
+  const s = bl.undo.pop(); if(!s) return;
+  bl.grid = s.split("\n").map(r=>r.split(""));
+  bl.rows = bl.grid.length; bl.cols = bl.grid[0].length;
+}
+function countCh(ch){ let n=0; for(const row of bl.grid) for(const c of row) if(c===ch) n++; return n; }
+function clearCh(ch){ for(const row of bl.grid) for(let i=0;i<row.length;i++) if(row[i]===ch) row[i]="."; }
+function paintCell(c,r){
+  if(c<=0||r<=0||c>=bl.cols-1||r>=bl.rows-1) return;
+  let ch;
+  if(bl.tool==="wall") ch="#";
+  else if(bl.tool==="road") ch=".";
+  else if(bl.tool==="S"||bl.tool==="F"||bl.tool==="k"){ if(bl.grid[r][c]===bl.tool) return; clearCh(bl.tool); ch=bl.tool; }
+  else if(bl.tool==="h"){
+    if(bl.grid[r][c]!=="h" && countCh("h")>=3){ sticker("MAX 3 GOOBERS! 👾","#ff8f8f"); return; }
+    ch="h";
+  }
+  else ch = bl.tool;
+  if(bl.grid[r][c]===ch) return;
+  bl.grid[r][c] = ch;
+  AU.beep(ch==="#"?280:640, 0.04, "square", 0.05);
+}
+function resizeGridTo(cols, rows){
+  const old = bl.grid, oc = bl.cols, or_ = bl.rows;
+  bl.grid = freshGrid(cols, rows);
+  clearCh("S"); clearCh("F");   // fresh puts defaults in; clear then copy
+  for(let r=1;r<Math.min(rows-1, or_-1);r++)
+    for(let c=1;c<Math.min(cols-1, oc-1);c++)
+      bl.grid[r][c] = old[r][c];
+  if(!countCh("S")){ bl.grid[1][1]="S"; }
+  if(!countCh("F")){ bl.grid[rows-2][cols-2]==="S" ? bl.grid[rows-2][cols-3]="F" : bl.grid[rows-2][cols-2]="F"; }
+  bl.cols = cols; bl.rows = rows;
+}
+/* validation + conversion work on array-of-strings grids */
+function findIn(rows, ch){
+  for(let r=0;r<rows.length;r++){ const c = rows[r].indexOf(ch); if(c>=0) return [c,r]; }
+  return null;
+}
+function bfsGrid(rows, sc, sr, passable){
+  const R=rows.length, C=rows[0].length;
+  const d = Array.from({length:R},()=>new Array(C).fill(-1));
+  const q=[[sc,sr]]; d[sr][sc]=0;
+  while(q.length){
+    const [c,r]=q.shift();
+    for(const [dc,dr] of [[1,0],[-1,0],[0,1],[0,-1]]){
+      const nc=c+dc, nr=r+dr;
+      if(nc<0||nr<0||nc>=C||nr>=R||d[nr][nc]!==-1) continue;
+      if(!passable(rows[nr][nc])) continue;
+      d[nr][nc]=d[r][c]+1; q.push([nc,nr]);
+    }
+  }
+  return d;
+}
+function validateRows(rows){
+  const S=findIn(rows,"S"), F=findIn(rows,"F");
+  if(!S) return {ok:false, msg:"NEEDS A START 🚗"};
+  if(!F) return {ok:false, msg:"NEEDS A FINISH 🏁"};
+  const hasDoor = rows.some(r=>r.includes("D")), key = findIn(rows,"k");
+  if(hasDoor && !key) return {ok:false, msg:"DOOR NEEDS A KEY 🗝️"};
+  const d1 = bfsGrid(rows, S[0], S[1], ch=>ch!=="#");
+  if(d1[F[1]][F[0]]<0) return {ok:false, msg:"CAN'T REACH THE FLAG!"};
+  if(key){
+    const d2 = bfsGrid(rows, S[0], S[1], ch=>ch!=="#"&&ch!=="D");
+    if(d2[key[1]][key[0]]<0) return {ok:false, msg:"KEY IS LOCKED AWAY! 🗝️"};
+  }
+  return {ok:true};
+}
+function customToLevel(cl){
+  const hz = [];
+  const rows = cl.grid.map((row,r)=> row.split("").map((ch,c)=>{
+    if(ch==="h"){ hz.push([c,r]); return "."; } return ch;
+  }).join(""));
+  const S=findIn(rows,"S"), F=findIn(rows,"F");
+  const d = bfsGrid(rows, S[0], S[1], ch=>ch!=="#");
+  const par = Math.max(15, Math.round(d[F[1]][F[0]]*1.15+8));
+  const hazards = hz.map(([c,r])=>{
+    const open=(cc,rr)=> rr>=0&&rr<rows.length&&cc>=0&&cc<rows[0].length&&rows[rr][cc]!=="#"&&rows[rr][cc]!=="D";
+    let l=c; while(open(l-1,r)) l--;
+    let ri=c; while(open(ri+1,r)) ri++;
+    let u=r; while(open(c,u-1)) u--;
+    let dn=r; while(open(c,dn+1)) dn++;
+    if(ri-l<1 && dn-u<1) return null;
+    return { path: (ri-l >= dn-u)? [[l,r],[ri,r]] : [[c,u],[c,dn]], speed:100 };
+  }).filter(Boolean);
+  return { name:cl.name, emoji:EMOJIS[cl.emojiIx||0], hue:HUES[cl.hueIx||0], par, grid:rows, hazards };
+}
+function saveBuild(){
+  const rows = bl.grid.map(r=>r.join(""));
+  const v = validateRows(rows);
+  if(!v.ok){ sticker(v.msg, "#ff8f8f"); AU.bonk(); return null; }
+  let cl = bl.editingId ? store.customLevels.find(c=>c.id===bl.editingId) : null;
+  if(!cl){
+    if(store.customLevels.length>=10){ sticker("GARAGE FULL! 🔧", "#ff8f8f"); return null; }
+    store.nextTrackId = (store.nextTrackId||0)+1;
+    cl = { id: store.nextTrackId, name: "TRACK "+store.nextTrackId };
+    store.customLevels.push(cl);
+    bl.editingId = cl.id;
+  }
+  cl.grid = rows; cl.hueIx = bl.hueIx; cl.emojiIx = bl.emojiIx;
+  save();
+  sticker("SAVED! 💾", "#9ae64a"); AU.key();
+  return cl;
+}
+function testBuild(){
+  const rows = bl.grid.map(r=>r.join(""));
+  const v = validateRows(rows);
+  if(!v.ok){ sticker(v.msg, "#ff8f8f"); AU.bonk(); return; }
+  loadCustom({ id:0, name:"TEST DRIVE", emojiIx:bl.emojiIx, hueIx:bl.hueIx, grid:rows }, "builder");
+}
+function encodeTrack(cl){
+  const payload = ["1", cl.name, cl.emojiIx||0, cl.hueIx||0, cl.grid.join("!")].join("~");
+  return btoa(payload).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+}
+function decodeTrack(s){
+  try{
+    const p = atob(s.replace(/-/g,"+").replace(/_/g,"/")).split("~");
+    if(p[0]!=="1" || p.length<5) return null;
+    const rows = p[4].split("!");
+    const cols = rows[0].length;
+    if(rows.length<5||rows.length>16||cols<6||cols>24) return null;
+    if(!rows.every(r=>r.length===cols && /^[#.SFcnkDG*h]+$/.test(r))) return null;
+    if(!validateRows(rows).ok) return null;
+    return { name:String(p[1]||"TRACK").slice(0,14), emojiIx:Math.min(EMOJIS.length-1, Math.max(0,+p[2]||0)),
+             hueIx:Math.min(HUES.length-1, Math.max(0,+p[3]||0)), grid:rows };
+  }catch(e){ return null; }
+}
+function shareTrack(){
+  const cl = saveBuild(); if(!cl) return;
+  const url = location.origin + location.pathname + "#T=" + encodeTrack(cl);
+  if(navigator.share){ navigator.share({title:cl.name+" — "+CONFIG.title, url}).catch(()=>{}); }
+  else if(navigator.clipboard){ navigator.clipboard.writeText(url).then(()=>sticker("LINK COPIED! 📋","#9ae64a")).catch(()=>{}); }
+}
+function builderAction(a){
+  AU.ui();
+  if(a==="back"){ game.state="map"; return; }
+  if(a==="undo"){ popUndo(); return; }
+  if(a==="hue"){ bl.hueIx=(bl.hueIx+1)%HUES.length; return; }
+  if(a==="emoji"){ bl.emojiIx=(bl.emojiIx+1)%EMOJIS.length; return; }
+  if(a==="size"){ pushUndo(); bl.sizeIx=(bl.sizeIx+1)%SIZES.length; resizeGridTo(SIZES[bl.sizeIx][0], SIZES[bl.sizeIx][1]); return; }
+  if(a==="test"){ testBuild(); return; }
+  if(a==="saveB"){ saveBuild(); return; }
+  if(a==="share"){ shareTrack(); return; }
+  if(a==="trash"){
+    if(bl.trashT>0){
+      if(bl.editingId){
+        store.customLevels = store.customLevels.filter(c=>c.id!==bl.editingId);
+        delete store.stars["c:"+bl.editingId]; save();
+      }
+      const [c,r]=SIZES[bl.sizeIx];
+      bl.grid = freshGrid(c,r); bl.cols=c; bl.rows=r;
+      bl.editingId=null; bl.undo.length=0; bl.trashT=0;
+      sticker("GONE! 💨","#ff8f8f");
+    } else { bl.trashT=2; sticker("TAP 🗑 AGAIN TO DELETE","#ff8f8f"); }
+    return;
+  }
+  if(a.startsWith("tool:")){ bl.tool=a.slice(5); return; }
+  if(a.startsWith("edit:")){ const cl=store.customLevels.find(c=>c.id===+a.slice(5)); if(cl) enterBuilder(cl); return; }
+}
+function drawGlyph(ch, x, y, size){
+  if(ch==="c"){
+    ctx.fillStyle="#e8a930"; ctx.beginPath(); ctx.arc(x,y,size*0.3,0,TAU); ctx.fill();
+    ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.arc(x,y-size*0.04,size*0.25,0,TAU); ctx.fill();
+    return;
+  }
+  ctx.font = (size*0.62)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillStyle = "#f4f6ff";
+  ctx.fillText(TOOL_ICON[ch]||ch, x, y+1);
+}
+function drawBuild(dt){
+  nightSky();
+  hudBtns.length = 0;
+  const top = 8+safeT;
+  // top bar
+  drawIconBtn(12, top, 44, "↩️", "back");
+  ctx.font = "900 22px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillStyle="#f4f6ff";
+  ctx.fillText("🔨 "+(bl.editingId? "TRACK "+bl.editingId : "NEW TRACK"), 66, top+23);
+  let rx = W-12-44;
+  drawIconBtn(rx, top, 44, "🗑", "trash"); rx-=50;
+  drawIconBtn(rx, top, 44, "↺", "undo"); rx-=50;
+  drawIconBtn(rx, top, 44, EMOJIS[bl.emojiIx], "emoji"); rx-=50;
+  roundedPanel(rx, top, 44, 44, 12);
+  ctx.fillStyle = HUES[bl.hueIx];
+  ctx.beginPath(); ctx.arc(rx+22, top+22, 12, 0, TAU); ctx.fill();
+  hudBtns.push({x:rx,y:top,w:44,h:44,act:"hue"}); rx-=50;
+  drawIconBtn(rx, top, 44, ["S","M","L"][bl.sizeIx], "size");
+  // bottom palette: tools left, actions right
+  const palH = 56, palY = H - palH - 10 - safeB;
+  let tx = 12;
+  for(const t of TOOL_LIST){
+    const sel = bl.tool===t;
+    roundedPanel(tx, palY, 50, palH, 13, sel? "rgba(255,183,66,0.92)":"rgba(14,17,26,0.82)");
+    drawGlyph(t==="wall"?"wall":t==="road"?"road":t, tx+25, palY+palH/2, 40);
+    hudBtns.push({x:tx,y:palY,w:50,h:palH,act:"tool:"+t});
+    tx += 55;
+  }
+  let ax = W-12;
+  ax -= 104; drawBigBtn(ax, palY, 104, palH, "TEST ▶", "test", "#9ae64a", "#12151f");
+  ax -= 60;  drawBigBtn(ax, palY, 52, palH, "💾", "saveB", "#7ef7ff", "#12151f");
+  ax -= 60;  drawBigBtn(ax, palY, 52, palH, "📤", "share", "#f4f6ff", "#12151f");
+  // my tracks chips
+  let gridBottom = palY - 12;
+  if(store.customLevels.length){
+    const chipsY = palY - 54;
+    let cx2 = 12;
+    for(const cl of store.customLevels){
+      const cur = cl.id===bl.editingId;
+      roundedPanel(cx2, chipsY, 44, 42, 10, cur? "rgba(255,183,66,0.9)":"rgba(14,17,26,0.82)");
+      ctx.font="15px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillStyle="#f4f6ff";
+      ctx.fillText(EMOJIS[cl.emojiIx||0], cx2+22, chipsY+14);
+      ctx.font="800 11px 'Avenir Next Condensed',sans-serif"; ctx.fillStyle = cur? "#12151f":"#8b93ad";
+      ctx.fillText("T"+cl.id, cx2+22, chipsY+32);
+      hudBtns.push({x:cx2,y:chipsY,w:44,h:42,act:"edit:"+cl.id});
+      cx2 += 50;
+      if(cx2 > W-60) break;
+    }
+    gridBottom = chipsY - 10;
+  }
+  // grid
+  const gy0 = top + 56;
+  const availW = W-24, availH = gridBottom - gy0;
+  const cs = Math.max(8, Math.floor(Math.min(availW/bl.cols, availH/bl.rows)));
+  const gx = Math.round((W - cs*bl.cols)/2);
+  const gy = Math.round(gy0 + (availH - cs*bl.rows)/2);
+  bl._geo = {gx, gy, cs};
+  // paint from pointer drag
+  if(bl.ptr){
+    const c = Math.floor((bl.ptr.x-gx)/cs), r = Math.floor((bl.ptr.y-gy)/cs);
+    if(c>0&&r>0&&c<bl.cols-1&&r<bl.rows-1){
+      const key = c+","+r;
+      if(bl.lastCell!==key){
+        if(!bl.ptr.stroke){ pushUndo(); bl.ptr.stroke=true; }
+        bl.lastCell = key;
+        paintCell(c,r);
+      }
+    }
+  }
+  for(let r=0;r<bl.rows;r++) for(let c=0;c<bl.cols;c++){
+    const ch = bl.grid[r][c], x = gx+c*cs, y = gy+r*cs;
+    ctx.fillStyle = ch==="#" ? "#0b0d15" : "#2e3852";
+    ctx.fillRect(x, y, cs-1, cs-1);
+    if(ch!=="#" && ch!==".") drawGlyph(ch, x+cs/2, y+cs/2, cs);
+  }
+  ctx.strokeStyle = HUES[bl.hueIx]; ctx.globalAlpha=0.7; ctx.lineWidth=3;
+  ctx.strokeRect(gx-3, gy-3, cs*bl.cols+5, cs*bl.rows+5);
+  ctx.globalAlpha=1;
+  bl.trashT = Math.max(0, bl.trashT-dt);
+  // taps → buttons
+  for(const tp of input.taps.splice(0)){
+    if(tp.screen) continue;
+    for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){ builderAction(b.act); break; }
   }
 }
 
@@ -1309,21 +1649,31 @@ function drawClear(dt){
   ctx.restore();
   // buttons
   if(cd.t>1.2){
-    const last = game.levelIx >= LEVELS.length-1;
+    const last = game.levelIx >= 0 && game.levelIx >= LEVELS.length-1;
     const bw = 168, bh = 62, gap = 18;
     const bx1 = W/2-bw-gap/2, bx2 = W/2+gap/2, by = py+170;
     hudBtns.length = 0;
-    drawBigBtn(bx1, by, bw, bh, "🗺 MAP", "map", "rgba(60,66,86,0.95)", "#f4f6ff");
-    if(!last) drawBigBtn(bx2, by, bw, bh, "NEXT ▶", "next", game.lv.hue, "#12151f");
-    else drawBigBtn(bx2, by, bw, bh, "🏆 DONE!", "map", "#ffd76a", "#12151f");
+    if(game.fromBuilder){
+      drawBigBtn(bx1, by, bw, bh, "🔨 GARAGE", "garage", "rgba(60,66,86,0.95)", "#f4f6ff");
+      drawBigBtn(bx2, by, bw, bh, "↻ AGAIN", "retry", game.lv.hue, "#12151f");
+    } else if(game.customId){
+      drawBigBtn(bx1, by, bw, bh, "🗺 MAP", "map", "rgba(60,66,86,0.95)", "#f4f6ff");
+      drawBigBtn(bx2, by, bw, bh, "↻ AGAIN", "retry", game.lv.hue, "#12151f");
+    } else {
+      drawBigBtn(bx1, by, bw, bh, "🗺 MAP", "map", "rgba(60,66,86,0.95)", "#f4f6ff");
+      if(!last) drawBigBtn(bx2, by, bw, bh, "NEXT ▶", "next", game.lv.hue, "#12151f");
+      else drawBigBtn(bx2, by, bw, bh, "🏆 DONE!", "map", "#ffd76a", "#12151f");
+    }
+    const doAct = act => {
+      AU.ui();
+      if(act==="next") loadLevel(game.levelIx+1);
+      else if(act==="garage") game.state="build";
+      else if(act==="retry") loadCustom(game.sourceCustom, game.fromBuilder? "builder":"map");
+      else game.state="map";
+    };
     for(const tp of input.taps.splice(0)){
-      if(tp.screen){ AU.ui(); if(!last) loadLevel(game.levelIx+1); else game.state="map"; return; }
-      for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){
-        AU.ui();
-        if(b.act==="next") loadLevel(game.levelIx+1);
-        else game.state="map";
-        return;
-      }
+      if(tp.screen){ doAct(game.fromBuilder? "garage" : game.customId? "map" : (!last? "next":"map")); return; }
+      for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){ doAct(b.act); return; }
     }
   } else input.taps.length = 0;
 }
@@ -1362,7 +1712,8 @@ function tick(now){
   if(portraitHint) input.taps.length = 0;
 
   if(game.state==="title"){ drawTitle(dt); }
-  else if(game.state==="map"){ drawMap(); }
+  else if(game.state==="map"){ drawMap(); updateStickers(dt); drawStickers(); }
+  else if(game.state==="build"){ drawBuild(dt); updateStickers(dt); drawStickers(); }
   else if(game.state==="clear"){ updateFx(dt); drawClear(dt); }
   else if(game.state==="play"){
     hudBtns.length = 0;
@@ -1384,7 +1735,7 @@ function tick(now){
       ctx.fillText("PAUSED", W/2, H*0.42);
       hudBtns.length = 0;
       drawBigBtn(W/2-170, H*0.55, 160, 58, "▶ GO", "resume", "#9ae64a", "#12151f");
-      drawBigBtn(W/2+10, H*0.55, 160, 58, "🗺 MAP", "map", "rgba(60,66,86,0.95)", "#f4f6ff");
+      drawBigBtn(W/2+10, H*0.55, 160, 58, game.fromBuilder? "🔨 GARAGE":"🗺 MAP", "map", "rgba(60,66,86,0.95)", "#f4f6ff");
     }
     // HUD button taps
     for(const tp of input.taps.splice(0)){
@@ -1394,7 +1745,7 @@ function tick(now){
         if(b.act==="mute") AU.toggleMute();
         if(b.act==="pause") togglePause();
         if(b.act==="resume") paused=false;
-        if(b.act==="map"){ paused=false; game.state="map"; }
+        if(b.act==="map"){ paused=false; game.state = game.fromBuilder? "build" : "map"; }
       }
     }
   }
@@ -1416,10 +1767,30 @@ function tick(now){
     ctx.fillText("TURN IT SIDEWAYS!", W/2, H*0.42+86);
   }
 }
+// a shared track arrived by link? add it to the garage
+(function importFromHash(){
+  const m = location.hash.match(/^#T=(.+)$/);
+  if(!m) return;
+  const t = decodeTrack(m[1]);
+  history.replaceState(null, "", location.pathname + location.search);
+  if(!t) return;
+  const gs = t.grid.join("!");
+  let cl = store.customLevels.find(c=>c.grid.join("!")===gs);
+  if(!cl){
+    if(store.customLevels.length>=10) return;
+    store.nextTrackId = (store.nextTrackId||0)+1;
+    cl = { id:store.nextTrackId, name:t.name, emojiIx:t.emojiIx, hueIx:t.hueIx, grid:t.grid };
+    store.customLevels.push(cl); save();
+  }
+  game.importedTrack = cl;
+  game.state = "map";
+  sticker("NEW TRACK ARRIVED! 📦", "#ffd76a");
+})();
+
 requestAnimationFrame(frame);
 
 // debug handle (safe to ignore)
-window.__tm = { game, loadLevel, store, CONFIG,
+window.__tm = { game, loadLevel, loadCustom, store, CONFIG, bl, enterBuilder, encodeTrack, decodeTrack,
   step(sec){ paused = false; let n = last; for(let i=0;i<sec*60;i++){ n += 1000/60; tick(n); } } };
 </script>
 </body>
