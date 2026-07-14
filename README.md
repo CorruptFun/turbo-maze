@@ -10,6 +10,7 @@ One HTML file, no dependencies. Runs on a tablet or with a keyboard.
 - **Keyboard:** arrows / WASD drive · SPACE = nitro · P = pause · M = mute
 - Drift around corners for aura. Grab every coin. Find the key 🗝️ to open doors.
 - Watch out for the goober 👾 — he yoinks your coins (steal 'em back).
+  Or hit him at **nitro speed** for the 💥 TAKEDOWN: +25 aura and he drops his loot.
 - Finish fast + all coins = ⭐⭐⭐
 - **15 levels** with ice to drift on 🧊, portals 🌀, smashable crates 💥,
   goober gangs, a headlights-only night level 🌙, and three BOSS RACES

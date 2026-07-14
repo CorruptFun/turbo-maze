@@ -43,6 +43,7 @@ const CONFIG = {
 // Words the game yells. Keep 'em short — he's 7. Add your own!
 const YELLS = {
   drift:  ["SHEESH!", "NICE DRIFT!", "SO SIGMA!", "OOOOH!", "CLEAN!"],
+  kill:   ["GOT HIM!", "SPLAT!", "TAKEDOWN!", "BOOM!"],
   coin:   ["+AURA", "W!", "CHA-CHING!", "YOINK!"],
   nitro:  ["ZOOM!", "TURBO!!", "FULL SEND!", "WEEEE!"],
   bonk:   ["BONK!", "OOF!", "WHOOPS!"],
@@ -940,6 +941,16 @@ function collideWalls(car){
 }
 
 /* ---------------- entities ---------------- */
+function scatterCoins(px, py, n){
+  const near = game.road.filter(([c,r])=>{
+    const wx=(c+0.5)*CELL, wy=(r+0.5)*CELL, dd=dist(wx,wy,px,py);
+    return dd>CELL*0.9 && dd<CELL*2.8;
+  });
+  for(let i=0;i<n;i++){
+    const [cc,rr] = near.length? pick(near) : [Math.floor(px/CELL), Math.floor(py/CELL)];
+    game.coins.push({x:(cc+0.5)*CELL+rand(-18,18), y:(rr+0.5)*CELL+rand(-18,18), got:false, ph:Math.random()*TAU, cool:1.0});
+  }
+}
 function updateEntities(dt){
   // gates cycle (shared)
   for(const g of game.gates){
@@ -1018,25 +1029,35 @@ function updateEntities(dt){
       }
     }
   }
-  // goobers
+  // goobers: nitro speed takes HIM out — otherwise he yoinks your coins
   for(const gb of game.goobers){
-    if(car.invuln<=0 && dist(car.x,car.y,gb.x,gb.y)<38){
-      car.invuln = 1.6; car.spinT = 0.55; car.sq = 0.6;
-      game.bonks++; game.shake = 9; AU.goober();
-      sticker("👾 "+pick(YELLS.goober), "#ff8fe0");
-      // he yoinks coins — they scatter onto nearby road for re-grabbing (gentle mischief)
-      const steal = Math.min(3, car.coins);
-      car.coins -= steal; store.coinsBank = Math.max(0, store.coinsBank-steal);
-      const near = game.road.filter(([c,r])=>{
-        const wx=(c+0.5)*CELL, wy=(r+0.5)*CELL, dd=dist(wx,wy,car.x,car.y);
-        return dd>CELL*0.9 && dd<CELL*2.8;
-      });
-      for(let i=0;i<steal;i++){
-        const [cc,rr] = near.length? pick(near) : [Math.floor(car.x/CELL), Math.floor(car.y/CELL)];
-        game.coins.push({x:(cc+0.5)*CELL+rand(-18,18), y:(rr+0.5)*CELL+rand(-18,18), got:false, ph:Math.random()*TAU, cool:1.0});
+    if(gb.dead) continue;
+    if(dist(car.x,car.y,gb.x,gb.y)<38){
+      const ramming = car.boost>0 || Math.hypot(car.vx,car.vy) > 450*(CONFIG.speed||1);
+      if(ramming){
+        gb.dead = true;
+        game.shake = 7; AU.goober(); AU.beep(220,0.3,"sawtooth",0.18,60);
+        sticker("💥 "+pick(YELLS.kill), "#7ef7ff");
+        float("+25", gb.x, gb.y-30, "#7ef7ff");
+        car.aura += 25;
+        for(let i=0;i<16;i++) debris(gb.x+rand(-16,16), gb.y+rand(-16,16));
+        for(let i=0;i<10;i++) puff(gb.x, gb.y, "rgba(255,143,224,0.5)");
+        scatterCoins(gb.x, gb.y, 2);          // he drops his loot
+        car.vx *= 0.85; car.vy *= 0.85; car.sq = 1.2;
+      } else if(car.invuln<=0){
+        car.invuln = 1.6; car.spinT = 0.55; car.sq = 0.6;
+        game.bonks++; game.shake = 9; AU.goober();
+        sticker("👾 "+pick(YELLS.goober), "#ff8fe0");
+        const steal = Math.min(3, car.coins);
+        car.coins -= steal; store.coinsBank = Math.max(0, store.coinsBank-steal);
+        scatterCoins(car.x, car.y, steal);
+        const kb = 260; const ka = Math.atan2(car.y-gb.y, car.x-gb.x);
+        car.vx += Math.cos(ka)*kb; car.vy += Math.sin(ka)*kb;
+        if(!game.goobHint){
+          game.goobHint = true;
+          setTimeout(()=>{ if(game.state==="play") sticker("NITRO TAKES HIM OUT! ⚡", "#7ef7ff"); }, 1400);
+        }
       }
-      const kb = 260; const ka = Math.atan2(car.y-gb.y, car.x-gb.x);
-      car.vx += Math.cos(ka)*kb; car.vy += Math.sin(ka)*kb;
     }
   }
   // finish
@@ -1048,6 +1069,7 @@ function updateEntities(dt){
 
   // goober patrol movement (shared)
   for(const gb of game.goobers){
+    if(gb.dead) continue;
     const [tx,ty] = gb.path[(gb.seg+1)%gb.path.length];
     const d = dist(gb.x,gb.y,tx,ty);
     if(d<6) gb.seg = (gb.seg+1)%gb.path.length;
@@ -1565,9 +1587,15 @@ function drawGate(g){
   ctx.restore();
 }
 function drawGoober(gb){
+  if(gb.dead) return;
   const bounce = Math.abs(Math.sin(gb.ph))*8;
+  const scared = game.cars && game.cars.some(c=> c.boost>0 && dist(c.x,c.y,gb.x,gb.y)<280);
   ctx.save();
-  ctx.translate(gb.x, gb.y);
+  ctx.translate(gb.x + (scared? rand(-2,2):0), gb.y + (scared? rand(-2,2):0));
+  if(scared){
+    ctx.font = "16px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText("❗", 10, -30);
+  }
   ctx.fillStyle = "rgba(0,0,0,0.3)";
   ctx.beginPath(); ctx.ellipse(0, 14, 16-bounce*0.4, 5, 0, 0, TAU); ctx.fill();
   ctx.translate(0, -bounce);
