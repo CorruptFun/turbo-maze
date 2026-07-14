@@ -17,6 +17,17 @@ One HTML file, no dependencies. Runs on a tablet or with a keyboard.
   against the goober's purple car — lose and it's an instant rematch.
   Beat level 15 to unlock the secret 🐐 GOLDEN GOAT.
 
+## 🌍 Worlds
+The campaign is grouped into **worlds** (starting with **TURBO BASICS**, the
+first 15). The title screen opens a **PICK YOUR WORLD** hub: tap a world to see
+its level map, or 🗺️ to come back. Beat every level in a world (1 ⭐ each) and
+the next world unlocks — each one a little brainier than the last.
+
+**Adding a world** (for grown-ups): drop 15 more levels into `LEVELS` in
+`index.html`, then add a `{ name, emoji, hue, blurb, count:15 }` entry to the
+`SERIES` array right before the `comingSoon` card. Starts auto-compute and saved
+progress carries over — nothing gets renumbered.
+
 ## ⚔️ VS mode (two players, one screen)
 Tap **⚔️ VS** on the map. The whole maze fits on screen — P1 steers with the
 left thumb (or ARROWS), P2 with the right thumb (or WASD). 3-2-1-GO, first

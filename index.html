@@ -302,6 +302,43 @@ const LEVELS = [
 "####################",
 ]},
 ];
+
+/* ----------------------------------------------------------------
+   SERIES ("worlds") — the campaign is split into worlds of levels.
+   Beat every level in a world (1 star each) to unlock the next world.
+   To add a world later: drop 15 more levels into LEVELS above, then add
+   a { name, emoji, hue, blurb, count } entry here BEFORE the coming-soon
+   card. Starts auto-compute; saved progress carries over untouched
+   (worlds only group existing level indices — nothing is renumbered).
+   ---------------------------------------------------------------- */
+const SERIES = [
+  { name:"TURBO BASICS", emoji:"🏁", hue:"#ffb742", blurb:"Learn to drift — keys, doors, crates & the first bosses.", count:15 },
+  { name:"NEW WORLD",    emoji:"🧊", hue:"#7ec9ff", blurb:"Ice, portals & brainier mazes. In the workshop!", comingSoon:true },
+];
+(function computeSeriesStarts(){
+  let acc = 0;
+  for(const s of SERIES){ s.start = acc; if(s.comingSoon){ s.count = 0; } else { acc += s.count; } }
+})();
+function seriesEndIx(s){ return SERIES[s].start + SERIES[s].count - 1; }   // last global level index in a world
+function seriesOf(ix){                                                     // which world owns a global level index (-1 if none)
+  for(let s=0;s<SERIES.length;s++)
+    if(!SERIES[s].comingSoon && ix>=SERIES[s].start && ix<=seriesEndIx(s)) return s;
+  return -1;
+}
+function seriesBeaten(s){                                                  // every level in the world cleared (1★+)?
+  if(SERIES[s].comingSoon) return false;
+  for(let i=SERIES[s].start; i<=seriesEndIx(s); i++) if(!(store.stars[i]>=1)) return false;
+  return true;
+}
+function seriesUnlocked(s){                                                // world playable? previous world fully beaten
+  if(SERIES[s].comingSoon) return false;
+  return s===0 || seriesBeaten(s-1);
+}
+function seriesBeatCount(s){                                               // levels cleared so far in the world
+  let n=0; for(let i=SERIES[s].start; i<=seriesEndIx(s); i++) if(store.stars[i]>=1) n++;
+  return n;
+}
+
 /* VS arenas — whole maze fits on one screen, S = player 1, 2 = player 2 */
 const VS_ARENAS = [
 { name:"THUNDER DOME", emoji:"⚔️", hue:"#ffb742", grid:[
@@ -371,7 +408,8 @@ window.addEventListener("resize", resize); resize();
 
 /* ---------------- save data ---------------- */
 let store = { unlocked:1, stars:{}, aura:0, coinsBank:0, muted:false, customLevels:[], nextTrackId:0,
-  ownedCars:["rocket"], car:"rocket", ownedPets:[], pet:null, carNum:67, shopGift:false };
+  ownedCars:["rocket"], car:"rocket", ownedPets:[], pet:null, carNum:67, shopGift:false,
+  curSeries:0, seriesCleared:{} };
 try { const s = localStorage.getItem("turboMaze"); if(s) store = Object.assign(store, JSON.parse(s)); } catch(e){}
 function save(){ try { localStorage.setItem("turboMaze", JSON.stringify(store)); } catch(e){} }
 
@@ -1139,6 +1177,18 @@ function levelClear(){
   if(game.levelIx===LEVELS.length-1 && !store.ownedCars.includes("goat")){
     store.ownedCars.push("goat");
     unlock = "🐐 GOLDEN GOAT UNLOCKED!";
+  }
+  // world (series) completion — did we just beat the LAST level of a world?
+  const cs = (!game.customId && game.levelIx>=0) ? seriesOf(game.levelIx) : -1;
+  game._seriesEnd = cs>=0 && game.levelIx===seriesEndIx(cs);
+  if(game._seriesEnd){
+    store.seriesCleared = store.seriesCleared || {};
+    if(!store.seriesCleared[cs]){
+      store.seriesCleared[cs] = 1;
+      const nxt = SERIES[cs+1];
+      const wmsg = (nxt && !nxt.comingSoon) ? "🌟 "+nxt.name+" UNLOCKED!" : "🌟 WORLD COMPLETE!";
+      if(!unlock) unlock = wmsg; else sticker(wmsg, "#ffd76a");
+    }
   }
   save();
   game.clearData = { stars, t:0, time:game.playT, timeOk, allCoins, aura:Math.round(game.car.aura), shown:0,
@@ -1967,108 +2017,69 @@ function drawTitle(dt){
   ctx.fillStyle = "#f4f6ff"; ctx.textAlign="center";
   ctx.fillText(input.hasTouch? "TAP TO START" : "PRESS ENTER TO START", W/2, H*0.87);
   ctx.globalAlpha = 1;
-  for(const tp of input.taps.splice(0)){ AU.ui(); game.state="map"; }
+  for(const tp of input.taps.splice(0)){ AU.ui(); game.state="series"; }
 }
 
-const mapNodes = [];
-function drawMap(){
+/* ---------------- WORLD SELECT (series hub) ---------------- */
+function drawSeries(){
   nightSky();
-  ctx.font = "900 italic 40px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-  ctx.textAlign="center"; ctx.fillStyle="#ffb742";
-  ctx.fillText(CONFIG.title, W/2, 52);
-  // aura bank
+  hudBtns.length = 0;
+  // brand title
+  ctx.textAlign="center"; ctx.textBaseline="alphabetic";
+  ctx.font = "900 italic 38px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#ffb742";
+  ctx.fillText(CONFIG.title, W/2, 44+safeT);
+  ctx.font = "800 15px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#8b93ad";
+  ctx.fillText("PICK YOUR WORLD", W/2, 64+safeT);
+  // aura bank (top-left) + mute (top-right)
+  ctx.textBaseline="middle";
   roundedPanel(PADX, 12+safeT, 150, 40, 12);
   ctx.font = "800 19px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.textAlign="left";
   ctx.fillStyle = "#ffd76a"; ctx.fillText("✦", PADX+14, 33+safeT);
   ctx.fillStyle = "#f4f6ff"; ctx.fillText("AURA "+Math.round(store.aura), PADX+32, 33+safeT);
-  roundedPanel(PADX, 58+safeT, 104, 36, 12);
-  ctx.fillStyle="#e8a930"; ctx.beginPath(); ctx.arc(PADX+18, 76+safeT, 8, 0, TAU); ctx.fill();
-  ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.arc(PADX+18, 75.2+safeT, 7.2, 0, TAU); ctx.fill();
-  ctx.fillStyle = "#f4f6ff"; ctx.fillText(store.coinsBank, PADX+34, 76+safeT);
-  hudBtns.length = 0;
   drawIconBtn(W-PADX-42, 12+safeT, 40, store.muted?"🔇":"🔊", "mute");
-  // serpentine road with nodes (two rows once the campaign got big)
-  mapNodes.length = 0;
-  const n = LEVELS.length;
-  const mx = Math.max(56, W*0.07);
-  const perRow = Math.min(n, Math.max(8, Math.round((W-mx*2)/92)+1));
-  const nRows = Math.ceil(n/perRow);
-  const R = clamp((W-2*mx)/perRow*0.3, 20, 32);
-  // rows live between the header chips and the garage buttons
+  // world cards — wrapping grid centered in the band between header and garage row
   const garageY = H-104-safeB;
-  const yTop = nRows>1 ? Math.max(118+safeT, H*0.24) : H*0.46;
-  const maxY = garageY - R - 34;
-  const rowGap = nRows>1 ? clamp((maxY-yTop)/(nRows-1), 58, 150) : 0;
-  const pts = [];
-  for(let i=0;i<n;i++){
-    const row = (i/perRow)|0, col = i%perRow;
-    const t = perRow>1 ? col/(perRow-1) : 0.5;
-    const tt = row%2 ? 1-t : t;
-    pts.push([mx+(W-2*mx)*tt, yTop + row*rowGap + Math.sin(i*2.2)*9]);
-  }
-  ctx.strokeStyle = "rgba(139,147,173,0.35)"; ctx.lineWidth = 24; ctx.lineCap="round"; ctx.lineJoin="round";
-  ctx.beginPath();
-  pts.forEach(([x,y],i)=> i? ctx.lineTo(x,y) : ctx.moveTo(x,y));
-  ctx.stroke();
-  ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 3; ctx.setLineDash([12,14]);
-  ctx.stroke(); ctx.setLineDash([]);
-  for(let i=0;i<n;i++){
-    const [x,y] = pts[i];
-    const unlocked = i < store.unlocked;
-    const stars = store.stars[i]||0;
-    ctx.beginPath(); ctx.arc(x,y,R,0,TAU);
-    ctx.fillStyle = unlocked? "#f4f6ff" : "rgba(60,66,86,0.9)";
-    ctx.fill();
-    if(unlocked && i===store.unlocked-1){
-      ctx.strokeStyle = LEVELS[i].hue; ctx.lineWidth = 4+Math.sin(game.t*4)*1.5;
-      ctx.beginPath(); ctx.arc(x,y,R+6,0,TAU); ctx.stroke();
+  const N = SERIES.length;
+  const cw = Math.min(230, Math.max(148, (W-2*PADX-32)/Math.min(N,3)));
+  const perRow = Math.max(1, Math.min(N, Math.floor((W-2*PADX+16)/(cw+16))));
+  const rows = Math.ceil(N/perRow);
+  const bandTop = 82+safeT, bandBot = garageY-14;
+  const chh = clamp((bandBot-bandTop-(rows-1)*16)/rows, 92, 150);
+  const gridH = rows*chh+(rows-1)*16;
+  const y0 = Math.round(bandTop + (bandBot-bandTop-gridH)/2);
+  for(let s=0;s<N;s++){
+    const row=(s/perRow)|0, col=s%perRow;
+    const rowN = Math.min(perRow, N-row*perRow);
+    const rowW = rowN*cw+(rowN-1)*16;
+    const x = Math.round((W-rowW)/2) + col*(cw+16);
+    const y = y0 + row*(chh+16);
+    const S = SERIES[s];
+    const open = seriesUnlocked(s);
+    const done = !S.comingSoon && seriesBeaten(s);
+    roundedPanel(x, y, cw, chh, 16, open? "rgba(20,24,36,0.94)" : "rgba(30,34,48,0.7)");
+    if(open && !done){   // pulsing ring on the world you're up to
+      ctx.strokeStyle = S.hue; ctx.lineWidth = 3+Math.sin(game.t*4)*1.5;
+      ctx.beginPath(); ctx.roundRect(x-2,y-2,cw+4,chh+4,18); ctx.stroke();
     }
-    ctx.font = "900 "+Math.round(R*0.62)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
     ctx.textAlign="center"; ctx.textBaseline="middle";
-    if(unlocked){
-      ctx.fillStyle = "#12151f";
-      ctx.fillText(""+(i+1), x, y-R*0.18);
-      ctx.font = Math.round(R*0.42)+"px sans-serif";
-      ctx.fillText(LEVELS[i].emoji, x, y+R*0.42);
-    } else {
-      ctx.font = Math.round(R*0.62)+"px sans-serif";
-      ctx.fillText("🔒", x, y+1);
-    }
-    // stars under node
-    ctx.font = "11px sans-serif";
-    for(let sIx=0;sIx<3;sIx++){
-      ctx.globalAlpha = sIx<stars? 1 : 0.22;
-      ctx.fillText("⭐", x+(sIx-1)*13, y+R+11);
-    }
+    ctx.globalAlpha = open? 1 : 0.55;
+    ctx.font = Math.round(chh*0.30)+"px sans-serif"; ctx.fillStyle = "#f4f6ff";
+    ctx.fillText(S.comingSoon? "🚧" : (open? S.emoji : "🔒"), x+cw/2, y+chh*0.30);
+    ctx.font = "900 18px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+    ctx.fillStyle = open? S.hue : "#8b93ad";
+    ctx.fillText(S.name, x+cw/2, y+chh*0.58);
+    ctx.font = "800 14px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+    let status, scol;
+    if(S.comingSoon){ status="COMING SOON"; scol="#8b93ad"; }
+    else if(!open){ status="🔒 LOCKED"; scol="#8b93ad"; }
+    else if(done){ status="COMPLETE ✓"; scol="#9ae64a"; }
+    else { status = seriesBeatCount(s)+" / "+S.count+"   ▶ PLAY"; scol="#ffd76a"; }
+    ctx.fillStyle = scol; ctx.fillText(status, x+cw/2, y+chh*0.80);
     ctx.globalAlpha = 1;
-    if(unlocked) mapNodes.push({x,y,r:R+9,ix:i});
+    hudBtns.push({x, y, w:cw, h:chh, act:"s:"+s});
   }
-  // little car parked on the current node's ring — never covers a neighbor
-  const cur = Math.min(store.unlocked-1, n-1);
-  const cx2 = pts[cur][0], cy2 = pts[cur][1];
-  const carX = cx2 + R*0.85, carY = cy2 - R*0.95;
-  const roomy = nRows===1 || rowGap > 110;
-  const carScale = roomy ? 0.85 : 0.6;
-  const fakeCar = { x:carX, y:carY, heading:-0.5+Math.sin(game.t*1.4)*0.06, sq:1, invuln:0, boost:0, trail:[] };
-  const saveLv = game.lv; game.lv = LEVELS[cur];
-  ctx.save(); ctx.translate(carX, carY); ctx.scale(carScale, carScale); ctx.translate(-carX, -carY);
-  drawCar(fakeCar);
-  ctx.restore();
-  game.lv = saveLv;
-  if(roomy && store.pet){
-    const p = PETS.find(p=>p.id===store.pet);
-    if(p){
-      ctx.font="18px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-      ctx.fillText(p.emoji, carX+34, carY-Math.abs(Math.sin(game.t*4))*4);
-    }
-  }
-  if(roomy && CONFIG.playerName){
-    roundedPanel(carX-40, carY-48, 80, 22, 6, "#f4f6ff");
-    ctx.fillStyle="#12151f"; ctx.font="900 13px 'Avenir Next Condensed',sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-    ctx.fillText(CONFIG.playerName.toUpperCase(), carX, carY-37);
-  }
-  // garage: build + shop buttons, custom track chips
-  const gy = H-104-safeB;
+  // garage row: BUILD / SHOP / VS + custom tracks (global — lives on the hub)
+  const gy = garageY;
   drawBigBtn(PADX, gy, 118, 48, "🔨 BUILD", "build", "#ffb742", "#12151f");
   drawBigBtn(PADX+126, gy, 110, 48, "🛒 SHOP", "shop", "#7ef7ff", "#12151f");
   drawBigBtn(PADX+244, gy, 96, 48, "⚔️ VS", "vs", "#ff8fe0", "#12151f");
@@ -2089,18 +2100,137 @@ function drawMap(){
     gcx += 54;
     if(gcx > W-60) break;
   }
-  ctx.font = "600 16px 'Avenir Next',sans-serif"; ctx.fillStyle="#8b93ad"; ctx.textAlign="center";
-  ctx.fillText(input.hasTouch? "tap a level!" : "tap or press ENTER for level "+store.unlocked, W/2, H-30-safeB);
   // input
   for(const tp of input.taps.splice(0)){
-    if(tp.screen){ AU.ui(); loadLevel(cur); return; }
     for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){
-      AU.ui(); game.importedTrack = null;
-      if(b.act==="mute") AU.toggleMute();
-      else if(b.act==="build") enterBuilder(null);
+      AU.ui();
+      if(b.act==="mute"){ AU.toggleMute(); return; }
+      game.importedTrack = null;
+      if(b.act==="build") enterBuilder(null);
       else if(b.act==="shop") game.state="shop";
       else if(b.act==="vs") game.state="vspick";
       else if(b.act.startsWith("pc:")){ const cl = store.customLevels.find(c=>c.id===+b.act.slice(3)); if(cl) loadCustom(cl, "map"); }
+      else if(b.act.startsWith("s:")){
+        const s = +b.act.slice(2);
+        if(seriesUnlocked(s)){ store.curSeries = s; save(); game.state="map"; }
+        else sticker(SERIES[s].comingSoon? "COMING SOON! 🚧" : "BEAT THE WORLD BEFORE IT FIRST! 🔒", "#ff8fe0");
+      }
+      return;
+    }
+  }
+}
+
+const mapNodes = [];
+function drawMap(){
+  nightSky();
+  const S = SERIES[store.curSeries] || SERIES[0];
+  const base = S.start, n = S.count;
+  // header: world name (center), back + mute (top-right), aura + coins (top-left)
+  ctx.font = "900 italic 34px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.textAlign="center"; ctx.textBaseline="alphabetic"; ctx.fillStyle=S.hue;
+  ctx.fillText(S.emoji+" "+S.name, W/2, 46+safeT);
+  ctx.textBaseline="middle";
+  roundedPanel(PADX, 12+safeT, 150, 40, 12);
+  ctx.font = "800 19px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.textAlign="left";
+  ctx.fillStyle = "#ffd76a"; ctx.fillText("✦", PADX+14, 33+safeT);
+  ctx.fillStyle = "#f4f6ff"; ctx.fillText("AURA "+Math.round(store.aura), PADX+32, 33+safeT);
+  roundedPanel(PADX, 58+safeT, 104, 36, 12);
+  ctx.fillStyle="#e8a930"; ctx.beginPath(); ctx.arc(PADX+18, 76+safeT, 8, 0, TAU); ctx.fill();
+  ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.arc(PADX+18, 75.2+safeT, 7.2, 0, TAU); ctx.fill();
+  ctx.fillStyle = "#f4f6ff"; ctx.fillText(store.coinsBank, PADX+34, 76+safeT);
+  hudBtns.length = 0;
+  drawIconBtn(W-PADX-42, 12+safeT, 40, store.muted?"🔇":"🔊", "mute");
+  drawIconBtn(W-PADX-94, 12+safeT, 40, "🗺️", "back");
+  // serpentine road with nodes (this world's levels only)
+  mapNodes.length = 0;
+  const mx = Math.max(56, W*0.07);
+  const perRow = Math.min(n, Math.max(8, Math.round((W-mx*2)/92)+1));
+  const nRows = Math.ceil(n/perRow);
+  const R = clamp((W-2*mx)/perRow*0.3, 20, 32);
+  // no garage row on the world map — nodes get the extra space
+  const garageY = H-58-safeB;
+  const yTop = nRows>1 ? Math.max(118+safeT, H*0.26) : H*0.5;
+  const maxY = garageY - R - 20;
+  const rowGap = nRows>1 ? clamp((maxY-yTop)/(nRows-1), 58, 150) : 0;
+  const pts = [];
+  for(let i=0;i<n;i++){
+    const row = (i/perRow)|0, col = i%perRow;
+    const t = perRow>1 ? col/(perRow-1) : 0.5;
+    const tt = row%2 ? 1-t : t;
+    pts.push([mx+(W-2*mx)*tt, yTop + row*rowGap + Math.sin((base+i)*2.2)*9]);
+  }
+  ctx.strokeStyle = "rgba(139,147,173,0.35)"; ctx.lineWidth = 24; ctx.lineCap="round"; ctx.lineJoin="round";
+  ctx.beginPath();
+  pts.forEach(([x,y],i)=> i? ctx.lineTo(x,y) : ctx.moveTo(x,y));
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 3; ctx.setLineDash([12,14]);
+  ctx.stroke(); ctx.setLineDash([]);
+  for(let i=0;i<n;i++){
+    const gi = base+i;
+    const [x,y] = pts[i];
+    const unlocked = gi < store.unlocked || i===0;   // first level of an open world is always playable
+    const stars = store.stars[gi]||0;
+    ctx.beginPath(); ctx.arc(x,y,R,0,TAU);
+    ctx.fillStyle = unlocked? "#f4f6ff" : "rgba(60,66,86,0.9)";
+    ctx.fill();
+    if(unlocked && gi===store.unlocked-1){
+      ctx.strokeStyle = LEVELS[gi].hue; ctx.lineWidth = 4+Math.sin(game.t*4)*1.5;
+      ctx.beginPath(); ctx.arc(x,y,R+6,0,TAU); ctx.stroke();
+    }
+    ctx.font = "900 "+Math.round(R*0.62)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    if(unlocked){
+      ctx.fillStyle = "#12151f";
+      ctx.fillText(""+(i+1), x, y-R*0.18);
+      ctx.font = Math.round(R*0.42)+"px sans-serif";
+      ctx.fillText(LEVELS[gi].emoji, x, y+R*0.42);
+    } else {
+      ctx.font = Math.round(R*0.62)+"px sans-serif";
+      ctx.fillText("🔒", x, y+1);
+    }
+    // stars under node
+    ctx.font = "11px sans-serif";
+    for(let sIx=0;sIx<3;sIx++){
+      ctx.globalAlpha = sIx<stars? 1 : 0.22;
+      ctx.fillText("⭐", x+(sIx-1)*13, y+R+11);
+    }
+    ctx.globalAlpha = 1;
+    if(unlocked) mapNodes.push({x,y,r:R+9,ix:gi});
+  }
+  // little car parked on the current node's ring — never covers a neighbor
+  const curLocal = clamp((store.unlocked-1)-base, 0, n-1);
+  const curGlobal = base+curLocal;
+  const cx2 = pts[curLocal][0], cy2 = pts[curLocal][1];
+  const carX = cx2 + R*0.85, carY = cy2 - R*0.95;
+  const roomy = nRows===1 || rowGap > 110;
+  const carScale = roomy ? 0.85 : 0.6;
+  const fakeCar = { x:carX, y:carY, heading:-0.5+Math.sin(game.t*1.4)*0.06, sq:1, invuln:0, boost:0, trail:[] };
+  const saveLv = game.lv; game.lv = LEVELS[curGlobal];
+  ctx.save(); ctx.translate(carX, carY); ctx.scale(carScale, carScale); ctx.translate(-carX, -carY);
+  drawCar(fakeCar);
+  ctx.restore();
+  game.lv = saveLv;
+  if(roomy && store.pet){
+    const p = PETS.find(p=>p.id===store.pet);
+    if(p){
+      ctx.font="18px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText(p.emoji, carX+34, carY-Math.abs(Math.sin(game.t*4))*4);
+    }
+  }
+  if(roomy && CONFIG.playerName){
+    roundedPanel(carX-40, carY-48, 80, 22, 6, "#f4f6ff");
+    ctx.fillStyle="#12151f"; ctx.font="900 13px 'Avenir Next Condensed',sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(CONFIG.playerName.toUpperCase(), carX, carY-37);
+  }
+  ctx.font = "600 16px 'Avenir Next',sans-serif"; ctx.fillStyle="#8b93ad"; ctx.textAlign="center";
+  ctx.fillText(input.hasTouch? "tap a level!  ·  🗺️ = worlds" : "press ENTER for level "+(curLocal+1)+"  ·  🗺️ = worlds", W/2, H-24-safeB);
+  // input
+  for(const tp of input.taps.splice(0)){
+    if(tp.screen){ AU.ui(); loadLevel(curGlobal); return; }
+    for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){
+      AU.ui();
+      if(b.act==="mute") AU.toggleMute();
+      else if(b.act==="back") game.state="series";
       return;
     }
     for(const nd of mapNodes){
@@ -2283,7 +2413,7 @@ function shareTrack(){
 }
 function builderAction(a){
   AU.ui();
-  if(a==="back"){ game.state="map"; return; }
+  if(a==="back"){ game.state="series"; return; }
   if(a==="undo"){ popUndo(); return; }
   if(a==="hue"){ bl.hueIx=(bl.hueIx+1)%HUES.length; return; }
   if(a==="emoji"){ bl.emojiIx=(bl.emojiIx+1)%EMOJIS.length; return; }
@@ -2469,7 +2599,7 @@ function drawVsPick(){
     if(tp.screen){ AU.ui(); startVs(VS_ARENAS[0]); return; }
     for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){
       AU.ui();
-      if(b.act==="back") game.state="map";
+      if(b.act==="back") game.state="series";
       else if(b.act.startsWith("a:")) startVs(VS_ARENAS[+b.act.slice(2)]);
       else if(b.act.startsWith("ct:")){ const cl=store.customLevels.find(c=>c.id===+b.act.slice(3)); if(cl) startVs(customToLevel(cl)); }
       return;
@@ -2510,12 +2640,12 @@ function drawVsEnd(dt){
   if(r.t>1.0){
     hudBtns.length = 0;
     drawBigBtn(W/2-178, H*0.7, 170, 62, "REMATCH ▶", "retry", "#9ae64a", "#12151f");
-    drawBigBtn(W/2+8,   H*0.7, 170, 62, "🗺 MAP", "map", "rgba(60,66,86,0.95)", "#f4f6ff");
+    drawBigBtn(W/2+8,   H*0.7, 170, 62, "🗺 WORLDS", "map", "rgba(60,66,86,0.95)", "#f4f6ff");
     for(const tp of input.taps.splice(0)){
       if(tp.screen){ AU.ui(); startVs(game.vsSource); return; }
       for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){
         AU.ui();
-        if(b.act==="retry") startVs(game.vsSource); else { game.vs=false; game.state="map"; }
+        if(b.act==="retry") startVs(game.vsSource); else { game.vs=false; game.state="series"; }
         return;
       }
     }
@@ -2525,7 +2655,7 @@ function drawVsEnd(dt){
 /* ---------------- GARAGE SHOP (v3) ---------------- */
 let shopPending = null;
 function shopAction(a){
-  if(a==="back"){ AU.ui(); game.state="map"; return; }
+  if(a==="back"){ AU.ui(); game.state="series"; return; }
   if(a==="num-"||a==="num+"){
     AU.ui();
     store.carNum = ((store.carNum==null?67:store.carNum) + (a==="num+"?1:99)) % 100;
@@ -2713,7 +2843,6 @@ function drawClear(dt){
   ctx.restore();
   // buttons — always below the chips, always on screen
   if(cd.t>1.2){
-    const last = game.levelIx >= 0 && game.levelIx >= LEVELS.length-1;
     const bw = 168, bh = compact? 54 : 62, gap = 18;
     const bx1 = W/2-bw-gap/2, bx2 = W/2+gap/2;
     const by = Math.min(py + chipStart + chips.length*chipStep + 12, H - bh - 12 - safeB);
@@ -2726,18 +2855,19 @@ function drawClear(dt){
       drawBigBtn(bx2, by, bw, bh, "↻ AGAIN", "retry", game.lv.hue, "#12151f");
     } else {
       drawBigBtn(bx1, by, bw, bh, "🗺 MAP", "map", "rgba(60,66,86,0.95)", "#f4f6ff");
-      if(!last) drawBigBtn(bx2, by, bw, bh, "NEXT ▶", "next", game.lv.hue, "#12151f");
-      else drawBigBtn(bx2, by, bw, bh, "🏆 DONE!", "map", "#ffd76a", "#12151f");
+      if(game._seriesEnd) drawBigBtn(bx2, by, bw, bh, "🏆 WORLD", "world", "#ffd76a", "#12151f");
+      else drawBigBtn(bx2, by, bw, bh, "NEXT ▶", "next", game.lv.hue, "#12151f");
     }
     const doAct = act => {
       AU.ui();
       if(act==="next") loadLevel(game.levelIx+1);
+      else if(act==="world") game.state="series";
       else if(act==="garage") game.state="build";
       else if(act==="retry") loadCustom(game.sourceCustom, game.fromBuilder? "builder":"map");
       else game.state="map";
     };
     for(const tp of input.taps.splice(0)){
-      if(tp.screen){ doAct(game.fromBuilder? "garage" : game.customId? "map" : (!last? "next":"map")); return; }
+      if(tp.screen){ doAct(game.fromBuilder? "garage" : game.customId? "map" : (game._seriesEnd? "world":"next")); return; }
       for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){ doAct(b.act); return; }
     }
   } else input.taps.length = 0;
@@ -2806,10 +2936,11 @@ function tick(now){
   ctx.setTransform(DPR,0,0,DPR,0,0);
   ctx.clearRect(0,0,W,H);
   // tablet held upright → ask for landscape (menus only, never mid-game)
-  const portraitHint = input.hasTouch && H > W*1.15 && (game.state==="title" || game.state==="map");
+  const portraitHint = input.hasTouch && H > W*1.15 && (game.state==="title" || game.state==="map" || game.state==="series");
   if(portraitHint) input.taps.length = 0;
 
   if(game.state==="title"){ drawTitle(dt); }
+  else if(game.state==="series"){ drawSeries(); updateStickers(dt); drawStickers(); }
   else if(game.state==="map"){ drawMap(); updateStickers(dt); drawStickers(); }
   else if(game.state==="build"){ drawBuild(dt); updateStickers(dt); drawStickers(); }
   else if(game.state==="shop"){ updateFx(dt); drawShop(dt); drawConfettiScreen(); drawStickers(); }
@@ -2899,7 +3030,7 @@ function tick(now){
     store.customLevels.push(cl); save();
   }
   game.importedTrack = cl;
-  game.state = "map";
+  game.state = "series";
   sticker("NEW TRACK ARRIVED! 📦", "#ffd76a");
 })();
 
@@ -2908,6 +3039,7 @@ requestAnimationFrame(frame);
 // debug handle (safe to ignore)
 window.__tm = { game, loadLevel, loadCustom, store, CONFIG, bl, enterBuilder, encodeTrack, decodeTrack,
   shopAction, VEHICLES, PETS, LEVELS, VS_ARENAS, startVs, customToLevel,
+  SERIES, seriesUnlocked, seriesBeaten, seriesOf, save,
   step(sec){ paused = false; let n = last; for(let i=0;i<sec*60;i++){ n += 1000/60; tick(n); } last = performance.now(); } };
 </script>
 </body>
