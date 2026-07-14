@@ -32,6 +32,7 @@ const CONFIG = {
   stripe:     "#ffe9a3",
   speed:      0.85,                // 👈 car speed: 1 = fast & furious, 0.7 = kid cruise
   bossSpeed:  95,                  // 👈 boss car speed on BOSS RACE (lower = easier)
+  zoom:       1.3,                 // 👈 bigger cars on screen! (1 = old view, up to 2)
   easyMode:   false,               // true = slower goober, more nitro
 };
 // Words the game yells. Keep 'em short — he's 7. Add your own!
@@ -1186,14 +1187,18 @@ function drawWorld(dt){
     ctx.scale(z,z);
     ctx.translate(-cx, -cy);
   } else {
+    z = clamp(CONFIG.zoom||1, 1, 2);
+    const vw = W/z, vh = H/z;
     const lead = 0.22;
     game.cam.x = lerp(game.cam.x, car.x+car.vx*lead, 1-Math.exp(-5*dt));
     game.cam.y = lerp(game.cam.y, car.y+car.vy*lead, 1-Math.exp(-5*dt));
     cx = game.cam.x; cy = game.cam.y;
-    if(wW>W) cx = clamp(cx, W/2-40, wW-W/2+40); else cx = wW/2;
-    if(wH>H) cy = clamp(cy, H/2-40, wH-H/2+40); else cy = wH/2;
+    if(wW>vw) cx = clamp(cx, vw/2-40, wW-vw/2+40); else cx = wW/2;
+    if(wH>vh) cy = clamp(cy, vh/2-40, wH-vh/2+40); else cy = wH/2;
     ctx.save();
-    ctx.translate(Math.round(W/2-cx+sx), Math.round(H/2-cy+sy));
+    ctx.translate(W/2+sx, H/2+sy);
+    ctx.scale(z,z);
+    ctx.translate(-Math.round(cx), -Math.round(cy));
   }
   game._cam = {cx, cy, z};
   ctx.drawImage(game.groundCv, 0, 0);
@@ -1280,6 +1285,8 @@ const VEHICLES = [
   { id:"cart",    name:"CART RACER", price:30, trail:()=>"#b8c1d8" },
   { id:"toilet",  name:"SKIBIDI GT", price:35, trail:()=>"#f4f6ff" },
   { id:"ufo",     name:"THE SAUCER", price:40, trail:()=>"#9ad8ff", ownWheels:true, noLights:true },
+  { id:"supra",   name:"2FAST",      price:45, trail:()=>"#ff9f45" },
+  { id:"beast",   name:"THE BEAST",  price:50, trail:()=>"#aab4c8", ownWheels:true },
   { id:"goat",    name:"GOLDEN GOAT", price:0, trail:()=>"#ffd76a", secret:true },
 ];
 const PETS = [
@@ -1376,6 +1383,35 @@ function drawVehicleBody(vid){
     }
     ctx.fillStyle="#c3cce0"; ctx.beginPath(); ctx.arc(0,-1,7,0,TAU); ctx.fill();
     ctx.fillStyle="rgba(255,255,255,0.5)"; ctx.beginPath(); ctx.arc(-2,-3,2.4,0,TAU); ctx.fill();
+  }
+  else if(vid==="supra"){
+    // the orange legend with the big wing
+    ctx.fillStyle="#ff7a1a"; ctx.beginPath(); ctx.roundRect(-16,-9,33,18,8); ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,0.16)"; ctx.beginPath(); ctx.roundRect(-16,-9,33,7.5,8); ctx.fill();
+    ctx.strokeStyle="#e8ecf4"; ctx.lineWidth=2.4;
+    ctx.beginPath();
+    ctx.moveTo(-12,-8.2); ctx.quadraticCurveTo(2,-4.2,14,-7.6);
+    ctx.moveTo(-12,8.2); ctx.quadraticCurveTo(2,4.2,14,7.6);
+    ctx.stroke();
+    ctx.fillStyle="#1b2233"; ctx.beginPath(); ctx.roundRect(-4,-6,11,12,4); ctx.fill();
+    ctx.fillStyle="#8b93ad";
+    ctx.fillRect(-17,-9,2,3.2); ctx.fillRect(-17,5.8,2,3.2);   // wing struts
+    ctx.fillStyle="#e8ecf4";
+    ctx.fillRect(-20.5,-11.5,4,23);                            // THE wing
+  }
+  else if(vid==="beast"){
+    // matte black muscle, blower through the hood
+    ctx.fillStyle="#151824";
+    ctx.beginPath(); ctx.roundRect(-13,-11.5,10,7,2); ctx.fill();   // fat rear tires
+    ctx.beginPath(); ctx.roundRect(-13,4.5,10,7,2); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(8,-10,7,5.5,2); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(8,4.5,7,5.5,2); ctx.fill();
+    ctx.fillStyle="#23262e"; ctx.beginPath(); ctx.roundRect(-18,-10,36,20,5); ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,0.07)"; ctx.beginPath(); ctx.roundRect(-18,-10,36,8,5); ctx.fill();
+    ctx.fillStyle="#15171d"; ctx.beginPath(); ctx.roundRect(-6,-7,12,14,3); ctx.fill();
+    ctx.fillStyle="#aab4c8"; ctx.beginPath(); ctx.roundRect(7,-3.5,7,7,2); ctx.fill();   // blower
+    ctx.fillStyle="#6d7690"; ctx.fillRect(8.4,-3.5,1.6,7); ctx.fillRect(11.4,-3.5,1.6,7);
+    ctx.fillStyle="#8b93ad"; ctx.fillRect(-20,-6.5,2.4,3.4); ctx.fillRect(-20,3.1,2.4,3.4);  // pipes
   }
   else if(vid==="goat"){
     drawRocketBody("#ffd76a", "#fff6dd");
@@ -1577,16 +1613,17 @@ function drawDarkness(){
     d.fillStyle=g2; d.beginPath(); d.arc(hx,hy,r,0,TAU); d.fill();
   };
   const car = game.car;
-  hole(car.x, car.y, 215);
+  const zz = cam.z || 1;
+  hole(car.x, car.y, 215*zz);
   const [hx,hy] = toS(car.x, car.y);
   d.save(); d.translate(hx,hy); d.rotate(car.heading);
-  const cg = d.createLinearGradient(0,0,340,0);
+  const cg = d.createLinearGradient(0,0,340*zz,0);
   cg.addColorStop(0,"rgba(0,0,0,0.95)"); cg.addColorStop(1,"rgba(0,0,0,0)");
   d.fillStyle = cg;
-  d.beginPath(); d.moveTo(10,0); d.lineTo(340,125); d.lineTo(340,-125); d.closePath(); d.fill();
+  d.beginPath(); d.moveTo(10*zz,0); d.lineTo(340*zz,125*zz); d.lineTo(340*zz,-125*zz); d.closePath(); d.fill();
   d.restore();
-  for(const cn of game.coins) if(!cn.got) hole(cn.x, cn.y, 44);
-  hole(game.finish.x, game.finish.y, 85);
+  for(const cn of game.coins) if(!cn.got) hole(cn.x, cn.y, 44*zz);
+  hole(game.finish.x, game.finish.y, 85*zz);
   ctx.drawImage(game._darkCv, 0, 0);
 }
 function drawFinish(){
