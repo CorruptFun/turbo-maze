@@ -25,7 +25,8 @@
 const CONFIG = {
   title:      "TURBO MAZE",        // 👈 let him rename the game!
   subtitle:   "DRIFT EDITION",
-  playerName: "",                  // 👈 his name → goes on the license plate
+  playerName: "",                  // 👈 his name → license plate + VS mode "P1"
+  player2Name: "P2",               // 👈 who's on the right side in VS mode (you!)
   carColor:   "#ff4757",           // 👈 the car! try "#3ddc55" (tractor green)
   stripe:     "#ffe9a3",
   speed:      0.85,                // 👈 car speed: 1 = fast & furious, 0.7 = kid cruise
@@ -68,7 +69,7 @@ const LEVELS = [
 "####...##...####",
 "#......c.......#",
 "#..####..####..#",
-"#..#  #..#  #..#",
+"#..####..####..#",
 "#..####..####..#",
 "#......c....FF.#",
 "#.....##....FF.#",
@@ -134,7 +135,7 @@ const LEVELS = [
 "##..#..#....##....F#",
 "####################",
 ]},
-{ name:"BOSS RACE", emoji:"👾", hue:"#53e0ff", par:48, rival:true, grid:[
+{ name:"BOSS RACE", emoji:"👾", hue:"#53e0ff", par:48, rival:{mult:1}, grid:[
 "####################",
 "#SS......#.......c.#",
 "#SS.####.#.######..#",
@@ -149,6 +150,184 @@ const LEVELS = [
 "#...c.#...#..c..#FF#",
 "#.....c...*......FF#",
 "####################",
+]},
+/* ~ = ice (slippery!)   T = portal pair   x = breakable crate */
+{ name:"SLIP CITY", emoji:"🧊", hue:"#7ec9ff", par:38, grid:[
+"################",
+"#SS.....~~....c#",
+"#SS.###.~~.###.#",
+"#......c~~c....#",
+"#.####.~~~~.##.#",
+"#.#..c~~~~~~c#.#",
+"#.##.#.~~~~.#..#",
+"#..#.#.~~...#..#",
+"#n.#...c~~c..FF#",
+"#..#.....~...FF#",
+"################",
+]},
+{ name:"PORTAL PARK", emoji:"🌀", hue:"#b98cff", par:42, grid:[
+"################",
+"#SS..#....c..T.#",
+"#SS..#.####..#.#",
+"#....#.#..#....#",
+"#.####.#c.####.#",
+"#......#..#....#",
+"####.#.#..#.####",
+"#T...#...c#....#",
+"#.##.###.##.##.#",
+"#c#...n#.....FF#",
+"#...#..c.....FF#",
+"################",
+]},
+{ name:"SMASH ALLEY", emoji:"💥", hue:"#ff9f45", par:42, grid:[
+"##################",
+"#SS...*..x......c#",
+"#SS.####x####.##.#",
+"#...#..c....#..#.#",
+"#.#.#.####x.#..#.#",
+"#.#......x..*....#",
+"#.####x####.####.#",
+"#..c...#...c#....#",
+"#.####.#.x#.##.#.#",
+"#....n.#...x...FF#",
+"##################",
+]},
+{ name:"GOOBER GANG", emoji:"👾", hue:"#ff8fe0", par:52, grid:[
+"################",
+"#SS......c.....#",
+"#SS.##.####.##.#",
+"#...#........#.#",
+"#.#.#.######.#.#",
+"#.#...#....#...#",
+"#.##.##.##.##..#",
+"#..#..c..#..#k.#",
+"#.####.#.####..#",
+"#..c.#.#..c.#.D#",
+"#....#....n.#.F#",
+"################",
+], hazards:[ {path:[[5,3],[12,3]], speed:110}, {path:[[7,5],[10,5]], speed:95}, {path:[[6,10],[9,10]], speed:100} ]},
+{ name:"THE FREEZER", emoji:"❄️", hue:"#bfe8ff", par:52, grid:[
+"##################",
+"#SS..~~~..G......#",
+"#SS.#~~~#.#.####.#",
+"#...#~c~#.#....#.#",
+"#.###~~~##.###.#.#",
+"#.#..~~~~~..#c...#",
+"#.#.#~~n~~#.#.##.#",
+"#...#~~~~~#......#",
+"#.#G#..c..#.####.#",
+"#.#.#.####.#.#c..#",
+"#...#........#.FF#",
+"##################",
+]},
+{ name:"NIGHT NIGHT", emoji:"🌙", hue:"#8a7dff", par:48, dark:true, grid:[
+"################",
+"#SS...c....#...#",
+"#SS.##.###.#.#.#",
+"#...#..c.#...#.#",
+"#.#.####.###.#.#",
+"#.#..c.#.....#.#",
+"#.####.#.###...#",
+"#....#.#...#.#.#",
+"#.##.#.###.#.#n#",
+"#..#.c.....#.#.#",
+"#..#...##..c.FF#",
+"################",
+]},
+{ name:"CRATE ESCAPE", emoji:"📦", hue:"#ffd76a", par:55, grid:[
+"##################",
+"#SS....x...c..#T.#",
+"#SS.##.#.####.#..#",
+"#...#..#.#..x....#",
+"#.#.#.##.#.#####.#",
+"#.#...#..c.#...#.#",
+"#.#####.##x##.#..#",
+"#..c.#..#...#.#..#",
+"#.##.#.##.#.#.##.#",
+"#.#..#.#..#.....x#",
+"#Tk#....x#..#D.FF#",
+"##################",
+], hazards:[ {path:[[7,5],[10,5]], speed:100} ]},
+{ name:"DOUBLE TROUBLE", emoji:"⚡", hue:"#9ae64a", par:58, grid:[
+"####################",
+"#SS......~~........#",
+"#SS.####.~~.######.#",
+"#..#...c.~~....#..c#",
+"#.##.##.#~~#.##.##.#",
+"#..........~~......#",
+"#.####.###.~~###.#.#",
+"#.#..c.#n.#~~#.c.#.#",
+"#.#.###.#..#.###.#.#",
+"#.#................#",
+"#.####.####G####.#.#",
+"#....c...#....c..FF#",
+"####################",
+], hazards:[ {path:[[2,5],[9,5]], speed:115}, {path:[[11,5],[17,5]], speed:100} ]},
+{ name:"GOOBER'S REVENGE", emoji:"😈", hue:"#ff6a5e", par:46, rival:{mult:1.18}, grid:[
+"##################",
+"#SS.....#....c...#",
+"#SS.###.#.#####..#",
+"#T..#.......#....#",
+"#.#.#.#####.#.##.#",
+"#.#...#...#...#..#",
+"#.###.#.#.###.##.#",
+"#...#c..#..c#....#",
+"#.#.####.##.T#.#.#",
+"#.#....n.#...#.#.#",
+"#..##....##....FF#",
+"##################",
+]},
+{ name:"FINAL BOSS", emoji:"👑", hue:"#ffd76a", par:55, rival:{mult:1.35}, grid:[
+"####################",
+"#SS....*.....~~...c#",
+"#SS.####.###.~~.##.#",
+"#...#..c.#...~~....#",
+"#.#.#.##.#.####.##.#",
+"#.#...#..x...#..c#.#",
+"#.##.##.####.#.#.#.#",
+"#..#..c..#...n.#...#",
+"#.###.##.#.###.###.#",
+"#.....#..x..#..c...#",
+"#.####.####.##.###.#",
+"#..c...~~..*.......#",
+"#.####.~~.######.FF#",
+"####################",
+]},
+];
+/* VS arenas — whole maze fits on one screen, S = player 1, 2 = player 2 */
+const VS_ARENAS = [
+{ name:"THUNDER DOME", emoji:"⚔️", hue:"#ffb742", grid:[
+"###############",
+"#SS.....c.....#",
+"#SS.##.#.##...#",
+"#...#..c..#...#",
+"#.#..*.F.*..#.#",
+"#...#..c..#...#",
+"#...##.#.##.22#",
+"#.....c.....22#",
+"###############",
+]},
+{ name:"COIN PIT", emoji:"🪙", hue:"#9ae64a", grid:[
+"###############",
+"#SS.c......c..#",
+"#SS..##.##..22#",
+"#..c.#...#.c..#",
+"#.##...c...##.#",
+"#..c.#...#.c..#",
+"#.#..##.##..#.#",
+"#..c...F...c..#",
+"###############",
+]},
+{ name:"ICE BOX", emoji:"🧊", hue:"#7ec9ff", grid:[
+"###############",
+"#SS..~~~~~....#",
+"#SS.#~~~~~#...#",
+"#.c.#~c~c~#.c.#",
+"#...~~*F*~~...#",
+"#.c.#~c~c~#.c.#",
+"#...#~~~~~#.22#",
+"#....~~~~~..22#",
+"###############",
 ]},
 ];
 
@@ -247,9 +426,9 @@ const AU = {
 };
 
 /* ---------------- input: keyboard + touch ---------------- */
-const input = { vec:{x:0,y:0}, nitro:false,
+const input = { vec:{x:0,y:0}, vec2:{x:0,y:0}, nitro:false,
   hasTouch: ("ontouchstart" in window) || navigator.maxTouchPoints>0,
-  joy:null, taps:[] };
+  joy:null, joy2:null, taps:[] };
 const keys = {};
 window.addEventListener("keydown", e=>{
   if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key)) e.preventDefault();
@@ -262,14 +441,36 @@ window.addEventListener("keydown", e=>{
   keys[e.key]=true;
 });
 window.addEventListener("keyup", e=> keys[e.key]=false);
-function keyVec(){
+function normVec(x,y){
+  const m = Math.hypot(x,y)||1;
+  return {x:x/m*Math.min(1,Math.hypot(x,y)), y:y/m*Math.min(1,Math.hypot(x,y))};
+}
+function keyVec(){   // merged (single player)
   let x=0,y=0;
   if(keys.ArrowLeft||keys.a||keys.A) x-=1;
   if(keys.ArrowRight||keys.d||keys.D) x+=1;
   if(keys.ArrowUp||keys.w||keys.W) y-=1;
   if(keys.ArrowDown||keys.s||keys.S) y+=1;
-  const m = Math.hypot(x,y)||1;
-  return {x:x/m*Math.min(1,Math.hypot(x,y)), y:y/m*Math.min(1,Math.hypot(x,y))};
+  return normVec(x,y);
+}
+function keyVecArrows(){
+  let x=0,y=0;
+  if(keys.ArrowLeft) x-=1; if(keys.ArrowRight) x+=1;
+  if(keys.ArrowUp) y-=1;  if(keys.ArrowDown) y+=1;
+  return normVec(x,y);
+}
+function keyVecWASD(){
+  let x=0,y=0;
+  if(keys.a||keys.A) x-=1; if(keys.d||keys.D) x+=1;
+  if(keys.w||keys.W) y-=1; if(keys.s||keys.S) y+=1;
+  return normVec(x,y);
+}
+function joyVec(j){
+  if(!j) return {x:0,y:0};
+  const dx=j.x-j.ox, dy=j.y-j.oy, m=Math.hypot(dx,dy);
+  if(m<=8) return {x:0,y:0};
+  const c=Math.min(1,m/48);
+  return {x:dx/m*c, y:dy/m*c};
 }
 // touch: left side = floating joystick, right side = nitro
 let touches = {};
@@ -278,7 +479,11 @@ cv.addEventListener("touchstart", e=>{
   for(const t of e.changedTouches){
     const x=t.clientX, y=t.clientY;
     input.taps.push({x, y});
-    if(game.state==="play"){
+    if(game.state==="play" && game.vs){
+      if(x < W/2){ if(!input.joy) input.joy = {id:t.identifier, ox:x, oy:y, x, y}; }
+      else if(!input.joy2) input.joy2 = {id:t.identifier, ox:x, oy:y, x, y};
+    }
+    else if(game.state==="play"){
       if(x < W*0.55 && !input.joy) { input.joy = {id:t.identifier, ox:x, oy:y, x, y}; }
       else { touches[t.identifier]="nitro"; input.nitro=true; }
     }
@@ -289,6 +494,7 @@ cv.addEventListener("touchmove", e=>{
   e.preventDefault();
   for(const t of e.changedTouches){
     if(input.joy && t.identifier===input.joy.id){ input.joy.x=t.clientX; input.joy.y=t.clientY; }
+    if(input.joy2 && t.identifier===input.joy2.id){ input.joy2.x=t.clientX; input.joy2.y=t.clientY; }
     if(bl.ptr && t.identifier===bl.ptr.id){ bl.ptr.x=t.clientX; bl.ptr.y=t.clientY; }
   }
 },{passive:false});
@@ -296,6 +502,7 @@ function endTouch(e){
   e.preventDefault();
   for(const t of e.changedTouches){
     if(input.joy && t.identifier===input.joy.id) input.joy=null;
+    if(input.joy2 && t.identifier===input.joy2.id) input.joy2=null;
     if(bl.ptr && t.identifier===bl.ptr.id){ bl.ptr=null; bl.lastCell=null; }
     if(touches[t.identifier]==="nitro"){ delete touches[t.identifier]; if(!Object.keys(touches).length) input.nitro=false; }
   }
@@ -310,15 +517,18 @@ window.addEventListener("mousemove", e=>{ if(bl.ptr && bl.ptr.id==="m"){ bl.ptr.
 window.addEventListener("mouseup", ()=>{ if(bl.ptr && bl.ptr.id==="m"){ bl.ptr=null; bl.lastCell=null; } });
 window.addEventListener("contextmenu", e=> e.preventDefault());
 function readInput(){
-  const k = keyVec();
-  let jx=0, jy=0;
-  if(input.joy){
-    const dx=input.joy.x-input.joy.ox, dy=input.joy.y-input.joy.oy;
-    const m=Math.hypot(dx,dy);
-    if(m>8){ const c=Math.min(1,m/48); jx=dx/m*c; jy=dy/m*c; }
+  if(game.vs){
+    const a = keyVecArrows(), w = keyVecWASD();
+    const j1 = joyVec(input.joy), j2 = joyVec(input.joy2);
+    input.vec  = (Math.hypot(j1.x,j1.y) > Math.hypot(a.x,a.y)) ? j1 : a;
+    input.vec2 = (Math.hypot(j2.x,j2.y) > Math.hypot(w.x,w.y)) ? j2 : w;
+    input.nitro = false;
+    return;
   }
-  input.vec.x = Math.abs(jx)>Math.abs(k.x)?jx:k.x;
-  input.vec.y = Math.abs(jy)>Math.abs(k.y)?jy:k.y;
+  const k = keyVec();
+  const j = joyVec(input.joy);
+  input.vec.x = Math.abs(j.x)>Math.abs(k.x)?j.x:k.x;
+  input.vec.y = Math.abs(j.y)>Math.abs(k.y)?j.y:k.y;
   if(keys[" "]) input.nitro = true;
   else if(!Object.keys(touches).length) input.nitro = false;
 }
@@ -342,7 +552,8 @@ const game = {
 
 function newCar(x,y,heading){
   return { x, y, vx:0, vy:0, heading, speed:0, nitroMeter:70,
-    drifting:false, spinT:0, invuln:0, sq:1, sqv:0, trail:[], boost:0 };
+    drifting:false, spinT:0, invuln:0, sq:1, sqv:0, trail:[], boost:0,
+    aura:0, coins:0, portalCool:0, driftT:0 };
 }
 
 /* ---------------- level loading ---------------- */
@@ -359,18 +570,23 @@ function startLevel(L, meta){
   const g = L.grid;
   game.rows = g.length; game.cols = g[0].length;
   game.solid = []; game.road = []; game.coins=[]; game.pads=[]; game.gates=[]; game.doors=[]; game.goobers=[]; game.key=null;
-  game.coinsGot=0; game.hasKey=false; game.auraRun=0; game.playT=0; game.bonks=0; game.driftT=0;
+  game.slick = []; game.portals = []; game.crates = [];
+  game.hasKey=false; game.playT=0; game.bonks=0;
+  game.vs = !!(meta && meta.vs);
+  game.count = game.vs? 3.999 : 0;
   game.parts=[]; game.floats=[]; game.stickers=[]; game.confetti=[]; game.hintT=0;
-  let sx=1, sy=1, fx=1, fy=1;
+  let sx=1, sy=1, fx=1, fy=1, p2x=0, p2y=0, p2c=1, p2r=1;
   for(let r=0;r<game.rows;r++){
-    game.solid[r]=[];
+    game.solid[r]=[]; game.slick[r]=[];
     for(let c=0;c<game.cols;c++){
       const ch = g[r][c]||"#";
       const wall = ch==="#";
       game.solid[r][c] = wall?1:0;
+      game.slick[r][c] = ch==="~"?1:0;
       if(!wall) game.road.push([c,r]);
       const wx=(c+0.5)*CELL, wy=(r+0.5)*CELL;
       if(ch==="S"){ sx=wx; sy=wy; game.startCell=[c,r]; }
+      if(ch==="2" && !p2x){ p2x=wx; p2y=wy; p2c=c; p2r=r; }
       if(ch==="F"){ fx=wx; fy=wy; game.finish={c,r,x:wx,y:wy}; }
       if(ch==="c") game.coins.push({x:wx,y:wy,got:false,ph:Math.random()*TAU});
       if(ch==="n") game.coins.push({x:wx,y:wy,got:false,ph:Math.random()*TAU,nitro:true});
@@ -378,8 +594,11 @@ function startLevel(L, meta){
       if(ch==="G") game.gates.push({c,r,x:wx,y:wy,ph:(c+r)%2?0:Math.PI,open:1});
       if(ch==="D") game.doors.push({c,r,x:wx,y:wy,anim:0});
       if(ch==="k") game.key={x:wx,y:wy,got:false};
+      if(ch==="T") game.portals.push({c,r,x:wx,y:wy,cool:0});
+      if(ch==="x") game.crates.push({c,r,x:wx,y:wy,broken:false});
     }
   }
+  game.portals.length = Math.min(2, game.portals.length);   // exactly one pair
   // doors + closed gates are solid until opened (handled in isSolid)
   game.coinsAll = game.coins.filter(c=>!c.nitro).length;
   // face the car toward open road
@@ -388,6 +607,13 @@ function startLevel(L, meta){
   if(!isWallCell(sc+1,sr) || !isWallCell(sc+2,sr)) head = 0;
   else if(!isWallCell(sc,sr+1)) head = Math.PI/2;
   game.car = newCar(sx, sy, head);
+  game.car2 = null;
+  if(game.vs){
+    const p2head = !isWallCell(p2c-1,p2r) ? Math.PI : -Math.PI/2;
+    game.car2 = newCar(p2x||sx, p2y||sy, p2x? p2head : head);
+    game.car2.p2 = true;
+  }
+  game.cars = game.car2 ? [game.car, game.car2] : [game.car];
   game.pet = { x:sx, y:sy };
   game.cam.x = sx; game.cam.y = sy;
   (L.hazards||[]).forEach(h=>{
@@ -401,7 +627,7 @@ function startLevel(L, meta){
     const path = bfsPathCells(game.startCell, [game.finish.c, game.finish.r]);
     game.rival = { wp: path.map(([c,r])=>[(c+0.5)*CELL,(r+0.5)*CELL]),
       i:0, x:(game.startCell[0]+0.5)*CELL, y:(game.startCell[1]+0.5)*CELL,
-      a:head, speed:(CONFIG.bossSpeed||95), delay:1.5, done:false };
+      a:head, speed:(CONFIG.bossSpeed||95)*((L.rival&&L.rival.mult)||1), delay:1.5, done:false };
     setTimeout(()=>{ if(game.rival && game.state==="play") sticker("BEAT HIM TO THE FLAG!", "#ff8fe0"); }, 1900);
   }
   prerenderGround(L);
@@ -423,7 +649,12 @@ function isSolid(c,r){
   if(isWallCell(c,r)) return true;
   for(const d of game.doors) if(d.c===c && d.r===r && d.anim<1) return true;
   for(const g of game.gates) if(g.c===c && g.r===r && g.open<0.5) return true;
+  for(const cr of game.crates) if(cr.c===c && cr.r===r && !cr.broken) return true;
   return false;
+}
+function crateAt(c,r){
+  for(const cr of game.crates) if(!cr.broken && cr.c===c && cr.r===r) return cr;
+  return null;
 }
 
 /* BFS shortest path between two cells (walls only) — the boss's racing line */
@@ -491,6 +722,17 @@ function prerenderGround(L){
       x.fillStyle = gr; x.fillRect((c-1)*CELL,(r-1)*CELL,CELL*3,CELL*3);
     }
   }
+  // ice sheen
+  for(const [c,r] of game.road){
+    if(!(game.slick[r] && game.slick[r][c])) continue;
+    x.fillStyle = "rgba(150,210,255,0.14)";
+    x.fillRect(c*CELL, r*CELL, CELL, CELL);
+    x.strokeStyle = "rgba(225,245,255,0.22)"; x.lineWidth = 2;
+    for(let i=0;i<3;i++){
+      const yy = r*CELL + 22 + i*30 + ((c*13)%12);
+      x.beginPath(); x.moveTo(c*CELL+12, yy); x.lineTo(c*CELL+CELL-12, yy-9); x.stroke();
+    }
+  }
   // center dashes on straights
   x.strokeStyle = "rgba(255,255,255,0.07)"; x.lineWidth=4; x.setLineDash([16,20]);
   for(const [c,r] of game.road){
@@ -513,6 +755,7 @@ function prerenderGround(L){
   for(let r=0;r<game.rows;r++) for(let c=0;c<game.cols;c++){
     const ch = L.grid[r][c];
     if(ch==="S") checker(c,r,"rgba(255,255,255,0.06)");
+    if(ch==="2") checker(c,r,"rgba(176,110,232,0.14)");
     if(ch==="F") checker(c,r,"rgba(255,255,255,0.16)");
   }
   // boost pads (chevrons)
@@ -551,13 +794,14 @@ function prerenderGround(L){
 }
 
 /* ---------------- car physics ---------------- */
-function updateCar(dt){
-  const car = game.car;
-  const iv = input.vec;
+function updateCar(car, ctrl, dt){
+  const iv = ctrl.vec;
   const hasInput = Math.hypot(iv.x,iv.y) > 0.15;
-  const boosting = input.nitro && car.nitroMeter>0 && hasInput;
+  const boosting = !!ctrl.nitro && car.nitroMeter>0 && hasInput;
 
   const SPD = CONFIG.speed || 1;
+  const cellC = clamp(Math.floor(car.x/CELL),0,game.cols-1), cellR = clamp(Math.floor(car.y/CELL),0,game.rows-1);
+  const onIce = !!(game.slick[cellR] && game.slick[cellR][cellC]);
   if(car.spinT>0){ car.spinT-=dt; car.heading += dt*12; }
   else if(hasInput){
     const want = Math.atan2(iv.y, iv.x);
@@ -567,7 +811,7 @@ function updateCar(dt){
     car.heading += clamp(d, -tRate*dt, tRate*dt);
   }
   const maxSp = (boosting? 660 : 400)*SPD;
-  const accel = (boosting? 1300 : 750)*SPD;
+  const accel = (boosting? 1300 : 750)*SPD*(onIce?0.55:1);
   if(hasInput && car.spinT<=0){
     car.vx += Math.cos(car.heading)*accel*dt * Math.hypot(iv.x,iv.y);
     car.vy += Math.sin(car.heading)*accel*dt * Math.hypot(iv.x,iv.y);
@@ -578,10 +822,10 @@ function updateCar(dt){
   let latX = car.vx - fwd*fx, latY = car.vy - fwd*fy;
   const sp = Math.hypot(car.vx,car.vy);
   const turningHard = hasInput && Math.abs(angDiff(car.heading, Math.atan2(iv.y,iv.x))) > 0.55;
-  const grip = (turningHard && sp>230*SPD) ? 2.4 : 8.5;
+  const grip = onIce ? 1.1 : (turningHard && sp>230*SPD) ? 2.4 : 8.5;
   const latK = Math.exp(-grip*dt);
   latX*=latK; latY*=latK;
-  fwd *= hasInput ? Math.exp(-0.35*dt) : Math.exp(-2.2*dt);
+  fwd *= hasInput ? Math.exp(-0.35*dt) : Math.exp(-(onIce?0.7:2.2)*dt);
   car.vx = fwd*fx + latX; car.vy = fwd*fy + latY;
   const spd2 = Math.hypot(car.vx,car.vy);
   if(spd2 > maxSp){ car.vx *= maxSp/spd2; car.vy *= maxSp/spd2; }
@@ -589,15 +833,15 @@ function updateCar(dt){
   // drift state
   const slip = spd2>200*SPD ? Math.abs(angDiff(car.heading, Math.atan2(car.vy,car.vx))) : 0;
   const wasDrift = car.drifting;
-  car.drifting = slip>0.32 && spd2>210*SPD;
+  car.drifting = (slip>0.32 && spd2>210*SPD) || (onIce && spd2>140 && slip>0.2);
   if(car.drifting){
-    game.driftT += dt;
-    if(((game.driftT*10)|0) % 4 === 0) spark(car);
+    car.driftT += dt;
+    if(((car.driftT*10)|0) % 4 === 0) spark(car);
     skid(car);
     if(!wasDrift && Math.random()<0.6) float(pick(YELLS.drift), car.x, car.y-34, game.lv.hue);
-    game.auraRun += dt*6;
+    car.aura += dt*6;
   }
-  AU.setDrift(car.drifting);
+  if(ctrl.main) AU.setDrift(car.drifting);
 
   // nitro
   if(boosting){
@@ -609,7 +853,7 @@ function updateCar(dt){
     car.nitroMeter = Math.min(100, car.nitroMeter + dt*(CONFIG.easyMode?14:9));
     car.boost = Math.max(0, car.boost-dt);
   }
-  AU.setEngine(spd2, boosting);
+  if(ctrl.main) AU.setEngine(spd2, boosting);
 
   // move with wall collisions (sub-stepped)
   const steps = Math.max(1, Math.ceil(spd2*dt/9));
@@ -627,7 +871,7 @@ function updateCar(dt){
   if(car.trail.length>13) car.trail.pop();
 
   // pet chases the car (lags a few trail frames behind)
-  if(store.pet && game.pet){
+  if(ctrl.main && store.pet && game.pet){
     const tgt = car.trail[Math.min(9, car.trail.length-1)];
     const k = 1-Math.exp(-7*dt);
     game.pet.x += (tgt.x-game.pet.x)*k;
@@ -645,6 +889,17 @@ function collideWalls(car){
   const r0 = Math.floor((car.y-R)/CELL), r1 = Math.floor((car.y+R)/CELL);
   for(let r=r0;r<=r1;r++) for(let c=c0;c<=c1;c++){
     if(!isSolid(c,r)) continue;
+    // crates smash open if you hit them fast enough
+    const crate = crateAt(c,r);
+    if(crate && Math.hypot(car.vx,car.vy) > 240*(CONFIG.speed||1)){
+      crate.broken = true;
+      for(let i=0;i<14;i++) debris(crate.x+rand(-22,22), crate.y+rand(-22,22));
+      game.shake = Math.min(8, game.shake+4);
+      car.vx*=0.72; car.vy*=0.72; car.sq = 0.8;
+      AU.bonk(); AU.beep(700,0.1,"square",0.12,200);
+      float("SMASH!", crate.x, crate.y-20, "#ff9f45");
+      continue;
+    }
     const bx=c*CELL, by=r*CELL;
     const px = clamp(car.x, bx, bx+CELL), py = clamp(car.y, by, by+CELL);
     const dx = car.x-px, dy = car.y-py;
@@ -675,7 +930,17 @@ function collideWalls(car){
 
 /* ---------------- entities ---------------- */
 function updateEntities(dt){
-  const car = game.car;
+  // gates cycle (shared)
+  for(const g of game.gates){
+    g.ph += dt;
+    const cyc = (g.ph % 3.2) / 3.2;         // 3.2s cycle
+    const target = cyc < 0.55 ? 1 : 0;      // open 55% of the time
+    g.open = lerp(g.open, target, dt*8);
+  }
+  for(const p of game.portals) if(p.cool>0) p.cool -= dt;
+  for(const p of game.pads) if(p.cool) p.cool = Math.max(0, p.cool-dt);
+
+  for(const car of game.cars){
   // coins (with a little magnet)
   for(const cn of game.coins){
     if(cn.got) continue;
@@ -689,13 +954,28 @@ function updateEntities(dt){
         float("NITRO FULL!", cn.x, cn.y-20, "#7ef7ff");
         for(let i=0;i<10;i++) puff(cn.x,cn.y,"rgba(126,247,255,0.5)");
       } else {
-        game.coinsGot++; game.auraRun += 10; store.coinsBank++;
+        car.coins++; car.aura += 10; store.coinsBank++;
         AU.coin();
         float(Math.random()<0.3 ? pick(YELLS.coin) : "+10", cn.x, cn.y-20, "#ffd76a");
         for(let i=0;i<8;i++) sparkle(cn.x,cn.y);
       }
     }
   }
+  // portals: hop to the other end
+  if(game.portals.length===2 && car.portalCool<=0){
+    for(let i=0;i<2;i++){
+      const p = game.portals[i];
+      if(p.cool<=0 && dist(car.x,car.y,p.x,p.y)<34){
+        const o = game.portals[1-i];
+        for(let k=0;k<10;k++) puff(car.x,car.y,"rgba(185,140,255,0.55)");
+        car.x = o.x; car.y = o.y; car.portalCool = 1.1; o.cool = 0.6;
+        for(let k=0;k<10;k++) puff(car.x,car.y,"rgba(185,140,255,0.55)");
+        AU.nitro(); float("WOOSH!", car.x, car.y-30, "#b98cff");
+        break;
+      }
+    }
+  }
+  car.portalCool = Math.max(0, car.portalCool-dt);
   // key
   if(game.key && !game.key.got && dist(car.x,car.y,game.key.x,game.key.y)<40){
     game.key.got = true; game.hasKey = true; AU.key();
@@ -713,13 +993,6 @@ function updateEntities(dt){
         for(let i=0;i<12;i++) sparkle(d.x,d.y); }
     }
   }
-  // gates
-  for(const g of game.gates){
-    g.ph += dt;
-    const cyc = (g.ph % 3.2) / 3.2;         // 3.2s cycle
-    const target = cyc < 0.55 ? 1 : 0;      // open 55% of the time
-    g.open = lerp(g.open, target, dt*8);
-  }
   // boost pads
   for(const p of game.pads){
     if(Math.floor(car.x/CELL)===p.c && Math.floor(car.y/CELL)===p.r){
@@ -733,22 +1006,16 @@ function updateEntities(dt){
         float("BOOST!", car.x, car.y-40, game.lv.hue);
       }
     }
-    if(p.cool) p.cool = Math.max(0, p.cool-dt);
   }
   // goobers
   for(const gb of game.goobers){
-    const [tx,ty] = gb.path[(gb.seg+1)%gb.path.length];
-    const d = dist(gb.x,gb.y,tx,ty);
-    if(d<6) gb.seg = (gb.seg+1)%gb.path.length;
-    else { gb.x += (tx-gb.x)/d*gb.speed*dt; gb.y += (ty-gb.y)/d*gb.speed*dt; }
-    gb.ph += dt*7;
     if(car.invuln<=0 && dist(car.x,car.y,gb.x,gb.y)<38){
       car.invuln = 1.6; car.spinT = 0.55; car.sq = 0.6;
       game.bonks++; game.shake = 9; AU.goober();
       sticker("👾 "+pick(YELLS.goober), "#ff8fe0");
       // he yoinks coins — they scatter onto nearby road for re-grabbing (gentle mischief)
-      const steal = Math.min(3, game.coinsGot);
-      game.coinsGot -= steal; store.coinsBank = Math.max(0, store.coinsBank-steal);
+      const steal = Math.min(3, car.coins);
+      car.coins -= steal; store.coinsBank = Math.max(0, store.coinsBank-steal);
       const near = game.road.filter(([c,r])=>{
         const wx=(c+0.5)*CELL, wy=(r+0.5)*CELL, dd=dist(wx,wy,car.x,car.y);
         return dd>CELL*0.9 && dd<CELL*2.8;
@@ -762,7 +1029,21 @@ function updateEntities(dt){
     }
   }
   // finish
-  if(dist(car.x,car.y,game.finish.x,game.finish.y) < CELL*0.75) levelClear();
+  if(dist(car.x,car.y,game.finish.x,game.finish.y) < CELL*0.75){
+    if(game.vs){ vsEnd(car); return; }
+    levelClear();
+  }
+  } // end per-car loop
+
+  // goober patrol movement (shared)
+  for(const gb of game.goobers){
+    const [tx,ty] = gb.path[(gb.seg+1)%gb.path.length];
+    const d = dist(gb.x,gb.y,tx,ty);
+    if(d<6) gb.seg = (gb.seg+1)%gb.path.length;
+    else { gb.x += (tx-gb.x)/d*gb.speed*dt; gb.y += (ty-gb.y)/d*gb.speed*dt; }
+    gb.ph += dt*7;
+  }
+  const car = game.car;
   // the boss car races the solution path (with rubber-banding so it stays close)
   const rv = game.rival;
   if(rv && !rv.done && game.state==="play"){
@@ -779,6 +1060,8 @@ function updateEntities(dt){
       else { rv.x += (t[0]-rv.x)/d*spd*dt; rv.y += (t[1]-rv.y)/d*spd*dt; }
       rv.a += angDiff(rv.a, Math.atan2(t[1]-rv.y, t[0]-rv.x))*Math.min(1,dt*8);
       if(Math.random()<0.15) puff(rv.x-Math.cos(rv.a)*18, rv.y-Math.sin(rv.a)*18, "rgba(176,110,232,0.25)");
+      const rc = crateAt(Math.floor(rv.x/CELL), Math.floor(rv.y/CELL));
+      if(rc){ rc.broken=true; for(let i=0;i<10;i++) debris(rc.x+rand(-20,20), rc.y+rand(-20,20)); AU.bonk(); }
     }
     if(rv.i >= rv.wp.length-1){ rv.done = true; rivalWins(); }
   }
@@ -791,14 +1074,27 @@ function rivalWins(){
   game.shake = 8;
   AU.goober();
 }
+function carBump(a, b){
+  const d = dist(a.x,a.y,b.x,b.y);
+  if(d>26 || d===0) return;
+  const nx=(b.x-a.x)/d, ny=(b.y-a.y)/d, pen=(26-d)/2;
+  a.x-=nx*pen; a.y-=ny*pen; b.x+=nx*pen; b.y+=ny*pen;
+  const rvx=b.vx-a.vx, rvy=b.vy-a.vy, vn=rvx*nx+rvy*ny;
+  if(vn<0){
+    const j=-vn*0.9;
+    a.vx-=j*nx*0.5; a.vy-=j*ny*0.5; b.vx+=j*nx*0.5; b.vy+=j*ny*0.5;
+    if(-vn>200){ AU.bonk(); game.shake=Math.min(6,game.shake+2); a.sq=0.8; b.sq=0.8;
+      if(Math.random()<0.5) float(pick(YELLS.bonk), (a.x+b.x)/2, (a.y+b.y)/2-24, "#ffd0d0"); }
+  }
+}
 function levelClear(){
   const L = game.lv;
   const timeOk = game.playT <= L.par;
-  const allCoins = game.coinsGot >= game.coinsAll;
+  const allCoins = game.car.coins >= game.coinsAll;
   const stars = 1 + (timeOk?1:0) + (allCoins?1:0);
   const bonus = 50 + stars*25 + (game.rival? 100 : 0);   // +100 for smoking the boss
-  game.auraRun += bonus;
-  store.aura += Math.round(game.auraRun);
+  game.car.aura += bonus;
+  store.aura += Math.round(game.car.aura);
   const key = game.customId ? "c:"+game.customId : (game.levelIx>=0 ? game.levelIx : null);
   if(key!==null){
     const prev = store.stars[key]||0;
@@ -806,9 +1102,14 @@ function levelClear(){
   }
   if(!game.customId && game.levelIx>=0)
     store.unlocked = Math.max(store.unlocked, Math.min(LEVELS.length, game.levelIx+2));
+  let unlock;
+  if(game.levelIx===LEVELS.length-1 && !store.ownedCars.includes("goat")){
+    store.ownedCars.push("goat");
+    unlock = "🐐 GOLDEN GOAT UNLOCKED!";
+  }
   save();
-  game.clearData = { stars, t:0, time:game.playT, timeOk, allCoins, aura:Math.round(game.auraRun), shown:0,
-    msg: game.rival? "SMOKED HIM! 🏆" : undefined };
+  game.clearData = { stars, t:0, time:game.playT, timeOk, allCoins, aura:Math.round(game.car.aura), shown:0,
+    msg: game.rival? "SMOKED HIM! 🏆" : undefined, unlock };
   game.state = "clear";
   AU.win();
   confettiBurst(W/2, H*0.35, 130, L.hue);
@@ -868,28 +1169,40 @@ function updateFx(dt){
 /* ---------------- drawing ---------------- */
 function drawWorld(dt){
   const car = game.car;
-  // camera with lookahead
-  const lead = 0.22;
-  game.cam.x = lerp(game.cam.x, car.x+car.vx*lead, 1-Math.exp(-5*dt));
-  game.cam.y = lerp(game.cam.y, car.y+car.vy*lead, 1-Math.exp(-5*dt));
   const wW = game.cols*CELL, wH = game.rows*CELL;
-  let cx = game.cam.x, cy = game.cam.y;
-  if(wW>W) cx = clamp(cx, W/2-40, wW-W/2+40); else cx = wW/2;
-  if(wH>H) cy = clamp(cy, H/2-40, wH-H/2+40); else cy = wH/2;
   const sx = (Math.random()*2-1)*game.shake, sy = (Math.random()*2-1)*game.shake;
-
-  ctx.save();
-  ctx.translate(Math.round(W/2-cx+sx), Math.round(H/2-cy+sy));
+  let cx, cy, z = 1;
+  if(game.vs){
+    // whole maze on screen — no scrolling in VS
+    z = Math.min(W/(wW+30), H/(wH+30));
+    cx = wW/2; cy = wH/2;
+    ctx.save();
+    ctx.translate(W/2+sx, H/2+sy);
+    ctx.scale(z,z);
+    ctx.translate(-cx, -cy);
+  } else {
+    const lead = 0.22;
+    game.cam.x = lerp(game.cam.x, car.x+car.vx*lead, 1-Math.exp(-5*dt));
+    game.cam.y = lerp(game.cam.y, car.y+car.vy*lead, 1-Math.exp(-5*dt));
+    cx = game.cam.x; cy = game.cam.y;
+    if(wW>W) cx = clamp(cx, W/2-40, wW-W/2+40); else cx = wW/2;
+    if(wH>H) cy = clamp(cy, H/2-40, wH-H/2+40); else cy = wH/2;
+    ctx.save();
+    ctx.translate(Math.round(W/2-cx+sx), Math.round(H/2-cy+sy));
+  }
+  game._cam = {cx, cy, z};
   ctx.drawImage(game.groundCv, 0, 0);
   ctx.drawImage(game.skidCv, 0, 0);
 
   drawFinish();
   for(const d of game.doors) drawDoor(d);
   for(const g of game.gates) drawGate(g);
+  for(const cr of game.crates) drawCrate(cr);
+  game.portals.forEach((p,i)=>drawPortal(p,i));
   for(const cn of game.coins) if(!cn.got) drawCoin(cn);
   if(game.key && !game.key.got) drawKey(game.key);
   for(const gb of game.goobers) drawGoober(gb);
-  drawHintArrow();
+  if(!game.vs) drawHintArrow();
   if(game.rival){
     const rv = game.rival;
     ctx.save();
@@ -918,7 +1231,20 @@ function drawWorld(dt){
       ctx.fillText(p.emoji, game.pet.x, game.pet.y-4-bob);
     }
   }
+  if(game.car2) drawCar(game.car2);
   drawCar(car);
+  if(game.vs){
+    // name tags over both cars
+    ctx.font = "800 15px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    game.cars.forEach((c2,i)=>{
+      const nm = pName(i);
+      ctx.lineWidth = 4; ctx.strokeStyle = "rgba(10,12,20,0.85)";
+      ctx.strokeText(nm, c2.x, c2.y-28);
+      ctx.fillStyle = i? "#b06ee8" : vehicleById(store.car).trail();
+      ctx.fillText(nm, c2.x, c2.y-28);
+    });
+  }
   // particles
   for(const p of game.parts){
     ctx.globalAlpha = 1-p.t/p.life;
@@ -936,6 +1262,7 @@ function drawWorld(dt){
   }
   ctx.globalAlpha = 1;
   ctx.restore();
+  drawDarkness();
 }
 
 /* ---------------- vehicles & pets (the shop roster) ---------------- */
@@ -948,6 +1275,7 @@ const VEHICLES = [
   { id:"cart",    name:"CART RACER", price:30, trail:()=>"#b8c1d8" },
   { id:"toilet",  name:"SKIBIDI GT", price:35, trail:()=>"#f4f6ff" },
   { id:"ufo",     name:"THE SAUCER", price:40, trail:()=>"#9ad8ff", ownWheels:true, noLights:true },
+  { id:"goat",    name:"GOLDEN GOAT", price:0, trail:()=>"#ffd76a", secret:true },
 ];
 const PETS = [
   { id:"duck",  name:"DUCKY", price:8,  emoji:"🐤" },
@@ -1044,20 +1372,27 @@ function drawVehicleBody(vid){
     ctx.fillStyle="#c3cce0"; ctx.beginPath(); ctx.arc(0,-1,7,0,TAU); ctx.fill();
     ctx.fillStyle="rgba(255,255,255,0.5)"; ctx.beginPath(); ctx.arc(-2,-3,2.4,0,TAU); ctx.fill();
   }
-  else { // rocket
-    ctx.fillStyle = CONFIG.carColor;
-    ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,7); ctx.fill();
-    ctx.fillStyle = "rgba(255,255,255,0.12)";
-    ctx.beginPath(); ctx.roundRect(-17,-9.5,34,8,7); ctx.fill();
-    ctx.fillStyle = CONFIG.stripe;
-    ctx.fillRect(-17,-2.4,34,4.8);
-    ctx.fillStyle = "#1b2233";
-    ctx.beginPath(); ctx.roundRect(-6,-6.5,12,13,4); ctx.fill();
-    ctx.fillStyle = "rgba(160,220,255,0.4)";
-    ctx.beginPath(); ctx.roundRect(3,-5.5,3.4,11,2); ctx.fill();
-    ctx.fillStyle = "#20283c";
-    ctx.fillRect(-19,-8,4,16);
+  else if(vid==="goat"){
+    drawRocketBody("#ffd76a", "#fff6dd");
+    ctx.font = "10px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText("🐐", 11, 0);
   }
+  else { // rocket
+    drawRocketBody(CONFIG.carColor, CONFIG.stripe);
+  }
+}
+function drawRocketBody(bodyCol, stripeCol){
+  ctx.fillStyle = bodyCol;
+  ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,7); ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.12)";
+  ctx.beginPath(); ctx.roundRect(-17,-9.5,34,8,7); ctx.fill();
+  if(stripeCol){ ctx.fillStyle = stripeCol; ctx.fillRect(-17,-2.4,34,4.8); }
+  ctx.fillStyle = "#1b2233";
+  ctx.beginPath(); ctx.roundRect(-6,-6.5,12,13,4); ctx.fill();
+  ctx.fillStyle = "rgba(160,220,255,0.4)";
+  ctx.beginPath(); ctx.roundRect(3,-5.5,3.4,11,2); ctx.fill();
+  ctx.fillStyle = "#20283c";
+  ctx.fillRect(-19,-8,4,16);
 }
 function drawVehiclePreview(vid, x, y, scale, alpha){
   ctx.save(); ctx.translate(x,y); ctx.scale(scale,scale); ctx.rotate(-Math.PI/2);
@@ -1068,8 +1403,8 @@ function drawVehiclePreview(vid, x, y, scale, alpha){
   ctx.restore(); ctx.globalAlpha = 1;
 }
 function drawCar(car){
-  const vid = store.car || "rocket";
-  const v = vehicleById(vid);
+  const vid = car.p2 ? "p2" : (store.car || "rocket");
+  const v = car.p2 ? {trail:()=>"#b06ee8"} : vehicleById(vid);
   // motion trail
   for(let i=car.trail.length-1;i>=2;i--){
     const t = car.trail[i], a = (1-i/car.trail.length)*0.14;
@@ -1100,9 +1435,14 @@ function drawCar(car){
       ctx.beginPath(); ctx.moveTo(16, 5*s); ctx.lineTo(85, 22*s); ctx.lineTo(85, 2*s); ctx.closePath(); ctx.fill();
     }
   }
-  if(!v.ownWheels) stdWheels();
-  drawVehicleBody(vid);
-  drawNumDecal(vid);
+  if(car.p2){
+    stdWheels();
+    drawRocketBody("#b06ee8", "#e6d9ff");
+  } else {
+    if(!v.ownWheels) stdWheels();
+    drawVehicleBody(vid);
+    drawNumDecal(vid);
+  }
   if(!v.noLights){
     ctx.fillStyle = "#fff2c0";
     ctx.fillRect(15,-7,3,4); ctx.fillRect(15,3,3,4);
@@ -1191,6 +1531,59 @@ function drawGoober(gb){
   ctx.fillText("👾", 0, 0);
   ctx.restore();
 }
+function drawCrate(cr){
+  if(cr.broken) return;
+  const px=cr.c*CELL, py=cr.r*CELL;
+  ctx.fillStyle="#8a5f34"; ctx.beginPath(); ctx.roundRect(px+8,py+8,CELL-16,CELL-16,6); ctx.fill();
+  ctx.fillStyle="rgba(255,255,255,0.09)"; ctx.fillRect(px+8,py+8,CELL-16,9);
+  ctx.strokeStyle="#6e4a26"; ctx.lineWidth=5;
+  ctx.strokeRect(px+15,py+15,CELL-30,CELL-30);
+  ctx.beginPath();
+  ctx.moveTo(px+15,py+15); ctx.lineTo(px+CELL-15,py+CELL-15);
+  ctx.moveTo(px+CELL-15,py+15); ctx.lineTo(px+15,py+CELL-15);
+  ctx.stroke();
+}
+function drawPortal(p, i){
+  ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(game.t*(i?-2.2:2.2));
+  ctx.strokeStyle="#b98cff"; ctx.lineWidth=4; ctx.setLineDash([12,9]); ctx.globalAlpha=0.85;
+  ctx.beginPath(); ctx.arc(0,0,26,0,TAU); ctx.stroke();
+  ctx.setLineDash([]); ctx.globalAlpha=0.4;
+  ctx.beginPath(); ctx.arc(0,0,15,0,TAU); ctx.stroke();
+  ctx.restore(); ctx.globalAlpha=1;
+}
+function pName(i){ return (i? (CONFIG.player2Name||"P2") : (CONFIG.playerName||"P1")).slice(0,10); }
+function drawDarkness(){
+  if(!game.lv || !game.lv.dark || !game._cam) return;
+  const cam = game._cam;
+  if(!game._darkCv || game._darkCv.width!==W || game._darkCv.height!==H){
+    game._darkCv = document.createElement("canvas");
+    game._darkCv.width=W; game._darkCv.height=H;
+  }
+  const d = game._darkCv.getContext("2d");
+  d.globalCompositeOperation = "source-over";
+  d.clearRect(0,0,W,H);
+  d.fillStyle = "rgba(3,6,13,0.93)"; d.fillRect(0,0,W,H);
+  d.globalCompositeOperation = "destination-out";
+  const toS = (wx,wy)=>[(wx-cam.cx)*cam.z+W/2, (wy-cam.cy)*cam.z+H/2];
+  const hole = (wx,wy,r)=>{
+    const [hx,hy] = toS(wx,wy);
+    const g2 = d.createRadialGradient(hx,hy,r*0.25,hx,hy,r);
+    g2.addColorStop(0,"rgba(0,0,0,1)"); g2.addColorStop(1,"rgba(0,0,0,0)");
+    d.fillStyle=g2; d.beginPath(); d.arc(hx,hy,r,0,TAU); d.fill();
+  };
+  const car = game.car;
+  hole(car.x, car.y, 215);
+  const [hx,hy] = toS(car.x, car.y);
+  d.save(); d.translate(hx,hy); d.rotate(car.heading);
+  const cg = d.createLinearGradient(0,0,340,0);
+  cg.addColorStop(0,"rgba(0,0,0,0.95)"); cg.addColorStop(1,"rgba(0,0,0,0)");
+  d.fillStyle = cg;
+  d.beginPath(); d.moveTo(10,0); d.lineTo(340,125); d.lineTo(340,-125); d.closePath(); d.fill();
+  d.restore();
+  for(const cn of game.coins) if(!cn.got) hole(cn.x, cn.y, 44);
+  hole(game.finish.x, game.finish.y, 85);
+  ctx.drawImage(game._darkCv, 0, 0);
+}
 function drawFinish(){
   const f = game.finish;
   const pr = CELL*0.55 + Math.sin(game.t*3.5)*6;
@@ -1239,6 +1632,7 @@ function drawHUD(){
   const car = game.car;
   const pad = 12, top = 10 + safeT;
   ctx.textBaseline = "middle";
+  if(game.vs){ drawVsHUD(pad, top); return; }
   // aura counter (left)
   roundedPanel(pad, top, 168, 44, 12);
   ctx.font = "900 21px 'Avenir Next Condensed','Arial Narrow',sans-serif";
@@ -1246,13 +1640,13 @@ function drawHUD(){
   ctx.fillStyle = "#ffd76a";
   ctx.fillText("✦", pad+14, top+23);
   ctx.fillStyle = "#f4f6ff";
-  ctx.fillText("AURA  " + Math.round(store.aura + game.auraRun), pad+34, top+23);
+  ctx.fillText("AURA  " + Math.round(store.aura + game.car.aura), pad+34, top+23);
   // coins (left 2)
   roundedPanel(pad, top+52, 116, 40, 12);
   ctx.fillStyle = "#ffd76a"; ctx.beginPath(); ctx.arc(pad+22, top+72, 9, 0, TAU); ctx.fill();
   ctx.fillStyle = "#e8a930"; ctx.font="900 10px sans-serif"; ctx.textAlign="center"; ctx.fillText("A", pad+22, top+72);
   ctx.fillStyle = "#f4f6ff"; ctx.font = "800 19px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.textAlign="left";
-  ctx.fillText(game.coinsGot + "/" + game.coinsAll, pad+40, top+72);
+  ctx.fillText(game.car.coins + "/" + game.coinsAll, pad+40, top+72);
   // key badge
   if(game.hasKey){
     roundedPanel(pad+124, top+52, 44, 40, 12);
@@ -1336,6 +1730,60 @@ function drawHUD(){
     ctx.fillStyle = "#8b93ad"; ctx.font = "600 15px 'Avenir Next',sans-serif"; ctx.textAlign="center";
     ctx.fillText("ARROWS / WASD to drive  ·  SPACE = nitro  ·  P = pause", W/2, H-70);
     ctx.globalAlpha = 1;
+  }
+}
+function drawVsHUD(pad, top){
+  // player chips: name · coins · aura
+  const chip = (x, i, car)=>{
+    roundedPanel(x, top, 190, 44, 12);
+    ctx.font = "800 17px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+    ctx.textAlign="left"; ctx.textBaseline="middle";
+    ctx.fillStyle = i? "#b06ee8" : vehicleById(store.car).trail();
+    ctx.beginPath(); ctx.arc(x+18, top+22, 7, 0, TAU); ctx.fill();
+    ctx.fillStyle = "#f4f6ff";
+    ctx.fillText(pName(i)+"  ● "+car.coins+"  ✦ "+Math.round(car.aura), x+32, top+23);
+  };
+  chip(pad, 0, game.car);
+  chip(W-pad-88-8-190, 1, game.car2);
+  drawIconBtn(W-pad-88, top, 40, store.muted?"🔇":"🔊", "mute");
+  drawIconBtn(W-pad-42, top, 40, "⏸️", "pause");
+  // stopwatch (center)
+  roundedPanel(W/2-56, top, 112, 38, 12);
+  ctx.font = "800 19px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.textAlign="center"; ctx.fillStyle = "#f4f6ff";
+  ctx.fillText("⏱ " + game.playT.toFixed(1)+"s", W/2, top+20);
+  // countdown
+  if(game.count>0){
+    const n = Math.ceil(game.count);
+    const frac = 1-(game.count-Math.floor(game.count));
+    ctx.save();
+    ctx.translate(W/2, H*0.42);
+    ctx.scale(1+frac*0.4, 1+frac*0.4);
+    ctx.font = "italic 900 120px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillStyle="rgba(12,14,22,0.9)"; ctx.fillText(n, 6, 6);
+    ctx.fillStyle = ["#9ae64a","#ffd76a","#ff6a5e"][n-1]||"#f4f6ff";
+    ctx.fillText(n, 0, 0);
+    ctx.restore();
+  }
+  // both players' touch joysticks
+  if(input.hasTouch){
+    for(const j of [input.joy, input.joy2]){
+      if(!j) continue;
+      ctx.globalAlpha = 0.35;
+      ctx.strokeStyle="#f4f6ff"; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(j.ox, j.oy, 48, 0, TAU); ctx.stroke();
+      const dx=j.x-j.ox, dy=j.y-j.oy, m=Math.hypot(dx,dy)||1, cl=Math.min(48,m);
+      ctx.globalAlpha = 0.55; ctx.fillStyle="#f4f6ff";
+      ctx.beginPath(); ctx.arc(j.ox+dx/m*cl, j.oy+dy/m*cl, 26, 0, TAU); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    // center line hint during countdown
+    if(game.count>0){
+      ctx.globalAlpha=0.25; ctx.strokeStyle="#f4f6ff"; ctx.setLineDash([10,12]); ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(W/2, H*0.6); ctx.lineTo(W/2, H-20); ctx.stroke();
+      ctx.setLineDash([]); ctx.globalAlpha=1;
+    }
   }
 }
 const hudBtns = [];
@@ -1462,54 +1910,62 @@ function drawMap(){
   ctx.fillStyle = "#f4f6ff"; ctx.fillText(store.coinsBank, 46, 76+safeT);
   hudBtns.length = 0;
   drawIconBtn(W-54, 12+safeT, 40, store.muted?"🔇":"🔊", "mute");
-  // winding road with nodes
+  // serpentine road with nodes (two rows once the campaign got big)
   mapNodes.length = 0;
   const n = LEVELS.length;
-  const mx = Math.max(70, W*0.1), mw = W-mx*2;
-  const cyc = H*0.56, amp = Math.min(90, H*0.14);
-  ctx.strokeStyle = "rgba(139,147,173,0.35)"; ctx.lineWidth = 26; ctx.lineCap="round";
-  ctx.beginPath();
+  const mx = Math.max(56, W*0.07);
+  const perRow = Math.min(n, Math.max(5, Math.round((W-mx*2)/92)+1));
+  const nRows = Math.ceil(n/perRow);
+  const yTop = nRows>1 ? H*0.28 : H*0.5;
+  const rowGap = nRows>1 ? Math.min(150, H*0.44/(nRows-1)) : 0;
+  const pts = [];
   for(let i=0;i<n;i++){
-    const x = mx + mw*i/(n-1), y = cyc + Math.sin(i*1.9)*amp;
-    i? ctx.lineTo(x,y) : ctx.moveTo(x,y);
+    const row = (i/perRow)|0, col = i%perRow;
+    const t = perRow>1 ? col/(perRow-1) : 0.5;
+    const tt = row%2 ? 1-t : t;
+    pts.push([mx+(W-2*mx)*tt, yTop + row*rowGap + Math.sin(i*2.2)*9]);
   }
+  ctx.strokeStyle = "rgba(139,147,173,0.35)"; ctx.lineWidth = 24; ctx.lineCap="round"; ctx.lineJoin="round";
+  ctx.beginPath();
+  pts.forEach(([x,y],i)=> i? ctx.lineTo(x,y) : ctx.moveTo(x,y));
   ctx.stroke();
   ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 3; ctx.setLineDash([12,14]);
   ctx.stroke(); ctx.setLineDash([]);
+  const R = clamp((W-2*mx)/perRow*0.3, 20, 32);
   for(let i=0;i<n;i++){
-    const x = mx + mw*i/(n-1), y = cyc + Math.sin(i*1.9)*amp;
+    const [x,y] = pts[i];
     const unlocked = i < store.unlocked;
     const stars = store.stars[i]||0;
-    const R = 34;
     ctx.beginPath(); ctx.arc(x,y,R,0,TAU);
     ctx.fillStyle = unlocked? "#f4f6ff" : "rgba(60,66,86,0.9)";
     ctx.fill();
     if(unlocked && i===store.unlocked-1){
       ctx.strokeStyle = LEVELS[i].hue; ctx.lineWidth = 4+Math.sin(game.t*4)*1.5;
-      ctx.beginPath(); ctx.arc(x,y,R+7,0,TAU); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x,y,R+6,0,TAU); ctx.stroke();
     }
-    ctx.font = "900 26px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.font = "900 "+Math.round(R*0.62)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+    ctx.textAlign="center"; ctx.textBaseline="middle";
     if(unlocked){
       ctx.fillStyle = "#12151f";
-      ctx.fillText(""+(i+1), x, y-6);
-      ctx.font = "15px sans-serif";
-      ctx.fillText(LEVELS[i].emoji, x, y+13);
+      ctx.fillText(""+(i+1), x, y-R*0.18);
+      ctx.font = Math.round(R*0.42)+"px sans-serif";
+      ctx.fillText(LEVELS[i].emoji, x, y+R*0.42);
     } else {
-      ctx.font = "22px sans-serif";
+      ctx.font = Math.round(R*0.62)+"px sans-serif";
       ctx.fillText("🔒", x, y+1);
     }
     // stars under node
-    ctx.font = "15px sans-serif";
+    ctx.font = "11px sans-serif";
     for(let sIx=0;sIx<3;sIx++){
       ctx.globalAlpha = sIx<stars? 1 : 0.22;
-      ctx.fillText("⭐", x+(sIx-1)*18, y+R+16);
+      ctx.fillText("⭐", x+(sIx-1)*13, y+R+11);
     }
     ctx.globalAlpha = 1;
-    if(unlocked) mapNodes.push({x,y,r:R+10,ix:i});
+    if(unlocked) mapNodes.push({x,y,r:R+9,ix:i});
   }
   // car parked at current level
   const cur = Math.min(store.unlocked-1, n-1);
-  const cx2 = mx + mw*cur/(n-1), cy2 = cyc + Math.sin(cur*1.9)*amp;
+  const cx2 = pts[cur][0], cy2 = pts[cur][1];
   const fakeCar = { x:cx2, y:cy2-58, heading:-0.35+Math.sin(game.t*1.4)*0.06, sq:1, invuln:0, boost:0, trail:[] };
   const saveLv = game.lv; game.lv = LEVELS[cur]; drawCar(fakeCar); game.lv = saveLv;
   if(store.pet){
@@ -1528,7 +1984,8 @@ function drawMap(){
   const gy = H-104-safeB;
   drawBigBtn(12, gy, 118, 48, "🔨 BUILD", "build", "#ffb742", "#12151f");
   drawBigBtn(138, gy, 110, 48, "🛒 SHOP", "shop", "#7ef7ff", "#12151f");
-  let gcx = 262;
+  drawBigBtn(256, gy, 96, 48, "⚔️ VS", "vs", "#ff8fe0", "#12151f");
+  let gcx = 366;
   for(const cl of store.customLevels){
     const st = store.stars["c:"+cl.id]||0;
     roundedPanel(gcx, gy+2, 48, 46, 12, "rgba(20,24,36,0.92)");
@@ -1555,6 +2012,7 @@ function drawMap(){
       if(b.act==="mute") AU.toggleMute();
       else if(b.act==="build") enterBuilder(null);
       else if(b.act==="shop") game.state="shop";
+      else if(b.act==="vs") game.state="vspick";
       else if(b.act.startsWith("pc:")){ const cl = store.customLevels.find(c=>c.id===+b.act.slice(3)); if(cl) loadCustom(cl, "map"); }
       return;
     }
@@ -1855,6 +2313,123 @@ function drawBuild(dt){
   }
 }
 
+/* ---------------- VS MODE (two players, one screen) ---------------- */
+function startVs(L){
+  game.vsSource = L;
+  startLevel(L, {vs:true});
+}
+function vsEnd(winnerCar){
+  const p1win = winnerCar===game.car;
+  store.vsScore = store.vsScore || [0,0];
+  store.vsScore[p1win?0:1]++;
+  save();
+  game.vsResult = { p1win, t:0 };
+  game.state = "vsend";
+  AU.win();
+  confettiBurst(W/2, H*0.3, 110, p1win? vehicleById(store.car).trail() : "#b06ee8");
+}
+function drawVsPick(){
+  nightSky(); hudBtns.length = 0;
+  const top = 8+safeT;
+  drawIconBtn(12, top, 44, "↩️", "back");
+  ctx.font = "italic 900 30px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillStyle="#ff8fe0";
+  ctx.fillText("⚔️ VS RACE", 68, top+23);
+  const vsScore = store.vsScore||[0,0];
+  ctx.font = "800 18px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.fillStyle="#ffd76a"; ctx.textAlign="right";
+  ctx.fillText("SERIES  "+pName(0)+" "+vsScore[0]+" — "+vsScore[1]+" "+pName(1), W-16, top+23);
+  ctx.font = "600 15px 'Avenir Next',sans-serif"; ctx.fillStyle="#8b93ad"; ctx.textAlign="center";
+  ctx.fillText(input.hasTouch ? pName(0)+" = left thumb · "+pName(1)+" = right thumb"
+                              : pName(0)+" = ARROWS · "+pName(1)+" = WASD", W/2, top+64);
+  ctx.fillText("first to the flag wins — coins & aura count too!", W/2, top+86);
+  // arena cards
+  const cw = Math.min(210, (W-48)/3), chh = Math.min(120, H*0.26);
+  const x0 = Math.round((W-(cw*3+24))/2), y0 = top+108;
+  VS_ARENAS.forEach((a,i)=>{
+    const x = x0+i*(cw+12);
+    roundedPanel(x, y0, cw, chh, 16);
+    ctx.font = Math.round(chh*0.34)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillStyle="#f4f6ff";
+    ctx.fillText(a.emoji, x+cw/2, y0+chh*0.38);
+    ctx.font = "900 17px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+    ctx.fillStyle = a.hue;
+    ctx.fillText(a.name, x+cw/2, y0+chh-20);
+    hudBtns.push({x, y:y0, w:cw, h:chh, act:"a:"+i});
+  });
+  // custom tracks
+  if(store.customLevels.length){
+    ctx.font = "800 14px 'Avenir Next Condensed',sans-serif"; ctx.fillStyle="#8b93ad"; ctx.textAlign="left";
+    ctx.fillText("OR RACE A CUSTOM TRACK:", 16, y0+chh+30);
+    let cx3 = 16;
+    for(const cl of store.customLevels){
+      roundedPanel(cx3, y0+chh+42, 48, 46, 12, "rgba(20,24,36,0.92)");
+      ctx.font="17px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillStyle="#f4f6ff";
+      ctx.fillText(EMOJIS[cl.emojiIx||0], cx3+24, y0+chh+57);
+      ctx.font="800 11px 'Avenir Next Condensed',sans-serif"; ctx.fillStyle="#8b93ad";
+      ctx.fillText("T"+cl.id, cx3+24, y0+chh+77);
+      hudBtns.push({x:cx3, y:y0+chh+42, w:48, h:46, act:"ct:"+cl.id});
+      cx3 += 54;
+      if(cx3 > W-60) break;
+    }
+  }
+  for(const tp of input.taps.splice(0)){
+    if(tp.screen){ AU.ui(); startVs(VS_ARENAS[0]); return; }
+    for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){
+      AU.ui();
+      if(b.act==="back") game.state="map";
+      else if(b.act.startsWith("a:")) startVs(VS_ARENAS[+b.act.slice(2)]);
+      else if(b.act.startsWith("ct:")){ const cl=store.customLevels.find(c=>c.id===+b.act.slice(3)); if(cl) startVs(customToLevel(cl)); }
+      return;
+    }
+  }
+}
+function drawVsEnd(dt){
+  drawWorld(0.0001);
+  ctx.fillStyle = "rgba(8,10,16,0.72)"; ctx.fillRect(0,0,W,H);
+  drawConfettiScreen();
+  const r = game.vsResult; r.t += dt;
+  const inT = easeOut(clamp(r.t/0.3,0,1));
+  const winCol = r.p1win? vehicleById(store.car).trail() : "#b06ee8";
+  ctx.save();
+  ctx.translate(W/2, H*0.28+(1-inT)*40);
+  ctx.globalAlpha = inT;
+  ctx.rotate(-0.03);
+  ctx.font = "italic 900 60px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  const msg = pName(r.p1win?0:1).toUpperCase()+" WINS! 🏁";
+  ctx.fillStyle="rgba(12,14,22,0.9)"; ctx.fillText(msg, 5, 5);
+  ctx.fillStyle=winCol; ctx.fillText(msg, 0, 0);
+  ctx.restore();
+  ctx.globalAlpha = 1;
+  const c1=game.car, c2=game.car2;
+  const coinKing = c1.coins===c2.coins? -1 : (c1.coins>c2.coins? 0:1);
+  const auraKing = Math.round(c1.aura)===Math.round(c2.aura)? -1 : (c1.aura>c2.aura? 0:1);
+  ctx.font = "800 22px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillStyle = "#ffd76a";
+  ctx.fillText("● COINS   "+pName(0)+" "+c1.coins+" — "+c2.coins+" "+pName(1)+(coinKing>=0? "   👑 "+pName(coinKing):""), W/2, H*0.44);
+  ctx.fillStyle = "#9ae64a";
+  ctx.fillText("✦ AURA   "+pName(0)+" "+Math.round(c1.aura)+" — "+Math.round(c2.aura)+" "+pName(1)+(auraKing>=0? "   👑 "+pName(auraKing):""), W/2, H*0.44+38);
+  const vsScore = store.vsScore||[0,0];
+  ctx.font = "800 17px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.fillStyle="#8b93ad";
+  ctx.fillText("SERIES  "+pName(0)+" "+vsScore[0]+" — "+vsScore[1]+" "+pName(1), W/2, H*0.44+74);
+  if(r.t>1.0){
+    hudBtns.length = 0;
+    drawBigBtn(W/2-178, H*0.7, 170, 62, "REMATCH ▶", "retry", "#9ae64a", "#12151f");
+    drawBigBtn(W/2+8,   H*0.7, 170, 62, "🗺 MAP", "map", "rgba(60,66,86,0.95)", "#f4f6ff");
+    for(const tp of input.taps.splice(0)){
+      if(tp.screen){ AU.ui(); startVs(game.vsSource); return; }
+      for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){
+        AU.ui();
+        if(b.act==="retry") startVs(game.vsSource); else { game.vs=false; game.state="map"; }
+        return;
+      }
+    }
+  } else input.taps.length = 0;
+}
+
 /* ---------------- GARAGE SHOP (v3) ---------------- */
 let shopPending = null;
 function shopAction(a){
@@ -1944,15 +2519,27 @@ function drawShop(dt){
   const cw = Math.min(170, (W-24-gap*3)/4);
   const gridW = cw*4+gap*3;
   const x0 = Math.round((W-gridW)/2);
+  const vRows = Math.ceil(VEHICLES.length/4);
   const availY = H - y - safeB - 10;
-  const ch2 = Math.max(70, Math.min(96, Math.floor((availY - 62 - gap*3)/3)));
+  const ch2 = Math.max(58, Math.min(96, Math.floor((availY - 58 - gap*(vRows+1))/(vRows+1))));
   VEHICLES.forEach((v,i)=>{
     const cx3 = x0 + (i%4)*(cw+gap), cy3 = y + ((i/4)|0)*(ch2+gap);
+    const owned = store.ownedCars.includes(v.id);
+    if(v.secret && !owned){
+      roundedPanel(cx3, cy3, cw, ch2, 14, "rgba(14,17,26,0.85)");
+      ctx.font = Math.round(ch2*0.3)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.globalAlpha = 0.5; ctx.fillStyle="#f4f6ff";
+      ctx.fillText("👑", cx3+cw/2, cy3+ch2*0.36); ctx.globalAlpha = 1;
+      ctx.font = "800 12px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+      ctx.fillStyle = "#8b93ad";
+      ctx.fillText("??? — BEAT LEVEL "+LEVELS.length, cx3+cw/2, cy3+ch2-13);
+      return;
+    }
     shopCard(cx3, cy3, cw, ch2, "v:"+v.id,
       (px,py,al)=>drawVehiclePreview(v.id, px, py, Math.min(1.4, ch2/72), al),
-      v.name, v.price, store.ownedCars.includes(v.id), store.car===v.id);
+      v.name, v.price, owned, store.car===v.id);
   });
-  y += 2*(ch2+gap);
+  y += vRows*(ch2+gap);
   PETS.forEach((p,i)=>{
     const cx3 = x0 + i*(cw+gap);
     shopCard(cx3, y, cw, ch2, "p:"+p.id,
@@ -2014,10 +2601,11 @@ function drawClear(dt){
   // stats chips
   ctx.font = "800 21px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   const chips = [
-    ["● "+game.coinsGot+"/"+game.coinsAll+" COINS", cd.allCoins?"#9ae64a":"#ffd76a"],
+    ["● "+game.car.coins+"/"+game.coinsAll+" COINS", cd.allCoins?"#9ae64a":"#ffd76a"],
     ["⏱ "+cd.time.toFixed(1)+"s"+(cd.timeOk?"  ⚡FAST":""), cd.timeOk?"#9ae64a":"#f4f6ff"],
     ["✦ +"+cd.aura+" AURA", "#ffd76a"],
   ];
+  if(cd.unlock) chips.push([cd.unlock, "#ffd76a"]);
   chips.forEach((ch,i)=>{
     const y = 26+i*44;
     roundedPanel(-panW*0.32, y-17, panW*0.64, 36, 12, "rgba(20,24,36,0.92)");
@@ -2029,7 +2617,7 @@ function drawClear(dt){
   if(cd.t>1.2){
     const last = game.levelIx >= 0 && game.levelIx >= LEVELS.length-1;
     const bw = 168, bh = 62, gap = 18;
-    const bx1 = W/2-bw-gap/2, bx2 = W/2+gap/2, by = py+170;
+    const bx1 = W/2-bw-gap/2, bx2 = W/2+gap/2, by = py+170+(cd.unlock?46:0);
     hudBtns.length = 0;
     if(game.fromBuilder){
       drawBigBtn(bx1, by, bw, bh, "🔨 GARAGE", "garage", "rgba(60,66,86,0.95)", "#f4f6ff");
@@ -2126,15 +2714,31 @@ function tick(now){
   else if(game.state==="map"){ drawMap(); updateStickers(dt); drawStickers(); }
   else if(game.state==="build"){ drawBuild(dt); updateStickers(dt); drawStickers(); }
   else if(game.state==="shop"){ updateFx(dt); drawShop(dt); drawConfettiScreen(); drawStickers(); }
-  else if(game.state==="clear"){ updateFx(dt); drawClear(dt); }
+  else if(game.state==="vspick"){ drawVsPick(); updateStickers(dt); drawStickers(); }
+  else if(game.state==="vsend"){ updateFx(dt); drawVsEnd(dt); }
+  else if(game.state==="clear"){ updateFx(dt); drawClear(dt); drawStickers(); }
   else if(game.state==="cooked"){ updateFx(dt); drawCooked(dt); }
   else if(game.state==="play"){
     hudBtns.length = 0;
     if(!paused){
       readInput();
-      game.playT += dt;
-      updateCar(dt);
-      updateEntities(dt);
+      if(game.count>0){
+        const prev = Math.ceil(game.count);
+        game.count = Math.max(0, game.count-dt);
+        const cur2 = Math.ceil(game.count);
+        if(cur2!==prev){
+          AU.beep(cur2>0? 440 : 880, 0.2, "square", 0.15);
+          if(cur2===0) sticker("GO!!", "#9ae64a");
+        }
+      } else {
+        game.playT += dt;
+        updateCar(game.car, {vec:input.vec, nitro:input.nitro, main:true}, dt);
+        if(game.car2){
+          updateCar(game.car2, {vec:input.vec2, nitro:false}, dt);
+          carBump(game.car, game.car2);
+        }
+        updateEntities(dt);
+      }
       updateFx(dt);
     }
     if(game.state==="play" || game.state==="clear"){  // levelClear may fire mid-update
@@ -2204,7 +2808,7 @@ requestAnimationFrame(frame);
 
 // debug handle (safe to ignore)
 window.__tm = { game, loadLevel, loadCustom, store, CONFIG, bl, enterBuilder, encodeTrack, decodeTrack,
-  shopAction, VEHICLES, PETS, LEVELS,
+  shopAction, VEHICLES, PETS, LEVELS, VS_ARENAS, startVs,
   step(sec){ paused = false; let n = last; for(let i=0;i<sec*60;i++){ n += 1000/60; tick(n); } last = performance.now(); } };
 </script>
 </body>

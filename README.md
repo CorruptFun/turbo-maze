@@ -11,8 +11,17 @@ One HTML file, no dependencies. Runs on a tablet or with a keyboard.
 - Drift around corners for aura. Grab every coin. Find the key 🗝️ to open doors.
 - Watch out for the goober 👾 — he yoinks your coins (steal 'em back).
 - Finish fast + all coins = ⭐⭐⭐
-- **Level 5 is the BOSS RACE:** the goober got a car. Beat him to the flag —
-  lose and it's an instant rematch. (+100 aura for smoking him)
+- **15 levels** with ice to drift on 🧊, portals 🌀, smashable crates 💥,
+  goober gangs, a headlights-only night level 🌙, and three BOSS RACES
+  against the goober's purple car — lose and it's an instant rematch.
+  Beat level 15 to unlock the secret 🐐 GOLDEN GOAT.
+
+## ⚔️ VS mode (two players, one screen)
+Tap **⚔️ VS** on the map. The whole maze fits on screen — P1 steers with the
+left thumb (or ARROWS), P2 with the right thumb (or WASD). 3-2-1-GO, first
+to the flag wins, coins and aura crown their own champs, and the series
+score is remembered. You can also race any track you built.
+Set the names in the 🔧 TWEAK ZONE (`playerName`, `player2Name`).
 
 Feels too fast or the boss too hard? Open `index.html` and tweak
 `speed` and `bossSpeed` in the 🔧 TWEAK ZONE.
