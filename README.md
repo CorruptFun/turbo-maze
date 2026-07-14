@@ -12,16 +12,17 @@ One HTML file, no dependencies. Runs on a tablet or with a keyboard.
 - Watch out for the goober 👾 — he yoinks your coins (steal 'em back).
   Or hit him at **nitro speed** for the 💥 TAKEDOWN: +25 aura and he drops his loot.
 - Finish fast + all coins = ⭐⭐⭐
-- **15 levels** with ice to drift on 🧊, portals 🌀, smashable crates 💥,
-  goober gangs, a headlights-only night level 🌙, and three BOSS RACES
-  against the goober's purple car — lose and it's an instant rematch.
-  Beat level 15 to unlock the secret 🐐 GOLDEN GOAT.
+- **30 levels across 2 worlds** with ice to drift on 🧊, portals 🌀, smashable
+  crates 💥, goober gangs, headlights-only night levels 🌙, gate mazes 🚧 and
+  BOSS RACES against the goober's purple car — lose and it's an instant rematch.
+  Beat the very last level to unlock the secret 🐐 GOLDEN GOAT.
 
 ## 🌍 Worlds
-The campaign is grouped into **worlds** (starting with **TURBO BASICS**, the
-first 15). The title screen opens a **PICK YOUR WORLD** hub: tap a world to see
-its level map, or 🗺️ to come back. Beat every level in a world (1 ⭐ each) and
-the next world unlocks — each one a little brainier than the last.
+The campaign is grouped into **worlds**: **TURBO BASICS** (the first 15) then
+**BRAIN FREEZE** (15 tougher ones — ice, portals, gate mazes, goober swarms and
+meaner bosses). The title screen opens a **PICK YOUR WORLD** hub: tap a world to
+see its level map, or 🗺️ to come back. Beat every level in a world (1 ⭐ each)
+and the next world unlocks — each one a little brainier than the last.
 
 **Adding a world** (for grown-ups): drop 15 more levels into `LEVELS` in
 `index.html`, then add a `{ name, emoji, hue, blurb, count:15 }` entry to the
