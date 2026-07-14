@@ -28,6 +28,8 @@ const CONFIG = {
   playerName: "",                  // 👈 his name → goes on the license plate
   carColor:   "#ff4757",           // 👈 the car! try "#3ddc55" (tractor green)
   stripe:     "#ffe9a3",
+  speed:      0.85,                // 👈 car speed: 1 = fast & furious, 0.7 = kid cruise
+  bossSpeed:  95,                  // 👈 boss car speed on BOSS RACE (lower = easier)
   easyMode:   false,               // true = slower goober, more nitro
 };
 // Words the game yells. Keep 'em short — he's 7. Add your own!
@@ -59,7 +61,7 @@ const easeOut = t => 1-Math.pow(1-t,3);
    (hazard patrol paths are listed per level as [col,row] waypoints)
    ---------------------------------------------------------------- */
 const LEVELS = [
-{ name:"FIRST RACE", emoji:"🏁", hue:"#ffb742", par:26, grid:[
+{ name:"FIRST RACE", emoji:"🏁", hue:"#ffb742", par:30, grid:[
 "################",
 "#SS....##......#",
 "#SS.c..##..c...#",
@@ -72,7 +74,7 @@ const LEVELS = [
 "#.....##....FF.#",
 "################",
 ]},
-{ name:"COIN ALLEY", emoji:"🪙", hue:"#9ae64a", par:40, grid:[
+{ name:"COIN ALLEY", emoji:"🪙", hue:"#9ae64a", par:47, grid:[
 "##################",
 "#SS......#....c..#",
 "#SS.####.#.####..#",
@@ -89,7 +91,7 @@ const LEVELS = [
 "#............FF..#",
 "##################",
 ]},
-{ name:"KEY QUEST", emoji:"🗝️", hue:"#ff6a5e", par:55, grid:[
+{ name:"KEY QUEST", emoji:"🗝️", hue:"#ff6a5e", par:64, grid:[
 "####################",
 "#SS....#...c...#...#",
 "#SS.##.#.#####.#.#.#",
@@ -111,7 +113,7 @@ const LEVELS = [
 "#.............#.FF.#",
 "####################",
 ]},
-{ name:"GATE CITY", emoji:"🚧", hue:"#b98cff", par:45, grid:[
+{ name:"GATE CITY", emoji:"🚧", hue:"#b98cff", par:53, grid:[
 "####################",
 "#SS...*....G...c...#",
 "#SS........G.......#",
@@ -132,31 +134,22 @@ const LEVELS = [
 "##..#..#....##....F#",
 "####################",
 ]},
-{ name:"BOSS ROAD", emoji:"👾", hue:"#53e0ff", par:75, grid:[
-"######################",
-"#SS......c...#...c...#",
-"#SS.########.#.###.#.#",
-"#...#........#...#.#.#",
-"#.#.#.########.#.#.#.#",
-"#.#.#.#......#.#.#.#.#",
-"#.#.#.#.####.#.#...#.#",
-"#.#...#.#c...#.####.##",
-"#.#####.#.####....#..#",
-"#.#...c.#....####.##.#",
-"#.#.#####G##....#..#.#",
-"#.#.#....G.####.##.#.#",
-"#.#.#.##.#....#.c..#.#",
-"#.#.#..#.####.####.#.#",
-"#.#.##.#....#....#.#.#",
-"#.#..#.####.####.#.#.#",
-"#.##.#..c.#..n#..#.#.#",
-"#..#.####.##.#.###.#.#",
-"##.#....#..#.#.#...#.#",
-"#..####.##.#.#.#.###.#",
-"#.k#..c.#..#.c.#..D.F#",
-"#..#....#......#..D.F#",
-"######################",
-], hazards:[ {path:[[10,3],[10,9],[4,9],[4,3]], speed:105} ]},
+{ name:"BOSS RACE", emoji:"👾", hue:"#53e0ff", par:48, rival:true, grid:[
+"####################",
+"#SS......#.......c.#",
+"#SS.####.#.######..#",
+"#..*.....#.......#.#",
+"#.####.#.###.###.#.#",
+"#.#c...#...n#....#.#",
+"#.#.####.###.####..#",
+"#...#..c.....#...c.#",
+"#.###.###.##.#.###.#",
+"#.#..c.#....#....#.#",
+"#.#.##.#.##.#.##.#.#",
+"#...c.#...#..c..#FF#",
+"#.....c...*......FF#",
+"####################",
+]},
 ];
 
 /* ---------------------------------------------------------------- */
@@ -402,11 +395,21 @@ function startLevel(L, meta){
       seg:0, x:(h.path[0][0]+0.5)*CELL, y:(h.path[0][1]+0.5)*CELL,
       speed:(CONFIG.easyMode? h.speed*0.7 : h.speed), ph:Math.random()*TAU });
   });
+  // boss race: the goober drives his own car, start to finish
+  game.rival = null;
+  if(L.rival){
+    const path = bfsPathCells(game.startCell, [game.finish.c, game.finish.r]);
+    game.rival = { wp: path.map(([c,r])=>[(c+0.5)*CELL,(r+0.5)*CELL]),
+      i:0, x:(game.startCell[0]+0.5)*CELL, y:(game.startCell[1]+0.5)*CELL,
+      a:head, speed:(CONFIG.bossSpeed||95), delay:1.5, done:false };
+    setTimeout(()=>{ if(game.rival && game.state==="play") sticker("BEAT HIM TO THE FLAG!", "#ff8fe0"); }, 1900);
+  }
   prerenderGround(L);
   const sk = document.createElement("canvas");
   sk.width = game.cols*CELL; sk.height = game.rows*CELL;
   game.skidCv = sk; game.skidCtx = sk.getContext("2d");
   updateObjective(true);
+  game.raceTotal = game.flow ? Math.max(1, game.flow[game.startCell[1]][game.startCell[0]]) : 1;
   game.state = "play";
   sticker(L.emoji+" "+L.name, L.hue);
   setTimeout(()=> game.state==="play" && sticker("GO GO GO!", "#ffffff"), 900);
@@ -421,6 +424,28 @@ function isSolid(c,r){
   for(const d of game.doors) if(d.c===c && d.r===r && d.anim<1) return true;
   for(const g of game.gates) if(g.c===c && g.r===r && g.open<0.5) return true;
   return false;
+}
+
+/* BFS shortest path between two cells (walls only) — the boss's racing line */
+function bfsPathCells(start, goal){
+  const R = game.rows, C = game.cols;
+  const prev = Array.from({length:R},()=>new Array(C).fill(null));
+  prev[start[1]][start[0]] = start;
+  const q = [start];
+  while(q.length){
+    const [c,r] = q.shift();
+    if(c===goal[0] && r===goal[1]) break;
+    for(const [dc,dr] of [[1,0],[-1,0],[0,1],[0,-1]]){
+      const nc=c+dc, nr=r+dr;
+      if(nc<0||nr<0||nc>=C||nr>=R||game.solid[nr][nc]||prev[nr][nc]) continue;
+      prev[nr][nc] = [c,r]; q.push([nc,nr]);
+    }
+  }
+  if(!prev[goal[1]][goal[0]]) return [start];
+  const path = []; let cur = goal;
+  while(!(cur[0]===start[0] && cur[1]===start[1])){ path.unshift(cur); cur = prev[cur[1]][cur[0]]; }
+  path.unshift(start);
+  return path;
 }
 
 /* BFS flow field toward current objective (for the helper arrow) */
@@ -532,16 +557,17 @@ function updateCar(dt){
   const hasInput = Math.hypot(iv.x,iv.y) > 0.15;
   const boosting = input.nitro && car.nitroMeter>0 && hasInput;
 
+  const SPD = CONFIG.speed || 1;
   if(car.spinT>0){ car.spinT-=dt; car.heading += dt*12; }
   else if(hasInput){
     const want = Math.atan2(iv.y, iv.x);
     const sp = Math.hypot(car.vx, car.vy);
-    const tRate = lerp(9, 3.1, clamp(sp/460,0,1));   // nimble slow, wide fast
+    const tRate = lerp(9, 3.1, clamp(sp/(460*SPD),0,1));   // nimble slow, wide fast
     const d = angDiff(car.heading, want);
     car.heading += clamp(d, -tRate*dt, tRate*dt);
   }
-  const maxSp = boosting? 660 : 400;
-  const accel = boosting? 1300 : 750;
+  const maxSp = (boosting? 660 : 400)*SPD;
+  const accel = (boosting? 1300 : 750)*SPD;
   if(hasInput && car.spinT<=0){
     car.vx += Math.cos(car.heading)*accel*dt * Math.hypot(iv.x,iv.y);
     car.vy += Math.sin(car.heading)*accel*dt * Math.hypot(iv.x,iv.y);
@@ -552,7 +578,7 @@ function updateCar(dt){
   let latX = car.vx - fwd*fx, latY = car.vy - fwd*fy;
   const sp = Math.hypot(car.vx,car.vy);
   const turningHard = hasInput && Math.abs(angDiff(car.heading, Math.atan2(iv.y,iv.x))) > 0.55;
-  const grip = (turningHard && sp>230) ? 2.4 : 8.5;
+  const grip = (turningHard && sp>230*SPD) ? 2.4 : 8.5;
   const latK = Math.exp(-grip*dt);
   latX*=latK; latY*=latK;
   fwd *= hasInput ? Math.exp(-0.35*dt) : Math.exp(-2.2*dt);
@@ -561,9 +587,9 @@ function updateCar(dt){
   if(spd2 > maxSp){ car.vx *= maxSp/spd2; car.vy *= maxSp/spd2; }
 
   // drift state
-  const slip = spd2>200 ? Math.abs(angDiff(car.heading, Math.atan2(car.vy,car.vx))) : 0;
+  const slip = spd2>200*SPD ? Math.abs(angDiff(car.heading, Math.atan2(car.vy,car.vx))) : 0;
   const wasDrift = car.drifting;
-  car.drifting = slip>0.32 && spd2>210;
+  car.drifting = slip>0.32 && spd2>210*SPD;
   if(car.drifting){
     game.driftT += dt;
     if(((game.driftT*10)|0) % 4 === 0) spark(car);
@@ -700,7 +726,8 @@ function updateEntities(dt){
       if(!p.cool){
         p.cool = 0.9;
         const sp = Math.hypot(car.vx,car.vy)||1;
-        car.vx += car.vx/sp*330; car.vy += car.vy/sp*330;
+        const kick = 330*(CONFIG.speed||1);
+        car.vx += car.vx/sp*kick; car.vy += car.vy/sp*kick;
         car.nitroMeter = Math.min(100, car.nitroMeter+25);
         car.sq = 1.25; AU.nitro(); game.shake = Math.min(6, game.shake+3);
         float("BOOST!", car.x, car.y-40, game.lv.hue);
@@ -736,16 +763,40 @@ function updateEntities(dt){
   }
   // finish
   if(dist(car.x,car.y,game.finish.x,game.finish.y) < CELL*0.75) levelClear();
+  // the boss car races the solution path (with rubber-banding so it stays close)
+  const rv = game.rival;
+  if(rv && !rv.done && game.state==="play"){
+    if(rv.delay>0) rv.delay -= dt;
+    else if(rv.i < rv.wp.length-1){
+      const t = rv.wp[rv.i+1];
+      const d = dist(rv.x,rv.y,t[0],t[1]) || 0.001;
+      const pc = clamp(Math.floor(car.x/CELL),0,game.cols-1), pr = clamp(Math.floor(car.y/CELL),0,game.rows-1);
+      const pLeft = (game.flow && game.flow[pr][pc]>=0) ? game.flow[pr][pc] : 99;
+      const rLeft = rv.wp.length-1-rv.i;
+      const band = clamp(1 + (rLeft-pLeft)*0.03, 0.75, 1.3);
+      const spd = rv.speed*band;
+      if(d < spd*dt+2){ rv.x=t[0]; rv.y=t[1]; rv.i++; }
+      else { rv.x += (t[0]-rv.x)/d*spd*dt; rv.y += (t[1]-rv.y)/d*spd*dt; }
+      rv.a += angDiff(rv.a, Math.atan2(t[1]-rv.y, t[0]-rv.x))*Math.min(1,dt*8);
+      if(Math.random()<0.15) puff(rv.x-Math.cos(rv.a)*18, rv.y-Math.sin(rv.a)*18, "rgba(176,110,232,0.25)");
+    }
+    if(rv.i >= rv.wp.length-1){ rv.done = true; rivalWins(); }
+  }
   // helper arrow timer
   const spd = Math.hypot(car.vx,car.vy);
   game.hintT = spd<60 ? game.hintT+dt : Math.max(0, game.hintT-dt*2);
+}
+function rivalWins(){
+  game.state = "cooked"; game.cookedT = 0;
+  game.shake = 8;
+  AU.goober();
 }
 function levelClear(){
   const L = game.lv;
   const timeOk = game.playT <= L.par;
   const allCoins = game.coinsGot >= game.coinsAll;
   const stars = 1 + (timeOk?1:0) + (allCoins?1:0);
-  const bonus = 50 + stars*25;
+  const bonus = 50 + stars*25 + (game.rival? 100 : 0);   // +100 for smoking the boss
   game.auraRun += bonus;
   store.aura += Math.round(game.auraRun);
   const key = game.customId ? "c:"+game.customId : (game.levelIx>=0 ? game.levelIx : null);
@@ -756,7 +807,8 @@ function levelClear(){
   if(!game.customId && game.levelIx>=0)
     store.unlocked = Math.max(store.unlocked, Math.min(LEVELS.length, game.levelIx+2));
   save();
-  game.clearData = { stars, t:0, time:game.playT, timeOk, allCoins, aura:Math.round(game.auraRun), shown:0 };
+  game.clearData = { stars, t:0, time:game.playT, timeOk, allCoins, aura:Math.round(game.auraRun), shown:0,
+    msg: game.rival? "SMOKED HIM! 🏆" : undefined };
   game.state = "clear";
   AU.win();
   confettiBurst(W/2, H*0.35, 130, L.hue);
@@ -838,6 +890,24 @@ function drawWorld(dt){
   if(game.key && !game.key.got) drawKey(game.key);
   for(const gb of game.goobers) drawGoober(gb);
   drawHintArrow();
+  if(game.rival){
+    const rv = game.rival;
+    ctx.save();
+    ctx.translate(rv.x, rv.y);
+    ctx.fillStyle = "#b06ee8"; ctx.globalAlpha = 0.3;
+    ctx.beginPath(); ctx.ellipse(0, 0, 24, 17, 0, 0, TAU); ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.rotate(rv.a);
+    stdWheels();
+    ctx.fillStyle = "#b06ee8"; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,7); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.12)"; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,8,7); ctx.fill();
+    ctx.fillStyle = "#20283c"; ctx.fillRect(-19,-8,4,16);
+    ctx.fillStyle = "#1b2233"; ctx.beginPath(); ctx.roundRect(-7,-7,14,14,4); ctx.fill();
+    ctx.font = "12px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText("👾", 0, 0);
+    ctx.fillStyle = "#fff2c0"; ctx.fillRect(15,-7,3,4); ctx.fillRect(15,3,3,4);
+    ctx.restore();
+  }
   if(store.pet && game.pet){
     const p = PETS.find(p=>p.id===store.pet);
     if(p){
@@ -1208,6 +1278,28 @@ function drawHUD(){
   // pause + mute buttons (right, big touch targets)
   drawIconBtn(W-pad-88, top, 40, store.muted?"🔇":"🔊", "mute");
   drawIconBtn(W-pad-42, top, 40, "⏸️", "pause");
+  // boss race progress bar
+  if(game.rival){
+    const rv = game.rival;
+    const bw3 = Math.min(240, W*0.32), bx3 = W/2-bw3/2, by3 = top+44;
+    roundedPanel(bx3, by3, bw3, 26, 13);
+    ctx.strokeStyle = "rgba(255,255,255,0.2)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(bx3+14, by3+13); ctx.lineTo(bx3+bw3-26, by3+13); ctx.stroke();
+    ctx.font = "13px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillStyle = "#f4f6ff";
+    ctx.fillText("🏁", bx3+bw3-15, by3+13);
+    const track = bw3-44;
+    const pc = clamp(Math.floor(car.x/CELL),0,game.cols-1), pr = clamp(Math.floor(car.y/CELL),0,game.rows-1);
+    const pLeft = (game.flow && game.flow[pr][pc]>=0) ? game.flow[pr][pc] : game.raceTotal;
+    const pProg = clamp(1 - pLeft/game.raceTotal, 0, 1);
+    const rProg = clamp(rv.i/Math.max(1, rv.wp.length-1), 0, 1);
+    ctx.fillStyle = "#b06ee8";
+    ctx.beginPath(); ctx.arc(bx3+14+track*rProg, by3+13, 7, 0, TAU); ctx.fill();
+    ctx.font = "9px sans-serif"; ctx.fillText("👾", bx3+14+track*rProg, by3+13);
+    ctx.fillStyle = vehicleById(store.car).trail();
+    ctx.strokeStyle = "#f4f6ff"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(bx3+14+track*pProg, by3+13, 6.5, 0, TAU); ctx.fill(); ctx.stroke();
+  }
   // nitro meter (bottom center-left)
   const nw = Math.min(280, W*0.36), nx = input.hasTouch ? W/2-nw/2 : pad, ny = H-40-safeB;
   roundedPanel(nx, ny-14, nw, 30, 15);
@@ -1583,7 +1675,7 @@ function customToLevel(cl){
   }).join(""));
   const S=findIn(rows,"S"), F=findIn(rows,"F");
   const d = bfsGrid(rows, S[0], S[1], ch=>ch!=="#");
-  const par = Math.max(15, Math.round(d[F[1]][F[0]]*1.15+8));
+  const par = Math.max(15, Math.round(d[F[1]][F[0]]*1.35+8));
   const hazards = hz.map(([c,r])=>{
     const open=(cc,rr)=> rr>=0&&rr<rows.length&&cc>=0&&cc<rows[0].length&&rows[rr][cc]!=="#"&&rows[rr][cc]!=="D";
     let l=c; while(open(l-1,r)) l--;
@@ -1975,6 +2067,39 @@ function drawBigBtn(x,y,w,h,label,act,bg,fg){
   hudBtns.push({x,y,w,h,act});
 }
 
+function drawCooked(dt){
+  drawWorld(0.0001);
+  ctx.fillStyle = "rgba(8,10,16,0.72)"; ctx.fillRect(0,0,W,H);
+  game.cookedT += dt;
+  const inT = easeOut(clamp(game.cookedT/0.3,0,1));
+  ctx.save();
+  ctx.translate(W/2, H*0.34 + (1-inT)*50);
+  ctx.globalAlpha = inT;
+  ctx.rotate(-0.03);
+  ctx.font = "italic 900 60px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillStyle = "rgba(12,14,22,0.9)"; ctx.fillText("HE BEAT YOU! 💀", 5, 5);
+  ctx.fillStyle = "#ff8fe0"; ctx.fillText("HE BEAT YOU! 💀", 0, 0);
+  ctx.font = "800 20px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.fillStyle = "#8b93ad";
+  ctx.fillText("the goober is doing donuts on the finish line", 0, 54);
+  ctx.restore();
+  ctx.globalAlpha = 1;
+  if(game.cookedT > 0.8){
+    hudBtns.length = 0;
+    drawBigBtn(W/2-178, H*0.58, 170, 62, "REMATCH ▶", "retry", "#9ae64a", "#12151f");
+    drawBigBtn(W/2+8,   H*0.58, 170, 62, "🗺 MAP", "map", "rgba(60,66,86,0.95)", "#f4f6ff");
+    for(const tp of input.taps.splice(0)){
+      if(tp.screen){ AU.ui(); loadLevel(game.levelIx); return; }
+      for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){
+        AU.ui();
+        if(b.act==="retry") loadLevel(game.levelIx); else game.state="map";
+        return;
+      }
+    }
+  } else input.taps.length = 0;
+}
+
 let paused = false;
 function togglePause(){ if(game.state==="play"){ paused=!paused; AU.ui(); } }
 document.addEventListener("visibilitychange", ()=>{
@@ -1989,7 +2114,7 @@ function frame(now){
   tick(now);
 }
 function tick(now){
-  const dt = Math.min(0.05, (now-last)/1000); last = now;
+  const dt = Math.max(0, Math.min(0.05, (now-last)/1000)); last = now;
   game.t += dt;
   ctx.setTransform(DPR,0,0,DPR,0,0);
   ctx.clearRect(0,0,W,H);
@@ -2002,6 +2127,7 @@ function tick(now){
   else if(game.state==="build"){ drawBuild(dt); updateStickers(dt); drawStickers(); }
   else if(game.state==="shop"){ updateFx(dt); drawShop(dt); drawConfettiScreen(); drawStickers(); }
   else if(game.state==="clear"){ updateFx(dt); drawClear(dt); }
+  else if(game.state==="cooked"){ updateFx(dt); drawCooked(dt); }
   else if(game.state==="play"){
     hudBtns.length = 0;
     if(!paused){
@@ -2078,8 +2204,8 @@ requestAnimationFrame(frame);
 
 // debug handle (safe to ignore)
 window.__tm = { game, loadLevel, loadCustom, store, CONFIG, bl, enterBuilder, encodeTrack, decodeTrack,
-  shopAction, VEHICLES, PETS,
-  step(sec){ paused = false; let n = last; for(let i=0;i<sec*60;i++){ n += 1000/60; tick(n); } } };
+  shopAction, VEHICLES, PETS, LEVELS,
+  step(sec){ paused = false; let n = last; for(let i=0;i<sec*60;i++){ n += 1000/60; tick(n); } last = performance.now(); } };
 </script>
 </body>
 </html>

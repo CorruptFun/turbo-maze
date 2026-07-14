@@ -11,6 +11,11 @@ One HTML file, no dependencies. Runs on a tablet or with a keyboard.
 - Drift around corners for aura. Grab every coin. Find the key 🗝️ to open doors.
 - Watch out for the goober 👾 — he yoinks your coins (steal 'em back).
 - Finish fast + all coins = ⭐⭐⭐
+- **Level 5 is the BOSS RACE:** the goober got a car. Beat him to the flag —
+  lose and it's an instant rematch. (+100 aura for smoking him)
+
+Feels too fast or the boss too hard? Open `index.html` and tweak
+`speed` and `bossSpeed` in the 🔧 TWEAK ZONE.
 
 ## Build your own tracks (v2)
 Tap **🔨 BUILD** on the map. Finger-paint walls and roads, drop coins, keys,
