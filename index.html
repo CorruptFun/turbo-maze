@@ -545,7 +545,7 @@ const game = {
   flow:null, objective:null,
   cam:{x:0,y:0}, shake:0,
   parts:[], floats:[], stickers:[], confetti:[],
-  coinsGot:0, coinsAll:0, hasKey:false, auraRun:0, driftT:0, bonks:0,
+  coinsAll:0, hasKey:false, bonks:0,
   clearData:null, hintT:0,
   attract:{a:0},
 };
@@ -2808,7 +2808,7 @@ requestAnimationFrame(frame);
 
 // debug handle (safe to ignore)
 window.__tm = { game, loadLevel, loadCustom, store, CONFIG, bl, enterBuilder, encodeTrack, decodeTrack,
-  shopAction, VEHICLES, PETS, LEVELS, VS_ARENAS, startVs,
+  shopAction, VEHICLES, PETS, LEVELS, VS_ARENAS, startVs, customToLevel,
   step(sec){ paused = false; let n = last; for(let i=0;i<sec*60;i++){ n += 1000/60; tick(n); } last = performance.now(); } };
 </script>
 </body>
