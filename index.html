@@ -606,6 +606,141 @@ const VS_ARENAS = [
 ]},
 ];
 
+/* ---------------------------------------------------------------------
+   CO-OP arenas — two players, ONE shared screen, ONE shared goal.
+   Both cars must reach the flag. P = pressure plate, Q = linked gate:
+   while ANY car sits on a P, ALL Q gates open — so one holds the door
+   for the other, then they swap. S = P1 start, 2 = P2 start.
+   --------------------------------------------------------------------- */
+const COOP_LEVELS = [
+{ name:"TEAM UP", emoji:"🤝", hue:"#7ef7ff", par:32, grid:[
+"###############",
+"#S..P..#..P..F#",
+"#......#......#",
+"#2.....Q......#",
+"#....c.#.c....#",
+"###############",
+]},
+{ name:"YOU FIRST", emoji:"🚪", hue:"#7ef7ff", par:34, grid:[
+"###############",
+"#S.....#..P.F.#",
+"#..P...Q......#",
+"#2....c#....c.#",
+"###############",
+]},
+{ name:"HOLD ON", emoji:"🧊", hue:"#7ec9ff", par:40, grid:[
+"################",
+"#S..P...#..~~.F#",
+"#2......#..~~..#",
+"#.....c.Q..~~.P#",
+"#...c...#.....c#",
+"################",
+]},
+{ name:"TWO PADS", emoji:"⬇", hue:"#7ef7ff", par:38, grid:[
+"################",
+"#S..P...#..c..P#",
+"#.......#.....F#",
+"#2..P...Q..c...#",
+"#...c...#......#",
+"################",
+]},
+{ name:"THE SPLIT", emoji:"↔", hue:"#7ef7ff", par:44, grid:[
+"################",
+"#S..#.P.#..c.F.#",
+"#...#...Q....P.#",
+"#2..#.c.#..c...#",
+"#........#.....#",
+"################",
+]},
+{ name:"RELAY", emoji:"🏁", hue:"#9ae64a", par:46, grid:[
+"#################",
+"#S..P.#..c.#..F.#",
+"#2....Q....Q..P.#",
+"#.....#..c.#....#",
+"#..c..#....#..c.#",
+"#################",
+]},
+{ name:"ICE PAIR", emoji:"🧊", hue:"#7ec9ff", par:46, grid:[
+"#################",
+"#S..~~..#..P..F.#",
+"#2..~~..#.....c.#",
+"#...~~.cQ.......#",
+"#..P~~..#..c..P.#",
+"#################",
+]},
+{ name:"COIN RUN", emoji:"🪙", hue:"#ffd76a", par:48, grid:[
+"#################",
+"#S.c.P..#.c..c.F#",
+"#.......#......P#",
+"#2.....cQ..c....#",
+"#...c...#....c.c#",
+"#..P....#.......#",
+"#################",
+]},
+{ name:"ZIGZAG", emoji:"🔀", hue:"#7ef7ff", par:50, grid:[
+"################",
+"#S...#.P.#..c.F#",
+"#....#...Q....P#",
+"#2...#.c.#..c..#",
+"#......#.#.....#",
+"#c...P.#.#....c#",
+"################",
+]},
+{ name:"DOUBLE DOORS", emoji:"🚪", hue:"#9ae64a", par:52, grid:[
+"#################",
+"#S..P.#..c.#..F.#",
+"#.....Q....Q.P..#",
+"#2....#..c.#..c.#",
+"#..c..#....#....#",
+"#.....#.c..#..c.#",
+"#################",
+]},
+{ name:"SLIP RELAY", emoji:"🧊", hue:"#7ec9ff", par:54, grid:[
+"#################",
+"#S.P.~#..~~#..F.#",
+"#2...~Q..~~Q..P.#",
+"#....~#..~~#.c..#",
+"#..c.~#....#..c.#",
+"#################",
+]},
+{ name:"THE KNOT", emoji:"🧩", hue:"#7ef7ff", par:54, grid:[
+"################",
+"#S.#.P..#..c.F.#",
+"#..#....Q...P..#",
+"#2.#.c..#..#...#",
+"#....#..#....c.#",
+"#c.P.#..#......#",
+"################",
+]},
+{ name:"FAR PADS", emoji:"⏳", hue:"#ff8fe0", par:54, grid:[
+"##################",
+"#S....c.#......P.#",
+"#2......#.......c#",
+"#...P...Q......F.#",
+"#c......#....c...#",
+"#.......#......P.#",
+"##################",
+]},
+{ name:"BIG VAULT", emoji:"🔒", hue:"#9ae64a", par:58, grid:[
+"###################",
+"#S..P..#..c..#...F#",
+"#......Q.....Q..P.#",
+"#2.....#..c..#..c.#",
+"#...c..#.....#....#",
+"#..c...#..c..#..c.#",
+"###################",
+]},
+{ name:"GRAND TEAM", emoji:"👑", hue:"#ffd76a", par:62, grid:[
+"###################",
+"#S.P.~~#..c..#.~.F#",
+"#2...~~Q.....Q.~.P#",
+"#....~~#..c..#.~.c#",
+"#..c.~~#.....#.~..#",
+"#....~~#..c..#.~.c#",
+"###################",
+]},
+];
+
 /* ---------------------------------------------------------------- */
 const cv = document.getElementById("cv");
 const ctx = cv.getContext("2d");
@@ -639,7 +774,7 @@ window.addEventListener("resize", resize); resize();
 /* ---------------- save data ---------------- */
 let store = { unlocked:1, stars:{}, aura:0, coinsBank:0, muted:false, customLevels:[], nextTrackId:0,
   ownedCars:["rocket"], car:"rocket", ownedPets:[], pet:null, carNum:67, shopGift:false,
-  curSeries:0, seriesCleared:{} };
+  curSeries:0, seriesCleared:{}, coopUnlocked:1, coopStars:{} };
 try { const s = localStorage.getItem("turboMaze"); if(s) store = Object.assign(store, JSON.parse(s)); } catch(e){}
 function save(){ try { localStorage.setItem("turboMaze", JSON.stringify(store)); } catch(e){} }
 
@@ -759,7 +894,7 @@ cv.addEventListener("touchstart", e=>{
   for(const t of e.changedTouches){
     const x=t.clientX, y=t.clientY;
     input.taps.push({x, y});
-    if(game.state==="play" && game.vs){
+    if(game.state==="play" && (game.vs || game.coop)){
       if(x < W/2){ if(!input.joy) input.joy = {id:t.identifier, ox:x, oy:y, x, y}; }
       else if(!input.joy2) input.joy2 = {id:t.identifier, ox:x, oy:y, x, y};
     }
@@ -797,7 +932,7 @@ window.addEventListener("mousemove", e=>{ if(bl.ptr && bl.ptr.id==="m"){ bl.ptr.
 window.addEventListener("mouseup", ()=>{ if(bl.ptr && bl.ptr.id==="m"){ bl.ptr=null; bl.lastCell=null; } });
 window.addEventListener("contextmenu", e=> e.preventDefault());
 function readInput(){
-  if(game.vs){
+  if(game.vs || game.coop){
     const a = keyVecArrows(), w = keyVecWASD();
     const j1 = joyVec(input.joy), j2 = joyVec(input.joy2);
     input.vec  = (Math.hypot(j1.x,j1.y) > Math.hypot(a.x,a.y)) ? j1 : a;
@@ -851,9 +986,13 @@ function startLevel(L, meta){
   game.rows = g.length; game.cols = g[0].length;
   game.solid = []; game.road = []; game.coins=[]; game.pads=[]; game.gates=[]; game.doors=[]; game.goobers=[]; game.key=null;
   game.slick = []; game.portals = []; game.crates = [];
+  game.plates2 = []; game.coopGates = [];
   game.hasKey=false; game.playT=0; game.bonks=0;
   game.vs = !!(meta && meta.vs);
-  game.count = game.vs? 3.999 : 0;
+  game.coop = !!(meta && meta.coop);
+  game.coopIx = (meta && meta.coopIx!==undefined)? meta.coopIx : -1;
+  const twoP = game.vs || game.coop;
+  game.count = twoP? 3.999 : 0;
   game.parts=[]; game.floats=[]; game.stickers=[]; game.confetti=[]; game.hintT=0;
   let sx=1, sy=1, fx=1, fy=1, p2x=0, p2y=0, p2c=1, p2r=1;
   for(let r=0;r<game.rows;r++){
@@ -876,6 +1015,8 @@ function startLevel(L, meta){
       if(ch==="k") game.key={x:wx,y:wy,got:false};
       if(ch==="T") game.portals.push({c,r,x:wx,y:wy,cool:0});
       if(ch==="x") game.crates.push({c,r,x:wx,y:wy,broken:false});
+      if(ch==="P") game.plates2.push({c,r,x:wx,y:wy,lit:0});         // co-op pressure plate
+      if(ch==="Q") game.coopGates.push({c,r,x:wx,y:wy,open:0});      // co-op gate: open while any plate held
     }
   }
   game.portals.length = Math.min(2, game.portals.length);   // exactly one pair
@@ -888,11 +1029,12 @@ function startLevel(L, meta){
   else if(!isWallCell(sc,sr+1)) head = Math.PI/2;
   game.car = newCar(sx, sy, head);
   game.car2 = null;
-  if(game.vs){
+  if(twoP){
     const p2head = !isWallCell(p2c-1,p2r) ? Math.PI : -Math.PI/2;
     game.car2 = newCar(p2x||sx, p2y||sy, p2x? p2head : head);
     game.car2.p2 = true;
   }
+  if(game.coop){ game.car.home=false; if(game.car2) game.car2.home=false; }
   game.cars = game.car2 ? [game.car, game.car2] : [game.car];
   game.pet = { x:sx, y:sy };
   game.cam.x = sx; game.cam.y = sy;
@@ -929,6 +1071,7 @@ function isSolid(c,r){
   if(isWallCell(c,r)) return true;
   for(const d of game.doors) if(d.c===c && d.r===r && d.anim<1) return true;
   for(const g of game.gates) if(g.c===c && g.r===r && g.open<0.5) return true;
+  for(const q of game.coopGates) if(q.c===c && q.r===r && q.open<0.5) return true;
   for(const cr of game.crates) if(cr.c===c && cr.r===r && !cr.broken) return true;
   return false;
 }
@@ -1227,6 +1370,17 @@ function updateEntities(dt){
     const target = cyc < 0.55 ? 1 : 0;      // open 55% of the time
     g.open = lerp(g.open, target, dt*8);
   }
+  // co-op: a car parked on ANY plate opens EVERY linked gate (hold it for your buddy!)
+  if(game.coop && game.coopGates.length){
+    let held = false;
+    for(const p of game.plates2){
+      const on = game.cars.some(c=> Math.floor(c.x/CELL)===p.c && Math.floor(c.y/CELL)===p.r);
+      p.lit = lerp(p.lit, on?1:0, dt*12);
+      if(on) held = true;
+    }
+    game.coopHeld = held;
+    for(const q of game.coopGates) q.open = lerp(q.open, held?1:0, dt*12);
+  }
   for(const p of game.portals) if(p.cool>0) p.cool -= dt;
   for(const p of game.pads) if(p.cool) p.cool = Math.max(0, p.cool-dt);
 
@@ -1330,8 +1484,15 @@ function updateEntities(dt){
   }
   // finish
   if(dist(car.x,car.y,game.finish.x,game.finish.y) < CELL*0.75){
-    if(game.vs){ vsEnd(car); return; }
-    levelClear();
+    if(game.coop){
+      if(!car.home){
+        car.home = true; car.vx*=0.15; car.vy*=0.15;
+        AU.coin(); sticker(pName(car.p2?1:0)+" MADE IT! 🏁", car.p2?"#b06ee8":"#7ef7ff");
+        confettiBurst(car.x, car.y, 26, car.p2?"#b06ee8":"#7ef7ff");
+      }
+      if(game.car.home && game.car2 && game.car2.home){ coopClear(); return; }
+    } else if(game.vs){ vsEnd(car); return; }
+    else levelClear();
   }
   } // end per-car loop
 
@@ -1427,6 +1588,27 @@ function levelClear(){
   AU.win();
   confettiBurst(W/2, H*0.35, 130, L.hue);
 }
+function coopClear(){
+  const L = game.lv;
+  const timeOk = game.playT <= L.par;
+  const coins = game.car.coins + (game.car2? game.car2.coins : 0);
+  const allCoins = coins >= game.coinsAll;
+  const stars = 1 + (timeOk?1:0) + (allCoins?1:0);
+  const aura = Math.round(game.car.aura + (game.car2? game.car2.aura : 0));
+  store.aura += aura;
+  store.coopStars = store.coopStars || {};
+  if(game.coopIx>=0){
+    store.coopStars[game.coopIx] = Math.max(store.coopStars[game.coopIx]||0, stars);
+    store.coopUnlocked = Math.max(store.coopUnlocked||1, Math.min(COOP_LEVELS.length, game.coopIx+2));
+  }
+  game._coopLast = game.coopIx >= COOP_LEVELS.length-1;
+  save();
+  game.clearData = { stars, t:0, time:game.playT, timeOk, allCoins, aura, shown:0, coop:true,
+    coins, coinsAll:game.coinsAll, msg:"TEAMWORK! 🤝", unlock: game._coopLast? "🏁 CO-OP COMPLETE!" : undefined };
+  game.state = "clear";
+  AU.win();
+  confettiBurst(W/2, H*0.35, 140, L.hue);
+}
 function confettiBurst(x, y, n, hue){
   for(let i=0;i<n;i++) game.confetti.push({
     x:x+rand(-60,60), y, vx:rand(-260,260), vy:rand(-460,-90),
@@ -1485,8 +1667,8 @@ function drawWorld(dt){
   const wW = game.cols*CELL, wH = game.rows*CELL;
   const sx = (Math.random()*2-1)*game.shake, sy = (Math.random()*2-1)*game.shake;
   let cx, cy, z = 1;
-  if(game.vs){
-    // whole maze on screen — no scrolling in VS
+  if(game.vs || game.coop){
+    // whole maze on screen — no scrolling in two-player modes
     z = Math.min(W/(wW+30), H/(wH+30));
     cx = wW/2; cy = wH/2;
     ctx.save();
@@ -1514,12 +1696,14 @@ function drawWorld(dt){
   drawFinish();
   for(const d of game.doors) drawDoor(d);
   for(const g of game.gates) drawGate(g);
+  for(const q of game.coopGates) drawCoopGate(q);
+  for(const p of game.plates2) drawPlate(p);
   for(const cr of game.crates) drawCrate(cr);
   game.portals.forEach((p,i)=>drawPortal(p,i));
   for(const cn of game.coins) if(!cn.got) drawCoin(cn);
   if(game.key && !game.key.got) drawKey(game.key);
   for(const gb of game.goobers) drawGoober(gb);
-  if(!game.vs) drawHintArrow();
+  if(!game.vs && !game.coop) drawHintArrow();
   if(game.rival){
     const rv = game.rival;
     ctx.save();
@@ -1550,7 +1734,7 @@ function drawWorld(dt){
   }
   if(game.car2) drawCar(game.car2);
   drawCar(car);
-  if(game.vs){
+  if(game.vs || game.coop){
     // name tags over both cars
     ctx.font = "800 15px 'Avenir Next Condensed','Arial Narrow',sans-serif";
     ctx.textAlign="center"; ctx.textBaseline="middle";
@@ -1866,6 +2050,42 @@ function drawGate(g){
   ctx.strokeStyle = "#20242f"; ctx.lineWidth=3; ctx.strokeRect(1.5,1.5,CELL-3,h-3);
   ctx.restore();
 }
+function drawCoopGate(q){
+  const px = q.c*CELL, py = q.r*CELL;
+  const closed = 1-(q.open||0);
+  if(closed<0.05){                                  // faint frame when open
+    ctx.strokeStyle="rgba(126,247,255,0.4)"; ctx.lineWidth=3;
+    ctx.strokeRect(px+3, py+3, CELL-6, CELL-6);
+    return;
+  }
+  const h = CELL*closed;
+  ctx.save();
+  ctx.translate(px, py+CELL/2-h/2);
+  ctx.fillStyle = "#153740";
+  ctx.fillRect(0, 0, CELL, h);
+  ctx.fillStyle = "#7ef7ff";
+  const bars = 4;
+  for(let i=0;i<bars;i++) ctx.fillRect(4, h*(i+0.25)/bars, CELL-8, Math.max(2, h/bars*0.36));
+  ctx.strokeStyle = "#7ef7ff"; ctx.lineWidth = 3; ctx.strokeRect(1.5, 1.5, CELL-3, h-3);
+  ctx.restore();
+}
+function drawPlate(p){
+  const s = CELL*0.32, lit = p.lit||0;
+  ctx.save(); ctx.translate(p.x, p.y);
+  ctx.fillStyle = "#0e2a30";
+  ctx.beginPath(); ctx.roundRect(-s,-s,s*2,s*2,8); ctx.fill();
+  ctx.strokeStyle = "rgba(126,247,255,0.5)"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(-s,-s,s*2,s*2,8); ctx.stroke();
+  const inset = 5 + lit*5;                           // button sinks when stood on
+  ctx.fillStyle = lit>0.5 ? "#7ef7ff" : "#2b6b78";
+  ctx.beginPath(); ctx.roundRect(-s+inset,-s+inset,(s-inset)*2,(s-inset)*2,5); ctx.fill();
+  if(lit>0.05){
+    ctx.globalAlpha = lit*0.7; ctx.strokeStyle = "#7ef7ff"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(0,0,s+5+Math.sin(game.t*6)*2,0,TAU); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+}
 function drawGoober(gb){
   if(gb.dead) return;
   const bounce = Math.abs(Math.sin(gb.ph))*8;
@@ -1987,6 +2207,7 @@ function drawHUD(){
   const car = game.car;
   const pad = PADX, top = 10 + safeT;
   ctx.textBaseline = "middle";
+  if(game.coop){ drawCoopHUD(pad, top); return; }
   if(game.vs){ drawVsHUD(pad, top); return; }
   // aura counter (left)
   roundedPanel(pad, top, 168, 44, 12);
@@ -2308,12 +2529,13 @@ function drawSeries(){
     ctx.globalAlpha = 1;
     hudBtns.push({x, y, w:cw, h:chh, act:"s:"+s});
   }
-  // garage row: BUILD / SHOP / VS + custom tracks (global — lives on the hub)
+  // garage row: BUILD / SHOP / VS / CO-OP + custom tracks (global — lives on the hub)
   const gy = garageY;
-  drawBigBtn(PADX, gy, 118, 48, "🔨 BUILD", "build", "#ffb742", "#12151f");
-  drawBigBtn(PADX+126, gy, 110, 48, "🛒 SHOP", "shop", "#7ef7ff", "#12151f");
-  drawBigBtn(PADX+244, gy, 96, 48, "⚔️ VS", "vs", "#ff8fe0", "#12151f");
-  let gcx = PADX+354;
+  drawBigBtn(PADX, gy, 104, 48, "🔨 BUILD", "build", "#ffb742", "#12151f");
+  drawBigBtn(PADX+112, gy, 94, 48, "🛒 SHOP", "shop", "#7ef7ff", "#12151f");
+  drawBigBtn(PADX+214, gy, 74, 48, "⚔️ VS", "vs", "#ff8fe0", "#12151f");
+  drawBigBtn(PADX+296, gy, 120, 48, "🤝 CO-OP", "coop", "#9ae6ff", "#12151f");
+  let gcx = PADX+424;
   for(const cl of store.customLevels){
     const st = store.stars["c:"+cl.id]||0;
     roundedPanel(gcx, gy+2, 48, 46, 12, "rgba(20,24,36,0.92)");
@@ -2339,6 +2561,7 @@ function drawSeries(){
       if(b.act==="build") enterBuilder(null);
       else if(b.act==="shop") game.state="shop";
       else if(b.act==="vs") game.state="vspick";
+      else if(b.act==="coop") game.state="cooppick";
       else if(b.act.startsWith("pc:")){ const cl = store.customLevels.find(c=>c.id===+b.act.slice(3)); if(cl) loadCustom(cl, "map"); }
       else if(b.act.startsWith("s:")){
         const s = +b.act.slice(2);
@@ -2770,6 +2993,105 @@ function startVs(L){
   game.vsSource = L;
   startLevel(L, {vs:true});
 }
+/* ---------------- CO-OP ---------------- */
+function startCoop(ix){
+  ix = clamp(ix, 0, COOP_LEVELS.length-1);
+  startLevel(COOP_LEVELS[ix], {coop:true, coopIx:ix});
+}
+function drawCoopHUD(pad, top){
+  ctx.textBaseline = "middle";
+  // shared timer + coins (center top)
+  const late = game.playT > game.lv.par;
+  roundedPanel(W/2-70, top, 140, 40, 12);
+  ctx.font = "800 18px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.textAlign="center";
+  ctx.fillStyle = late? "#ff8f8f" : "#f4f6ff";
+  ctx.fillText("⏱ "+game.playT.toFixed(1)+"s", W/2-24, top+20);
+  const coins = game.car.coins + (game.car2? game.car2.coins:0);
+  ctx.fillStyle = "#ffd76a"; ctx.fillText("● "+coins+"/"+game.coinsAll, W/2+40, top+20);
+  // per-player "made it" badges
+  const badge = (x,i,car)=>{
+    roundedPanel(x, top, 132, 40, 12, car.home? "rgba(40,80,60,0.9)":"rgba(14,17,26,0.82)");
+    ctx.fillStyle = i? "#c79bff" : "#7ef7ff"; ctx.textAlign="left";
+    ctx.font = "800 15px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+    ctx.fillText((car.home?"✓ ":"")+pName(i)+(car.home?" HOME":""), x+12, top+20);
+  };
+  badge(pad, 0, game.car);
+  if(game.car2) badge(W-pad-132, 1, game.car2);
+  drawIconBtn(W-pad-42, top+48, 40, "🗺️", "map");
+  hudBtns.push({x:W-pad-42, y:top+48, w:40, h:40, act:"map"});
+  // both players' touch joysticks
+  if(input.hasTouch){
+    for(const j of [input.joy, input.joy2]){
+      if(!j) continue;
+      ctx.globalAlpha=0.35; ctx.strokeStyle="#f4f6ff"; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(j.ox, j.oy, 48, 0, TAU); ctx.stroke();
+      const dx=j.x-j.ox, dy=j.y-j.oy, m=Math.hypot(dx,dy)||1, cl=Math.min(48,m);
+      ctx.globalAlpha=0.55; ctx.fillStyle="#f4f6ff";
+      ctx.beginPath(); ctx.arc(j.ox+dx/m*cl, j.oy+dy/m*cl, 26, 0, TAU); ctx.fill();
+      ctx.globalAlpha=1;
+    }
+  }
+}
+const coopNodes = [];
+function drawCoopMap(){
+  nightSky(); hudBtns.length = 0;
+  const n = COOP_LEVELS.length;
+  ctx.font = "900 italic 32px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.textAlign="center"; ctx.textBaseline="alphabetic"; ctx.fillStyle="#7ef7ff";
+  ctx.fillText("🤝 CO-OP", W/2, 40+safeT);
+  ctx.font="600 14px 'Avenir Next',sans-serif"; ctx.fillStyle="#8b93ad"; ctx.textBaseline="middle";
+  ctx.fillText((input.hasTouch? pName(0)+" = left thumb · "+pName(1)+" = right thumb"
+                              : pName(0)+" = ARROWS · "+pName(1)+" = WASD")+" · both cars reach the flag!", W/2, 62+safeT);
+  drawIconBtn(W-PADX-42, 12+safeT, 40, store.muted?"🔇":"🔊", "mute");
+  drawIconBtn(W-PADX-94, 12+safeT, 40, "🗺️", "back");
+  coopNodes.length = 0;
+  const mx = Math.max(56, W*0.07);
+  const perRow = Math.min(n, Math.max(8, Math.round((W-mx*2)/92)+1));
+  const nRows = Math.ceil(n/perRow);
+  const R = clamp((W-2*mx)/perRow*0.3, 20, 32);
+  const garageY = H-52-safeB;
+  const yTop = nRows>1 ? Math.max(112+safeT, H*0.30) : H*0.54;
+  const maxY = garageY - R - 20;
+  const rowGap = nRows>1 ? clamp((maxY-yTop)/(nRows-1), 58, 150) : 0;
+  const pts = [];
+  for(let i=0;i<n;i++){
+    const row=(i/perRow)|0, col=i%perRow;
+    const t = perRow>1? col/(perRow-1):0.5, tt = row%2? 1-t : t;
+    pts.push([mx+(W-2*mx)*tt, yTop+row*rowGap+Math.sin(i*2.2)*9]);
+  }
+  ctx.strokeStyle="rgba(126,247,255,0.25)"; ctx.lineWidth=24; ctx.lineCap="round"; ctx.lineJoin="round";
+  ctx.beginPath(); pts.forEach(([x,y],i)=> i?ctx.lineTo(x,y):ctx.moveTo(x,y)); ctx.stroke();
+  ctx.strokeStyle="rgba(255,255,255,0.22)"; ctx.lineWidth=3; ctx.setLineDash([12,14]); ctx.stroke(); ctx.setLineDash([]);
+  const unlockedN = store.coopUnlocked||1;
+  for(let i=0;i<n;i++){
+    const [x,y]=pts[i];
+    const unlocked = i < unlockedN || i===0;
+    const stars = (store.coopStars&&store.coopStars[i])||0;
+    ctx.beginPath(); ctx.arc(x,y,R,0,TAU);
+    ctx.fillStyle = unlocked? "#eafcff" : "rgba(60,66,86,0.9)"; ctx.fill();
+    if(unlocked && i===unlockedN-1){ ctx.strokeStyle=COOP_LEVELS[i].hue; ctx.lineWidth=4+Math.sin(game.t*4)*1.5; ctx.beginPath(); ctx.arc(x,y,R+6,0,TAU); ctx.stroke(); }
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    if(unlocked){
+      ctx.fillStyle="#0b2a30"; ctx.font="900 "+Math.round(R*0.62)+"px 'Avenir Next Condensed',sans-serif";
+      ctx.fillText(""+(i+1), x, y-R*0.18);
+      ctx.font=Math.round(R*0.42)+"px sans-serif"; ctx.fillText(COOP_LEVELS[i].emoji, x, y+R*0.42);
+    } else { ctx.font=Math.round(R*0.62)+"px sans-serif"; ctx.fillText("🔒", x, y+1); }
+    ctx.font="11px sans-serif";
+    for(let s=0;s<3;s++){ ctx.globalAlpha=s<stars?1:0.22; ctx.fillText("⭐", x+(s-1)*13, y+R+11); }
+    ctx.globalAlpha=1;
+    if(unlocked) coopNodes.push({x,y,r:R+9,ix:i});
+  }
+  ctx.font="600 15px 'Avenir Next',sans-serif"; ctx.fillStyle="#8b93ad"; ctx.textAlign="center";
+  ctx.fillText(input.hasTouch? "tap a level!  ·  🗺️ = worlds" : "press ENTER  ·  🗺️ = worlds", W/2, H-24-safeB);
+  for(const tp of input.taps.splice(0)){
+    const curG = Math.min(unlockedN-1, n-1);
+    if(tp.screen){ AU.ui(); startCoop(curG); return; }
+    for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){
+      AU.ui(); if(b.act==="mute") AU.toggleMute(); else if(b.act==="back") game.state="series"; return;
+    }
+    for(const nd of coopNodes) if(dist(tp.x,tp.y,nd.x,nd.y)<nd.r){ AU.ui(); startCoop(nd.ix); return; }
+  }
+}
 function vsEnd(winnerCar){
   const p1win = winnerCar===game.car;
   store.vsScore = store.vsScore || [0,0];
@@ -3059,7 +3381,7 @@ function drawClear(dt){
   // stats chips
   ctx.font = "800 "+(compact?18:21)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   const chips = [
-    ["● "+game.car.coins+"/"+game.coinsAll+" COINS", cd.allCoins?"#9ae64a":"#ffd76a"],
+    ["● "+(cd.coop? cd.coins : game.car.coins)+"/"+game.coinsAll+" COINS", cd.allCoins?"#9ae64a":"#ffd76a"],
     ["⏱ "+cd.time.toFixed(1)+"s"+(cd.timeOk?"  ⚡FAST":""), cd.timeOk?"#9ae64a":"#f4f6ff"],
     ["✦ +"+cd.aura+" AURA", "#ffd76a"],
   ];
@@ -3083,6 +3405,10 @@ function drawClear(dt){
     } else if(game.customId){
       drawBigBtn(bx1, by, bw, bh, "🗺 MAP", "map", "rgba(60,66,86,0.95)", "#f4f6ff");
       drawBigBtn(bx2, by, bw, bh, "↻ AGAIN", "retry", game.lv.hue, "#12151f");
+    } else if(cd.coop){
+      drawBigBtn(bx1, by, bw, bh, "🤝 CO-OP", "coopmap", "rgba(60,66,86,0.95)", "#f4f6ff");
+      if(game._coopLast) drawBigBtn(bx2, by, bw, bh, "🏆 DONE!", "coopmap", "#ffd76a", "#12151f");
+      else drawBigBtn(bx2, by, bw, bh, "NEXT ▶", "coopnext", game.lv.hue, "#12151f");
     } else {
       drawBigBtn(bx1, by, bw, bh, "🗺 MAP", "map", "rgba(60,66,86,0.95)", "#f4f6ff");
       if(game._seriesEnd) drawBigBtn(bx2, by, bw, bh, "🏆 WORLD", "world", "#ffd76a", "#12151f");
@@ -3091,13 +3417,15 @@ function drawClear(dt){
     const doAct = act => {
       AU.ui();
       if(act==="next") loadLevel(game.levelIx+1);
+      else if(act==="coopnext") startCoop(game.coopIx+1);
+      else if(act==="coopmap") game.state="cooppick";
       else if(act==="world") game.state="series";
       else if(act==="garage") game.state="build";
       else if(act==="retry") loadCustom(game.sourceCustom, game.fromBuilder? "builder":"map");
       else game.state="map";
     };
     for(const tp of input.taps.splice(0)){
-      if(tp.screen){ doAct(game.fromBuilder? "garage" : game.customId? "map" : (game._seriesEnd? "world":"next")); return; }
+      if(tp.screen){ doAct(game.fromBuilder? "garage" : game.customId? "map" : cd.coop? (game._coopLast?"coopmap":"coopnext") : (game._seriesEnd? "world":"next")); return; }
       for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){ doAct(b.act); return; }
     }
   } else input.taps.length = 0;
@@ -3166,7 +3494,7 @@ function tick(now){
   ctx.setTransform(DPR,0,0,DPR,0,0);
   ctx.clearRect(0,0,W,H);
   // tablet held upright → ask for landscape (menus only, never mid-game)
-  const portraitHint = input.hasTouch && H > W*1.15 && (game.state==="title" || game.state==="map" || game.state==="series");
+  const portraitHint = input.hasTouch && H > W*1.15 && (game.state==="title" || game.state==="map" || game.state==="series" || game.state==="cooppick");
   if(portraitHint) input.taps.length = 0;
 
   if(game.state==="title"){ drawTitle(dt); }
@@ -3175,6 +3503,7 @@ function tick(now){
   else if(game.state==="build"){ drawBuild(dt); updateStickers(dt); drawStickers(); }
   else if(game.state==="shop"){ updateFx(dt); drawShop(dt); drawConfettiScreen(); drawStickers(); }
   else if(game.state==="vspick"){ drawVsPick(); updateStickers(dt); drawStickers(); }
+  else if(game.state==="cooppick"){ drawCoopMap(); updateStickers(dt); drawStickers(); }
   else if(game.state==="vsend"){ updateFx(dt); drawVsEnd(dt); }
   else if(game.state==="clear"){ updateFx(dt); drawClear(dt); drawStickers(); }
   else if(game.state==="cooked"){ updateFx(dt); drawCooked(dt); }
@@ -3222,7 +3551,7 @@ function tick(now){
         if(b.act==="mute") AU.toggleMute();
         if(b.act==="pause") togglePause();
         if(b.act==="resume") paused=false;
-        if(b.act==="map"){ paused=false; game.state = game.fromBuilder? "build" : "map"; }
+        if(b.act==="map"){ paused=false; game.state = game.fromBuilder? "build" : game.coop? "cooppick" : "map"; }
       }
     }
   }
@@ -3270,6 +3599,7 @@ requestAnimationFrame(frame);
 window.__tm = { game, loadLevel, loadCustom, store, CONFIG, bl, enterBuilder, encodeTrack, decodeTrack,
   shopAction, VEHICLES, PETS, LEVELS, VS_ARENAS, startVs, customToLevel,
   SERIES, seriesUnlocked, seriesBeaten, seriesOf, save,
+  COOP_LEVELS, startCoop,
   step(sec){ paused = false; let n = last; for(let i=0;i<sec*60;i++){ n += 1000/60; tick(n); } last = performance.now(); } };
 </script>
 </body>

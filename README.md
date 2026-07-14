@@ -39,6 +39,14 @@ Set the names in the 🔧 TWEAK ZONE (`playerName`, `player2Name`).
 Feels too fast or the boss too hard? Open `index.html` and tweak
 `speed` and `bossSpeed` in the 🔧 TWEAK ZONE.
 
+## 🤝 Co-op mode (two players, one team)
+Tap **🤝 CO-OP** on the hub. Same shared screen and controls as VS, but now
+you **win together** — *both* cars have to reach the flag. The twist is the
+teamwork gate: one player parks on a glowing **pressure plate** to open the
+linked **door** so the other can drive through, then they swap so the first
+one can cross too. **15 levels** that ramp up — ice, double-airlocks, coin
+vaults and mazier rooms. Beat one to unlock the next.
+
 ## Build your own tracks (v2)
 Tap **🔨 BUILD** on the map. Finger-paint walls and roads, drop coins, keys,
 doors, gates, boost pads and goobers. **TEST ▶** races it instantly; the game
