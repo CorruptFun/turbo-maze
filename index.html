@@ -7,7 +7,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>TURBO MAZE 🏁</title>
 <style>
-  :root { --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px); }
+  :root { --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
+          --sal:env(safe-area-inset-left,0px); --sar:env(safe-area-inset-right,0px); }
   html, body { margin:0; padding:0; height:100%; overflow:hidden; background:#0b0e15; overscroll-behavior:none; }
   canvas { display:block; touch-action:none; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
 </style>
@@ -345,7 +346,7 @@ if(!CanvasRenderingContext2D.prototype.roundRect){
     return this;
   };
 }
-let W=0, H=0, DPR=1, safeT=0, safeB=0;
+let W=0, H=0, DPR=1, safeT=0, safeB=0, PADX=12;
 function resize(){
   DPR = Math.min(2, window.devicePixelRatio||1);
   W = window.innerWidth; H = window.innerHeight;
@@ -354,6 +355,10 @@ function resize(){
   const cs = getComputedStyle(document.documentElement);
   safeT = parseFloat(cs.getPropertyValue("--sat"))||0;
   safeB = parseFloat(cs.getPropertyValue("--sab"))||0;
+  // phone notch / Dynamic Island in landscape: inset edge-hugging UI symmetrically
+  const safeL = parseFloat(cs.getPropertyValue("--sal"))||0;
+  const safeR = parseFloat(cs.getPropertyValue("--sar"))||0;
+  PADX = 12 + Math.max(safeL, safeR);
 }
 window.addEventListener("resize", resize); resize();
 
@@ -1630,7 +1635,7 @@ function roundedPanel(x,y,w,h,r,fill){
 }
 function drawHUD(){
   const car = game.car;
-  const pad = 12, top = 10 + safeT;
+  const pad = PADX, top = 10 + safeT;
   ctx.textBaseline = "middle";
   if(game.vs){ drawVsHUD(pad, top); return; }
   // aura counter (left)
@@ -1718,7 +1723,7 @@ function drawHUD(){
       ctx.globalAlpha = 1;
     }
     // nitro button
-    const bx = W-74, by = H-84-safeB;
+    const bx = W-62-PADX, by = H-84-safeB;
     ctx.globalAlpha = input.nitro? 0.95 : 0.55;
     ctx.fillStyle = "#7ef7ff";
     ctx.beginPath(); ctx.arc(bx, by, 46, 0, TAU); ctx.fill();
@@ -1900,16 +1905,16 @@ function drawMap(){
   ctx.textAlign="center"; ctx.fillStyle="#ffb742";
   ctx.fillText(CONFIG.title, W/2, 52);
   // aura bank
-  roundedPanel(12, 12+safeT, 150, 40, 12);
+  roundedPanel(PADX, 12+safeT, 150, 40, 12);
   ctx.font = "800 19px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.textAlign="left";
-  ctx.fillStyle = "#ffd76a"; ctx.fillText("✦", 26, 33+safeT);
-  ctx.fillStyle = "#f4f6ff"; ctx.fillText("AURA "+Math.round(store.aura), 44, 33+safeT);
-  roundedPanel(12, 58+safeT, 104, 36, 12);
-  ctx.fillStyle="#e8a930"; ctx.beginPath(); ctx.arc(30, 76+safeT, 8, 0, TAU); ctx.fill();
-  ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.arc(30, 75.2+safeT, 7.2, 0, TAU); ctx.fill();
-  ctx.fillStyle = "#f4f6ff"; ctx.fillText(store.coinsBank, 46, 76+safeT);
+  ctx.fillStyle = "#ffd76a"; ctx.fillText("✦", PADX+14, 33+safeT);
+  ctx.fillStyle = "#f4f6ff"; ctx.fillText("AURA "+Math.round(store.aura), PADX+32, 33+safeT);
+  roundedPanel(PADX, 58+safeT, 104, 36, 12);
+  ctx.fillStyle="#e8a930"; ctx.beginPath(); ctx.arc(PADX+18, 76+safeT, 8, 0, TAU); ctx.fill();
+  ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.arc(PADX+18, 75.2+safeT, 7.2, 0, TAU); ctx.fill();
+  ctx.fillStyle = "#f4f6ff"; ctx.fillText(store.coinsBank, PADX+34, 76+safeT);
   hudBtns.length = 0;
-  drawIconBtn(W-54, 12+safeT, 40, store.muted?"🔇":"🔊", "mute");
+  drawIconBtn(W-PADX-42, 12+safeT, 40, store.muted?"🔇":"🔊", "mute");
   // serpentine road with nodes (two rows once the campaign got big)
   mapNodes.length = 0;
   const n = LEVELS.length;
@@ -1982,10 +1987,10 @@ function drawMap(){
   }
   // garage: build + shop buttons, custom track chips
   const gy = H-104-safeB;
-  drawBigBtn(12, gy, 118, 48, "🔨 BUILD", "build", "#ffb742", "#12151f");
-  drawBigBtn(138, gy, 110, 48, "🛒 SHOP", "shop", "#7ef7ff", "#12151f");
-  drawBigBtn(256, gy, 96, 48, "⚔️ VS", "vs", "#ff8fe0", "#12151f");
-  let gcx = 366;
+  drawBigBtn(PADX, gy, 118, 48, "🔨 BUILD", "build", "#ffb742", "#12151f");
+  drawBigBtn(PADX+126, gy, 110, 48, "🛒 SHOP", "shop", "#7ef7ff", "#12151f");
+  drawBigBtn(PADX+244, gy, 96, 48, "⚔️ VS", "vs", "#ff8fe0", "#12151f");
+  let gcx = PADX+354;
   for(const cl of store.customLevels){
     const st = store.stars["c:"+cl.id]||0;
     roundedPanel(gcx, gy+2, 48, 46, 12, "rgba(20,24,36,0.92)");
@@ -2232,11 +2237,11 @@ function drawBuild(dt){
   hudBtns.length = 0;
   const top = 8+safeT;
   // top bar
-  drawIconBtn(12, top, 44, "↩️", "back");
+  drawIconBtn(PADX, top, 44, "↩️", "back");
   ctx.font = "900 22px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillStyle="#f4f6ff";
-  ctx.fillText("🔨 "+(bl.editingId? "TRACK "+bl.editingId : "NEW TRACK"), 66, top+23);
-  let rx = W-12-44;
+  ctx.fillText("🔨 "+(bl.editingId? "TRACK "+bl.editingId : "NEW TRACK"), PADX+54, top+23);
+  let rx = W-PADX-44;
   drawIconBtn(rx, top, 44, "🗑", "trash"); rx-=50;
   drawIconBtn(rx, top, 44, "↺", "undo"); rx-=50;
   drawIconBtn(rx, top, 44, EMOJIS[bl.emojiIx], "emoji"); rx-=50;
@@ -2247,7 +2252,7 @@ function drawBuild(dt){
   drawIconBtn(rx, top, 44, ["S","M","L"][bl.sizeIx], "size");
   // bottom palette: tools left, actions right
   const palH = 56, palY = H - palH - 10 - safeB;
-  let tx = 12;
+  let tx = PADX;
   for(const t of TOOL_LIST){
     const sel = bl.tool===t;
     roundedPanel(tx, palY, 50, palH, 13, sel? "rgba(255,183,66,0.92)":"rgba(14,17,26,0.82)");
@@ -2255,7 +2260,7 @@ function drawBuild(dt){
     hudBtns.push({x:tx,y:palY,w:50,h:palH,act:"tool:"+t});
     tx += 55;
   }
-  let ax = W-12;
+  let ax = W-PADX;
   ax -= 104; drawBigBtn(ax, palY, 104, palH, "TEST ▶", "test", "#9ae64a", "#12151f");
   ax -= 60;  drawBigBtn(ax, palY, 52, palH, "💾", "saveB", "#7ef7ff", "#12151f");
   ax -= 60;  drawBigBtn(ax, palY, 52, palH, "📤", "share", "#f4f6ff", "#12151f");
@@ -2331,14 +2336,14 @@ function vsEnd(winnerCar){
 function drawVsPick(){
   nightSky(); hudBtns.length = 0;
   const top = 8+safeT;
-  drawIconBtn(12, top, 44, "↩️", "back");
+  drawIconBtn(PADX, top, 44, "↩️", "back");
   ctx.font = "italic 900 30px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillStyle="#ff8fe0";
-  ctx.fillText("⚔️ VS RACE", 68, top+23);
+  ctx.fillText("⚔️ VS RACE", PADX+56, top+23);
   const vsScore = store.vsScore||[0,0];
   ctx.font = "800 18px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.fillStyle="#ffd76a"; ctx.textAlign="right";
-  ctx.fillText("SERIES  "+pName(0)+" "+vsScore[0]+" — "+vsScore[1]+" "+pName(1), W-16, top+23);
+  ctx.fillText("SERIES  "+pName(0)+" "+vsScore[0]+" — "+vsScore[1]+" "+pName(1), W-PADX-4, top+23);
   ctx.font = "600 15px 'Avenir Next',sans-serif"; ctx.fillStyle="#8b93ad"; ctx.textAlign="center";
   ctx.fillText(input.hasTouch ? pName(0)+" = left thumb · "+pName(1)+" = right thumb"
                               : pName(0)+" = ARROWS · "+pName(1)+" = WASD", W/2, top+64);
@@ -2360,8 +2365,8 @@ function drawVsPick(){
   // custom tracks
   if(store.customLevels.length){
     ctx.font = "800 14px 'Avenir Next Condensed',sans-serif"; ctx.fillStyle="#8b93ad"; ctx.textAlign="left";
-    ctx.fillText("OR RACE A CUSTOM TRACK:", 16, y0+chh+30);
-    let cx3 = 16;
+    ctx.fillText("OR RACE A CUSTOM TRACK:", PADX+4, y0+chh+30);
+    let cx3 = PADX+4;
     for(const cl of store.customLevels){
       roundedPanel(cx3, y0+chh+42, 48, 46, 12, "rgba(20,24,36,0.92)");
       ctx.font="17px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillStyle="#f4f6ff";
@@ -2502,26 +2507,27 @@ function drawShop(dt){
     confettiBurst(W/2, H*0.3, 90, "#ffd76a");
     AU.win();
   }
-  drawIconBtn(12, top, 44, "↩️", "back");
+  drawIconBtn(PADX, top, 44, "↩️", "back");
   ctx.font = "italic 900 28px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillStyle="#ffb742";
-  ctx.fillText("🛒 GARAGE", 68, top+23);
+  ctx.fillText("🛒 GARAGE", PADX+56, top+23);
   const bw2 = 130;
-  roundedPanel(W-12-bw2, top, bw2, 44, 12);
-  ctx.fillStyle="#e8a930"; ctx.beginPath(); ctx.arc(W-12-bw2+22, top+22, 9, 0, TAU); ctx.fill();
-  ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.arc(W-12-bw2+22, top+21, 8, 0, TAU); ctx.fill();
+  roundedPanel(W-PADX-bw2, top, bw2, 44, 12);
+  ctx.fillStyle="#e8a930"; ctx.beginPath(); ctx.arc(W-PADX-bw2+22, top+22, 9, 0, TAU); ctx.fill();
+  ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.arc(W-PADX-bw2+22, top+21, 8, 0, TAU); ctx.fill();
   ctx.font="900 21px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.fillStyle="#f4f6ff"; ctx.textAlign="left";
-  ctx.fillText(store.coinsBank, W-12-bw2+40, top+23);
-  // layout: 2 rows cars, 1 row pets, number panel
+  ctx.fillText(store.coinsBank, W-PADX-bw2+40, top+23);
+  // layout: car rows, pet row, number panel (compresses on short phone screens)
   let y = top+54;
   const gap = 8;
-  const cw = Math.min(170, (W-24-gap*3)/4);
+  const cw = Math.min(170, (W-PADX*2-gap*3)/4);
   const gridW = cw*4+gap*3;
   const x0 = Math.round((W-gridW)/2);
   const vRows = Math.ceil(VEHICLES.length/4);
+  const numH = H<460? 46 : 58;
   const availY = H - y - safeB - 10;
-  const ch2 = Math.max(58, Math.min(96, Math.floor((availY - 58 - gap*(vRows+1))/(vRows+1))));
+  const ch2 = Math.max(46, Math.min(96, Math.floor((availY - numH - gap*(vRows+1))/(vRows+1))));
   VEHICLES.forEach((v,i)=>{
     const cx3 = x0 + (i%4)*(cw+gap), cy3 = y + ((i/4)|0)*(ch2+gap);
     const owned = store.ownedCars.includes(v.id);
@@ -2547,18 +2553,18 @@ function drawShop(dt){
       p.name, p.price, store.ownedPets.includes(p.id), store.pet===p.id);
   });
   y += ch2+gap;
-  const nh = 58;
+  const nh = numH;
   roundedPanel(x0, y, gridW, nh, 14);
   ctx.font="900 16px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.fillStyle="#8b93ad"; ctx.textAlign="left"; ctx.textBaseline="middle";
   ctx.fillText("CAR NUMBER", x0+16, y+nh/2);
   const ncx = x0+gridW/2;
   drawBigBtn(ncx-98, y+7, 46, nh-14, "−", "num-", "rgba(60,66,86,0.95)", "#f4f6ff");
-  ctx.font="900 32px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.font="900 "+(nh>50?32:24)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.fillStyle="#ffd76a"; ctx.textAlign="center";
   ctx.fillText(String(store.carNum==null?67:store.carNum), ncx, y+nh/2+1);
   drawBigBtn(ncx+52, y+7, 46, nh-14, "+", "num+", "rgba(60,66,86,0.95)", "#f4f6ff");
-  drawVehiclePreview(store.car, x0+gridW-54, y+nh/2, 1.4);
+  drawVehiclePreview(store.car, x0+gridW-54, y+nh/2, nh>50?1.4:1.1);
   if(shopPending){ shopPending.t -= dt; if(shopPending.t<=0) shopPending = null; }
   for(const tp of input.taps.splice(0)){
     if(tp.screen) continue;
