@@ -1708,9 +1708,10 @@ function drawHUD(){
   ctx.textAlign="center";
   ctx.fillStyle = late ? "#8b93ad" : "#f4f6ff";
   ctx.fillText("⏱ " + tStr, W/2, top+20);
-  // level tag (right)
+  // level tag (right) — narrow phones just get emoji + number
   ctx.font = "800 18px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-  const tag = game.levelIx>=0 ? game.lv.emoji+" "+(game.levelIx+1)+" · "+game.lv.name
+  const tag = W<760 ? game.lv.emoji+" "+(game.levelIx>=0? (game.levelIx+1) : game.lv.name)
+            : game.levelIx>=0 ? game.lv.emoji+" "+(game.levelIx+1)+" · "+game.lv.name
                               : game.lv.emoji+" "+game.lv.name;
   const tw = ctx.measureText(tag).width+30;
   roundedPanel(W-pad-tw-96, top, tw, 38, 12);
@@ -1780,18 +1781,19 @@ function drawHUD(){
   }
 }
 function drawVsHUD(pad, top){
-  // player chips: name · coins · aura
+  // player chips: name · coins · aura (narrow phones get slimmer chips)
+  const cw3 = clamp(Math.floor(W/2 - pad - 162), 128, 190);
   const chip = (x, i, car)=>{
-    roundedPanel(x, top, 190, 44, 12);
-    ctx.font = "800 17px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+    roundedPanel(x, top, cw3, 44, 12);
+    ctx.font = "800 "+(cw3<160?15:17)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
     ctx.textAlign="left"; ctx.textBaseline="middle";
     ctx.fillStyle = i? "#b06ee8" : vehicleById(store.car).trail();
-    ctx.beginPath(); ctx.arc(x+18, top+22, 7, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(x+16, top+22, 6.5, 0, TAU); ctx.fill();
     ctx.fillStyle = "#f4f6ff";
-    ctx.fillText(pName(i)+"  ● "+car.coins+"  ✦ "+Math.round(car.aura), x+32, top+23);
+    ctx.fillText(pName(i)+" ● "+car.coins+" ✦ "+Math.round(car.aura), x+28, top+23);
   };
   chip(pad, 0, game.car);
-  chip(W-pad-88-8-190, 1, game.car2);
+  chip(W-pad-88-8-cw3, 1, game.car2);
   drawIconBtn(W-pad-88, top, 40, store.muted?"🔇":"🔊", "mute");
   drawIconBtn(W-pad-42, top, 40, "⏸️", "pause");
   // stopwatch (center)
@@ -1961,10 +1963,14 @@ function drawMap(){
   mapNodes.length = 0;
   const n = LEVELS.length;
   const mx = Math.max(56, W*0.07);
-  const perRow = Math.min(n, Math.max(5, Math.round((W-mx*2)/92)+1));
+  const perRow = Math.min(n, Math.max(8, Math.round((W-mx*2)/92)+1));
   const nRows = Math.ceil(n/perRow);
-  const yTop = nRows>1 ? H*0.28 : H*0.5;
-  const rowGap = nRows>1 ? Math.min(150, H*0.44/(nRows-1)) : 0;
+  const R = clamp((W-2*mx)/perRow*0.3, 20, 32);
+  // rows live between the header chips and the garage buttons
+  const garageY = H-104-safeB;
+  const yTop = nRows>1 ? Math.max(118+safeT, H*0.24) : H*0.46;
+  const maxY = garageY - R - 34;
+  const rowGap = nRows>1 ? clamp((maxY-yTop)/(nRows-1), 58, 150) : 0;
   const pts = [];
   for(let i=0;i<n;i++){
     const row = (i/perRow)|0, col = i%perRow;
@@ -1978,7 +1984,6 @@ function drawMap(){
   ctx.stroke();
   ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 3; ctx.setLineDash([12,14]);
   ctx.stroke(); ctx.setLineDash([]);
-  const R = clamp((W-2*mx)/perRow*0.3, 20, 32);
   for(let i=0;i<n;i++){
     const [x,y] = pts[i];
     const unlocked = i < store.unlocked;
@@ -2010,22 +2015,29 @@ function drawMap(){
     ctx.globalAlpha = 1;
     if(unlocked) mapNodes.push({x,y,r:R+9,ix:i});
   }
-  // car parked at current level
+  // little car parked on the current node's ring — never covers a neighbor
   const cur = Math.min(store.unlocked-1, n-1);
   const cx2 = pts[cur][0], cy2 = pts[cur][1];
-  const fakeCar = { x:cx2, y:cy2-58, heading:-0.35+Math.sin(game.t*1.4)*0.06, sq:1, invuln:0, boost:0, trail:[] };
-  const saveLv = game.lv; game.lv = LEVELS[cur]; drawCar(fakeCar); game.lv = saveLv;
-  if(store.pet){
+  const carX = cx2 + R*0.85, carY = cy2 - R*0.95;
+  const roomy = nRows===1 || rowGap > 110;
+  const carScale = roomy ? 0.85 : 0.6;
+  const fakeCar = { x:carX, y:carY, heading:-0.5+Math.sin(game.t*1.4)*0.06, sq:1, invuln:0, boost:0, trail:[] };
+  const saveLv = game.lv; game.lv = LEVELS[cur];
+  ctx.save(); ctx.translate(carX, carY); ctx.scale(carScale, carScale); ctx.translate(-carX, -carY);
+  drawCar(fakeCar);
+  ctx.restore();
+  game.lv = saveLv;
+  if(roomy && store.pet){
     const p = PETS.find(p=>p.id===store.pet);
     if(p){
-      ctx.font="20px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-      ctx.fillText(p.emoji, cx2-42, cy2-56-Math.abs(Math.sin(game.t*4))*4);
+      ctx.font="18px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText(p.emoji, carX+34, carY-Math.abs(Math.sin(game.t*4))*4);
     }
   }
-  if(CONFIG.playerName){
-    roundedPanel(cx2-44, cy2-108, 88, 24, 6, "#f4f6ff");
-    ctx.fillStyle="#12151f"; ctx.font="900 14px 'Avenir Next Condensed',sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-    ctx.fillText(CONFIG.playerName.toUpperCase(), cx2, cy2-96);
+  if(roomy && CONFIG.playerName){
+    roundedPanel(carX-40, carY-48, 80, 22, 6, "#f4f6ff");
+    ctx.fillStyle="#12151f"; ctx.font="900 13px 'Avenir Next Condensed',sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(CONFIG.playerName.toUpperCase(), carX, carY-37);
   }
   // garage: build + shop buttons, custom track chips
   const gy = H-104-safeB;
@@ -2073,8 +2085,8 @@ function drawMap(){
 const EMOJIS = ["🦖","🌋","👻","🍕","🌈","🐙","🚀","💎","🐸","⚡"];
 const HUES = ["#ffb742","#9ae64a","#ff6a5e","#b98cff","#53e0ff"];
 const SIZES = [[12,8],[16,10],[20,13]];   // [cols, rows]
-const TOOL_LIST = ["wall","road","c","n","k","D","G","*","h","S","F"];
-const TOOL_ICON = { wall:"🧱", road:"🧽", n:"⚡", k:"🗝️", D:"🔒", G:"🚧", "*":"🔼", h:"👾", S:"🚗", F:"🏁" };
+const TOOL_LIST = ["wall","road","~","c","n","k","D","G","*","h","S","F"];
+const TOOL_ICON = { wall:"🧱", road:"🧽", "~":"🧊", n:"⚡", k:"🗝️", D:"🔒", G:"🚧", "*":"🔼", h:"👾", S:"🚗", F:"🏁" };
 const bl = { grid:null, cols:0, rows:0, tool:"wall", hueIx:0, emojiIx:0, sizeIx:1,
   editingId:null, undo:[], ptr:null, lastCell:null, trashT:0, _geo:null };
 
@@ -2216,17 +2228,20 @@ function testBuild(){
   loadCustom({ id:0, name:"TEST DRIVE", emojiIx:bl.emojiIx, hueIx:bl.hueIx, grid:rows }, "builder");
 }
 function encodeTrack(cl){
-  const payload = ["1", cl.name, cl.emojiIx||0, cl.hueIx||0, cl.grid.join("!")].join("~");
+  // "|" separator — "~" is ice now, so it can appear inside grids
+  const payload = ["1", cl.name, cl.emojiIx||0, cl.hueIx||0, cl.grid.join("!")].join("|");
   return btoa(payload).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
 }
 function decodeTrack(s){
   try{
-    const p = atob(s.replace(/-/g,"+").replace(/_/g,"/")).split("~");
+    const raw = atob(s.replace(/-/g,"+").replace(/_/g,"/"));
+    let p = raw.split("|");
+    if(p.length<5) p = raw.split("~");   // links shared before the ice update
     if(p[0]!=="1" || p.length<5) return null;
     const rows = p[4].split("!");
     const cols = rows[0].length;
     if(rows.length<5||rows.length>16||cols<6||cols>24) return null;
-    if(!rows.every(r=>r.length===cols && /^[#.SFcnkDG*h]+$/.test(r))) return null;
+    if(!rows.every(r=>r.length===cols && /^[#.SFcnkDG*h~]+$/.test(r))) return null;
     if(!validateRows(rows).ok) return null;
     return { name:String(p[1]||"TRACK").slice(0,14), emojiIx:Math.min(EMOJIS.length-1, Math.max(0,+p[2]||0)),
              hueIx:Math.min(HUES.length-1, Math.max(0,+p[3]||0)), grid:rows };
@@ -2292,15 +2307,17 @@ function drawBuild(dt){
   ctx.beginPath(); ctx.arc(rx+22, top+22, 12, 0, TAU); ctx.fill();
   hudBtns.push({x:rx,y:top,w:44,h:44,act:"hue"}); rx-=50;
   drawIconBtn(rx, top, 44, ["S","M","L"][bl.sizeIx], "size");
-  // bottom palette: tools left, actions right
+  // bottom palette: tools left, actions right (tool size adapts to narrow phones)
   const palH = 56, palY = H - palH - 10 - safeB;
+  const actW = 104+52+52+16;
+  const tw = clamp(Math.floor((W-PADX*2-actW-10)/TOOL_LIST.length)-5, 26, 50);
   let tx = PADX;
   for(const t of TOOL_LIST){
     const sel = bl.tool===t;
-    roundedPanel(tx, palY, 50, palH, 13, sel? "rgba(255,183,66,0.92)":"rgba(14,17,26,0.82)");
-    drawGlyph(t==="wall"?"wall":t==="road"?"road":t, tx+25, palY+palH/2, 40);
-    hudBtns.push({x:tx,y:palY,w:50,h:palH,act:"tool:"+t});
-    tx += 55;
+    roundedPanel(tx, palY, tw, palH, Math.min(13,tw*0.3), sel? "rgba(255,183,66,0.92)":"rgba(14,17,26,0.82)");
+    drawGlyph(t==="wall"?"wall":t==="road"?"road":t, tx+tw/2, palY+palH/2, Math.min(40,tw*0.9));
+    hudBtns.push({x:tx,y:palY,w:tw,h:palH,act:"tool:"+t});
+    tx += tw+5;
   }
   let ax = W-PADX;
   ax -= 104; drawBigBtn(ax, palY, 104, palH, "TEST ▶", "test", "#9ae64a", "#12151f");
@@ -2345,9 +2362,9 @@ function drawBuild(dt){
   }
   for(let r=0;r<bl.rows;r++) for(let c=0;c<bl.cols;c++){
     const ch = bl.grid[r][c], x = gx+c*cs, y = gy+r*cs;
-    ctx.fillStyle = ch==="#" ? "#0b0d15" : "#2e3852";
+    ctx.fillStyle = ch==="#" ? "#0b0d15" : ch==="~" ? "#3a5c82" : "#2e3852";
     ctx.fillRect(x, y, cs-1, cs-1);
-    if(ch!=="#" && ch!==".") drawGlyph(ch, x+cs/2, y+cs/2, cs);
+    if(ch!=="#" && ch!=="." && ch!=="~") drawGlyph(ch, x+cs/2, y+cs/2, cs);
   }
   ctx.strokeStyle = HUES[bl.hueIx]; ctx.globalAlpha=0.7; ctx.lineWidth=3;
   ctx.strokeRect(gx-3, gy-3, cs*bl.cols+5, cs*bl.rows+5);
@@ -2623,31 +2640,36 @@ function drawClear(dt){
   const cd = game.clearData; cd.t += dt;
   drawConfettiScreen();
   const panW = Math.min(430, W-40);
-  const px = W/2, py = H*0.46;
+  const compact = H < 480;                       // phone landscape: tighten the stack
+  const px = W/2;
+  const py = compact ? (cd.unlock? H*0.34 : H*0.38) : H*0.46;
+  const chipStep = compact? 38 : 44, chipStart = compact? 16 : 26;
   const inT = easeOut(clamp(cd.t/0.3,0,1));
   ctx.save();
   ctx.translate(px, py + (1-inT)*60);
   ctx.globalAlpha = inT;
   // GG sticker
   ctx.rotate(-0.03);
-  ctx.font = "900 italic 74px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.font = "900 italic "+(compact?54:74)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.textAlign="center"; ctx.textBaseline="middle";
   const msg = cd.msg || (cd.msg = pick(YELLS.win));
-  ctx.fillStyle = "rgba(12,14,22,0.9)"; ctx.fillText(msg, 5, -120+5);
-  ctx.fillStyle = "#ffd76a"; ctx.fillText(msg, 0, -120);
+  const ggy = compact? -94 : -120;
+  ctx.fillStyle = "rgba(12,14,22,0.9)"; ctx.fillText(msg, 5, ggy+5);
+  ctx.fillStyle = "#ffd76a"; ctx.fillText(msg, 0, ggy);
   ctx.rotate(0.03);
   // stars pop one by one
+  const ssz = compact? 0.75 : 1;
   for(let i=0;i<3;i++){
     const on = i < cd.stars && cd.t > 0.5+i*0.4;
     if(on && cd.shown<=i){ cd.shown=i+1; AU.star(i); game.shake=4; }
     const pop = on? easeOut(clamp((cd.t-(0.5+i*0.4))/0.25,0,1)) : 1;
-    ctx.font = (on? 62*pop : 54)+"px sans-serif";
+    ctx.font = Math.round((on? 62*pop : 54)*ssz)+"px sans-serif";
     ctx.globalAlpha = (on?1:0.18)*inT;
-    ctx.fillText("⭐", (i-1)*78, -38);
+    ctx.fillText("⭐", (i-1)*78*ssz, compact? -30 : -38);
   }
   ctx.globalAlpha = inT;
   // stats chips
-  ctx.font = "800 21px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.font = "800 "+(compact?18:21)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   const chips = [
     ["● "+game.car.coins+"/"+game.coinsAll+" COINS", cd.allCoins?"#9ae64a":"#ffd76a"],
     ["⏱ "+cd.time.toFixed(1)+"s"+(cd.timeOk?"  ⚡FAST":""), cd.timeOk?"#9ae64a":"#f4f6ff"],
@@ -2655,17 +2677,18 @@ function drawClear(dt){
   ];
   if(cd.unlock) chips.push([cd.unlock, "#ffd76a"]);
   chips.forEach((ch,i)=>{
-    const y = 26+i*44;
-    roundedPanel(-panW*0.32, y-17, panW*0.64, 36, 12, "rgba(20,24,36,0.92)");
+    const y = chipStart+i*chipStep;
+    roundedPanel(-panW*0.32, y-16, panW*0.64, compact?32:36, 12, "rgba(20,24,36,0.92)");
     ctx.fillStyle = ch[1]; ctx.textAlign="center";
     ctx.fillText(ch[0], 0, y+1);
   });
   ctx.restore();
-  // buttons
+  // buttons — always below the chips, always on screen
   if(cd.t>1.2){
     const last = game.levelIx >= 0 && game.levelIx >= LEVELS.length-1;
-    const bw = 168, bh = 62, gap = 18;
-    const bx1 = W/2-bw-gap/2, bx2 = W/2+gap/2, by = py+170+(cd.unlock?46:0);
+    const bw = 168, bh = compact? 54 : 62, gap = 18;
+    const bx1 = W/2-bw-gap/2, bx2 = W/2+gap/2;
+    const by = Math.min(py + chipStart + chips.length*chipStep + 12, H - bh - 12 - safeB);
     hudBtns.length = 0;
     if(game.fromBuilder){
       drawBigBtn(bx1, by, bw, bh, "🔨 GARAGE", "garage", "rgba(60,66,86,0.95)", "#f4f6ff");

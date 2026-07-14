@@ -40,7 +40,7 @@ their garage: *NEW TRACK ARRIVED! 📦*
 Open `index.html` and find the **🔧 TWEAK ZONE** at the top of the script:
 car color, game title, driver name, the words the game yells.
 The campaign levels are drawn in ASCII right below it — same alphabet the
-builder uses: `#` wall · `.` road · `S` start · `F` finish · `c` coin ·
+builder uses: `#` wall · `.` road · `~` ice · `S` start · `F` finish · `c` coin ·
 `n` nitro · `k` key · `D` door · `G` timed gate · `*` boost pad · `h` goober
 
 ## The garage shop (v3)
