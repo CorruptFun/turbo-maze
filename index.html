@@ -866,6 +866,58 @@ const VS_ARENAS = [
 ];
 
 /* ---------------------------------------------------------------------
+   KNOCKOUT arenas — last one standing. 3 lives each. Ram (or ⚡zap then ram)
+   your rival into a ! hazard pit to knock a life off. F is a hidden center
+   marker (ignored — knockout has no finish). Best of the lives wins.
+   --------------------------------------------------------------------- */
+const KO_ARENAS = [
+{ name:"THE PIT", emoji:"🕳️", hue:"#ff7a3c", grid:[
+"###############",
+"#SS...c...c...#",
+"#..!!....!!...#",
+"#..!!..*.!!...#",
+"#....z.F.z....#",
+"#..!!.....!!..#",
+"#..!!.....!!22#",
+"#....c...c....#",
+"###############",
+]},
+{ name:"DANGER ZONE", emoji:"⚠️", hue:"#ffb742", grid:[
+"###############",
+"#SS.!.....!.c.#",
+"#...!..z..!...#",
+"#.!!!.....!!!.#",
+"#......F......#",
+"#.!!!.....!!!.#",
+"#...!..z..!...#",
+"#.c.!.....!.22#",
+"###############",
+]},
+{ name:"HOT CROSS", emoji:"🔥", hue:"#ff5a5a", grid:[
+"###############",
+"#SS...!.!...c.#",
+"#.z...!.!...z.#",
+"#..!!.....!!..#",
+"#.....F.......#",
+"#..!!.....!!..#",
+"#.z...!.!...z.#",
+"#.c...!.!..22.#",
+"###############",
+]},
+{ name:"THE GRINDER", emoji:"💀", hue:"#c56cff", grid:[
+"###############",
+"#SS!...z..!.c.#",
+"#..!.!!!.!.!..#",
+"#..!.!.!.!.!..#",
+"#..*..F..*....#",
+"#..!.!.!.!.!..#",
+"#..!.!!!.!.!22#",
+"#.c!...z...!..#",
+"###############",
+]},
+];
+
+/* ---------------------------------------------------------------------
    CO-OP arenas — two players, ONE shared screen, ONE shared goal.
    Both cars must reach the flag. P = pressure plate, Q = linked gate:
    while ANY car sits on a P, ALL Q gates open — so one holds the door
@@ -1153,7 +1205,7 @@ cv.addEventListener("touchstart", e=>{
   for(const t of e.changedTouches){
     const x=t.clientX, y=t.clientY;
     input.taps.push({x, y});
-    if(game.state==="play" && (game.vs || game.coop)){
+    if(game.state==="play" && (game.vs || game.coop || game.ko)){
       if(x < W/2){ if(!input.joy) input.joy = {id:t.identifier, ox:x, oy:y, x, y}; }
       else if(!input.joy2) input.joy2 = {id:t.identifier, ox:x, oy:y, x, y};
     }
@@ -1191,7 +1243,7 @@ window.addEventListener("mousemove", e=>{ if(bl.ptr && bl.ptr.id==="m"){ bl.ptr.
 window.addEventListener("mouseup", ()=>{ if(bl.ptr && bl.ptr.id==="m"){ bl.ptr=null; bl.lastCell=null; } });
 window.addEventListener("contextmenu", e=> e.preventDefault());
 function readInput(){
-  if(game.vs || game.coop){
+  if(game.vs || game.coop || game.ko){
     const a = keyVecArrows(), w = keyVecWASD();
     const j1 = joyVec(input.joy), j2 = joyVec(input.joy2);
     input.vec  = (Math.hypot(j1.x,j1.y) > Math.hypot(a.x,a.y)) ? j1 : a;
@@ -1248,11 +1300,13 @@ function startLevel(L, meta){
   game.plates2 = []; game.coopGates = [];
   game.shiftWalls = []; game.shiftSol = [0,0]; game.shiftT = 0;
   game.zaps = []; game.traps = []; game.trapWalls = []; game.trapT = 0;   // VS battle: pickups + trap walls
+  game.koZones = [];                                                      // knockout: hazard cells ("!")
   game.hasKey=false; game.playT=0; game.bonks=0;
   game.vs = !!(meta && meta.vs);
   game.coop = !!(meta && meta.coop);
+  game.ko = !!(meta && meta.ko);
   game.coopIx = (meta && meta.coopIx!==undefined)? meta.coopIx : -1;
-  const twoP = game.vs || game.coop;
+  const twoP = game.vs || game.coop || game.ko;
   game.count = twoP? 3.999 : 0;
   game.parts=[]; game.floats=[]; game.stickers=[]; game.confetti=[]; game.hintT=0;
   let sx=1, sy=1, fx=1, fy=1, p2x=0, p2y=0, p2c=1, p2r=1;
@@ -1283,6 +1337,7 @@ function startLevel(L, meta){
       if(ch==="z") game.zaps.push({c,r,x:wx,y:wy,active:true,cool:0,ph:Math.random()*TAU}); // VS zap pickup
       if(ch==="B") game.traps.push({c,r,x:wx,y:wy,cool:0});         // VS trap trigger button
       if(ch==="w") game.trapWalls.push({c,r,x:wx,y:wy,closed:0});   // VS trap wall (slams shut when triggered)
+      if(ch==="!") game.koZones.push({c,r,x:wx,y:wy,ph:Math.random()*TAU}); // knockout hazard pit
     }
   }
   game.portals.length = Math.min(2, game.portals.length);   // exactly one pair
@@ -1301,6 +1356,10 @@ function startLevel(L, meta){
     game.car2.p2 = true;
   }
   if(game.coop){ game.car.home=false; if(game.car2) game.car2.home=false; }
+  if(game.ko){                                   // knockout: 3 lives each, remember spawn points
+    game.car.lives = 3;  game.car.spawn = {x:sx, y:sy, h:head};
+    if(game.car2){ game.car2.lives = 3; game.car2.spawn = {x:p2x||sx, y:p2y||sy, h:game.car2.heading}; }
+  }
   game.cars = game.car2 ? [game.car, game.car2] : [game.car];
   game.pet = { x:sx, y:sy };
   game.cam.x = sx; game.cam.y = sy;
@@ -1649,7 +1708,7 @@ function updateEntities(dt){
     game.shiftSol[1] = lerp(game.shiftSol[1], tgtB, dt*9);
   }
   // VS battle: zap pickups respawn; trap walls slam shut for a moment when a trigger is hit
-  if(game.vs){
+  if(game.vs || game.ko){
     for(const z of game.zaps){ if(!z.active){ z.cool -= dt; if(z.cool<=0) z.active = true; } z.ph += dt*4; }
     for(const t of game.traps) if(t.cool>0) t.cool -= dt;
     game.trapT = Math.max(0, game.trapT - dt);
@@ -1768,8 +1827,8 @@ function updateEntities(dt){
       }
     }
   }
-  // VS battle pickups + traps
-  if(game.vs){
+  // VS battle pickups + traps + knockout hazards
+  if(game.vs || game.ko){
     const other = (car===game.car) ? game.car2 : game.car;
     // ⚡ zap: grab it, your rival spins out
     for(const z of game.zaps){
@@ -1790,9 +1849,22 @@ function updateEntities(dt){
         AU.bonk(); AU.beep(140,0.25,"square",0.18,80); game.shake = Math.min(8, game.shake+3);
       }
     }
+    // 💥 knockout: shoved into a hazard pit → lose a life & respawn (0 lives = out)
+    if(game.ko && car.invuln<=0){
+      const cc=Math.floor(car.x/CELL), rr=Math.floor(car.y/CELL);
+      if(game.koZones.some(k=>k.c===cc && k.r===rr)){
+        car.lives = (car.lives||1) - 1;
+        car.invuln = 1.8; car.spinT = 0.5; car.sq = 0.5;
+        for(let i=0;i<16;i++) debris(car.x+rand(-18,18), car.y+rand(-18,18));
+        game.shake = Math.min(11, game.shake+6); AU.goober(); AU.beep(180,0.3,"sawtooth",0.2,60);
+        if(car.lives <= 0){ koEnd(other); return; }
+        car.x=car.spawn.x; car.y=car.spawn.y; car.heading=car.spawn.h; car.vx=car.vy=0;
+        sticker("💥 "+pName(car.p2?1:0)+" KNOCKED OUT! — "+car.lives+" ❤ left", car.p2?"#b06ee8":"#7ef7ff");
+      }
+    }
   }
-  // finish
-  if(dist(car.x,car.y,game.finish.x,game.finish.y) < CELL*0.75){
+  // finish (races only — knockout has no flag)
+  if(!game.ko && dist(car.x,car.y,game.finish.x,game.finish.y) < CELL*0.75){
     if(game.coop){
       if(!car.home){
         car.home = true; car.vx*=0.15; car.vy*=0.15;
@@ -1857,15 +1929,15 @@ function carBump(a, b){
     if(-vn>200){ AU.bonk(); game.shake=Math.min(6,game.shake+2); a.sq=0.8; b.sq=0.8;
       if(Math.random()<0.5) float(pick(YELLS.bonk), (a.x+b.x)/2, (a.y+b.y)/2-24, "#ffd0d0"); }
     // BUMPER CARS (VS only): ram hard → the faster car spins the other out and swipes a coin
-    if(game.vs && -vn>250){
+    if((game.vs || game.ko) && -vn>250){
       const aFast = Math.hypot(a.vx,a.vy) >= Math.hypot(b.vx,b.vy);
       const ram = aFast?a:b, hit = aFast?b:a;
       if(hit.spinT<=0 && hit.invuln<=0){
-        hit.spinT = 0.55; hit.invuln = 0.9; hit.sq = 0.55;
-        const ka = Math.atan2(hit.y-ram.y, hit.x-ram.x), kb = 360;
+        hit.spinT = 0.55; hit.invuln = game.ko?0.35:0.9; hit.sq = 0.55;   // shorter i-frames in KO → chain shoves
+        const ka = Math.atan2(hit.y-ram.y, hit.x-ram.x), kb = game.ko?560:360;   // punt harder in knockout
         hit.vx += Math.cos(ka)*kb; hit.vy += Math.sin(ka)*kb;
-        if(hit.coins>0){ hit.coins--; ram.coins++; float("SWIPED 1! 🪙", hit.x, hit.y-30, "#ffd76a"); }
-        sticker("💥 "+pName(ram.p2?1:0)+" BULLDOZES "+pName(ram.p2?0:1)+"!", ram.p2?"#b06ee8":"#7ef7ff");
+        if(game.vs && hit.coins>0){ hit.coins--; ram.coins++; float("SWIPED 1! 🪙", hit.x, hit.y-30, "#ffd76a"); }
+        sticker("💥 "+pName(ram.p2?1:0)+(game.ko?" SLAMS ":" BULLDOZES ")+pName(ram.p2?0:1)+"!", ram.p2?"#b06ee8":"#7ef7ff");
         AU.goober(); game.shake = Math.min(10, game.shake+5);
       }
     }
@@ -1989,7 +2061,7 @@ function drawWorld(dt){
   const wW = game.cols*CELL, wH = game.rows*CELL;
   const sx = (Math.random()*2-1)*game.shake, sy = (Math.random()*2-1)*game.shake;
   let cx, cy, z = 1;
-  if(game.vs || game.coop){
+  if(game.vs || game.coop || game.ko){
     // whole maze on screen — no scrolling in two-player modes
     z = Math.min(W/(wW+30), H/(wH+30));
     cx = wW/2; cy = wH/2;
@@ -2015,13 +2087,14 @@ function drawWorld(dt){
   ctx.drawImage(game.groundCv, 0, 0);
   ctx.drawImage(game.skidCv, 0, 0);
 
-  drawFinish();
+  if(!game.ko) drawFinish();
   for(const d of game.doors) drawDoor(d);
   for(const g of game.gates) drawGate(g);
   for(const q of game.coopGates) drawCoopGate(q);
   for(const p of game.plates2) drawPlate(p);
   for(const m of game.shiftWalls) drawShiftWall(m);
   for(const w of game.trapWalls) drawTrapWall(w);
+  for(const k of game.koZones) drawKoHazard(k);
   for(const t of game.traps) drawTrapTrigger(t);
   for(const z of game.zaps) drawZap(z);
   for(const cr of game.crates) drawCrate(cr);
@@ -2029,7 +2102,7 @@ function drawWorld(dt){
   for(const cn of game.coins) if(!cn.got) drawCoin(cn);
   if(game.key && !game.key.got) drawKey(game.key);
   for(const gb of game.goobers) drawGoober(gb);
-  if(!game.vs && !game.coop) drawHintArrow();
+  if(!game.vs && !game.coop && !game.ko) drawHintArrow();
   if(game.rival){
     const rv = game.rival;
     ctx.save();
@@ -2060,7 +2133,7 @@ function drawWorld(dt){
   }
   if(game.car2) drawCar(game.car2);
   drawCar(car);
-  if(game.vs || game.coop){
+  if(game.vs || game.coop || game.ko){
     // name tags over both cars
     ctx.font = "800 15px 'Avenir Next Condensed','Arial Narrow',sans-serif";
     ctx.textAlign="center"; ctx.textBaseline="middle";
@@ -2438,6 +2511,20 @@ function drawTrapWall(w){
   ctx.strokeStyle="#ff8f8f"; ctx.lineWidth=3; ctx.strokeRect(1.5,1.5,CELL-3,h-3);
   ctx.restore();
 }
+function drawKoHazard(k){
+  const px=k.c*CELL, py=k.r*CELL, glow=0.5+Math.sin(game.t*3+k.ph)*0.25;
+  ctx.fillStyle = "#120810"; ctx.fillRect(px+2, py+2, CELL-4, CELL-4);         // the void
+  ctx.save(); ctx.globalAlpha = glow;                                          // molten glow
+  const g = ctx.createRadialGradient(px+CELL/2,py+CELL/2,4, px+CELL/2,py+CELL/2,CELL*0.6);
+  g.addColorStop(0,"#ff7a3c"); g.addColorStop(0.5,"#c8324a"); g.addColorStop(1,"rgba(120,20,40,0)");
+  ctx.fillStyle=g; ctx.fillRect(px,py,CELL,CELL); ctx.restore();
+  ctx.strokeStyle="rgba(255,120,60,0.7)"; ctx.lineWidth=3;
+  ctx.strokeRect(px+3.5, py+3.5, CELL-7, CELL-7);
+  // hazard chevrons on the border
+  ctx.fillStyle="rgba(20,8,14,0.9)";
+  for(let i=0;i<4;i++){ ctx.save(); ctx.translate(px+CELL/2, py+CELL/2); ctx.rotate(i*Math.PI/2);
+    ctx.beginPath(); ctx.moveTo(-8,-CELL*0.42); ctx.lineTo(8,-CELL*0.42); ctx.lineTo(0,-CELL*0.30); ctx.closePath(); ctx.fill(); ctx.restore(); }
+}
 function drawCoopGate(q){
   const px = q.c*CELL, py = q.r*CELL;
   const closed = 1-(q.open||0);
@@ -2596,6 +2683,7 @@ function drawHUD(){
   const pad = PADX, top = 10 + safeT;
   ctx.textBaseline = "middle";
   if(game.coop){ drawCoopHUD(pad, top); return; }
+  if(game.ko){ drawKoHUD(pad, top); return; }
   if(game.vs){ drawVsHUD(pad, top); return; }
   // aura counter (left)
   roundedPanel(pad, top, 168, 44, 12);
@@ -3502,29 +3590,112 @@ function vsEnd(winnerCar){
   AU.win();
   confettiBurst(W/2, H*0.3, 110, p1win? vehicleById(store.car).trail() : "#b06ee8");
 }
+/* ---------------- KNOCKOUT ---------------- */
+function startKo(L){ game.koSource = L; startLevel(L, {ko:true}); }
+function koEnd(winnerCar){
+  const p1win = winnerCar===game.car;
+  store.koScore = store.koScore || [0,0];
+  store.koScore[p1win?0:1]++;
+  save();
+  game.koResult = { p1win, t:0 };
+  game.state = "koend";
+  AU.win();
+  confettiBurst(W/2, H*0.3, 120, p1win? vehicleById(store.car).trail() : "#b06ee8");
+}
+function drawKoHUD(pad, top){
+  ctx.textBaseline = "middle";
+  const hearts = (n)=> "❤".repeat(Math.max(0,n)) + "·".repeat(Math.max(0,3-n));
+  const badge = (x, i, car, align)=>{
+    roundedPanel(x, top, 150, 44, 12);
+    ctx.fillStyle = i? "#c79bff" : "#7ef7ff"; ctx.textAlign="left";
+    ctx.font = "800 15px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+    ctx.fillText(pName(i), x+12, top+15);
+    ctx.font = "18px sans-serif"; ctx.fillStyle = "#ff5a6a";
+    ctx.fillText(hearts(car.lives||0), x+12, top+31);
+  };
+  badge(pad, 0, game.car);
+  if(game.car2) badge(W-pad-150, 1, game.car2);
+  const ks = store.koScore||[0,0];
+  ctx.font = "800 16px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.fillStyle="#ffd76a"; ctx.textAlign="center";
+  ctx.fillText("KNOCKOUT  "+pName(0)+" "+ks[0]+" — "+ks[1]+" "+pName(1), W/2, top+16);
+  drawIconBtn(W-pad-42, top+52, 40, "↩️", "map");
+  hudBtns.push({x:W-pad-42, y:top+52, w:40, h:40, act:"map"});
+  if(input.hasTouch){
+    for(const j of [input.joy, input.joy2]){ if(!j) continue;
+      ctx.globalAlpha=0.35; ctx.strokeStyle="#f4f6ff"; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(j.ox,j.oy,48,0,TAU); ctx.stroke();
+      const dx=j.x-j.ox,dy=j.y-j.oy,m=Math.hypot(dx,dy)||1,cl=Math.min(48,m);
+      ctx.globalAlpha=0.55; ctx.fillStyle="#f4f6ff";
+      ctx.beginPath(); ctx.arc(j.ox+dx/m*cl,j.oy+dy/m*cl,26,0,TAU); ctx.fill(); ctx.globalAlpha=1;
+    }
+  }
+}
+function drawKoEnd(dt){
+  drawWorld(0.0001);
+  ctx.fillStyle = "rgba(8,10,16,0.72)"; ctx.fillRect(0,0,W,H);
+  drawConfettiScreen();
+  const r = game.koResult; r.t += dt;
+  const inT = easeOut(clamp(r.t/0.3,0,1));
+  const winCol = r.p1win? vehicleById(store.car).trail() : "#b06ee8";
+  ctx.save(); ctx.translate(W/2, H*0.3+(1-inT)*40); ctx.globalAlpha=inT; ctx.rotate(-0.03);
+  ctx.font = "italic 900 60px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  const msg = pName(r.p1win?0:1).toUpperCase()+" WINS! 🏆";
+  ctx.fillStyle="rgba(12,14,22,0.9)"; ctx.fillText(msg,5,5);
+  ctx.fillStyle=winCol; ctx.fillText(msg,0,0); ctx.restore(); ctx.globalAlpha=1;
+  ctx.font = "800 22px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.textAlign="center";
+  ctx.fillStyle="#ff5a6a"; ctx.fillText("LAST ONE STANDING 💥", W/2, H*0.44);
+  const ks = store.koScore||[0,0];
+  ctx.font = "800 17px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#8b93ad";
+  ctx.fillText("KNOCKOUTS  "+pName(0)+" "+ks[0]+" — "+ks[1]+" "+pName(1), W/2, H*0.44+38);
+  if(r.t>0.9){
+    hudBtns.length = 0;
+    drawBigBtn(W/2-178, H*0.66, 170, 62, "REMATCH ▶", "retry", "#9ae64a", "#12151f");
+    drawBigBtn(W/2+8,   H*0.66, 170, 62, "🗺 BACK", "back", "rgba(60,66,86,0.95)", "#f4f6ff");
+    for(const tp of input.taps.splice(0)){
+      if(tp.screen){ AU.ui(); startKo(game.koSource); return; }
+      for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){
+        AU.ui(); if(b.act==="retry"){ game.ko=false; startKo(game.koSource); } else { game.ko=false; game.state="vspick"; } return;
+      }
+    }
+  } else input.taps.length = 0;
+}
 function drawVsPick(){
   nightSky(); hudBtns.length = 0;
   const top = 8+safeT;
   drawIconBtn(PADX, top, 44, "↩️", "back");
+  const ko = game.vsMode==='ko';
+  const arenas = ko ? KO_ARENAS : VS_ARENAS;
   ctx.font = "italic 900 30px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-  ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillStyle="#ff8fe0";
-  ctx.fillText("⚔️ VS RACE", PADX+56, top+23);
-  const vsScore = store.vsScore||[0,0];
+  ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillStyle= ko?"#ff5a6a":"#ff8fe0";
+  ctx.fillText(ko?"💥 KNOCKOUT":"⚔️ VS RACE", PADX+56, top+23);
+  const score = (ko? store.koScore : store.vsScore)||[0,0];
   ctx.font = "800 18px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.fillStyle="#ffd76a"; ctx.textAlign="right";
-  ctx.fillText("SERIES  "+pName(0)+" "+vsScore[0]+" — "+vsScore[1]+" "+pName(1), W-PADX-4, top+23);
-  ctx.font = "600 15px 'Avenir Next',sans-serif"; ctx.fillStyle="#8b93ad"; ctx.textAlign="center";
+  ctx.fillText((ko?"KO":"SERIES")+"  "+pName(0)+" "+score[0]+" — "+score[1]+" "+pName(1), W-PADX-4, top+23);
+  // RACE / KNOCKOUT toggle
+  const tW=Math.min(150,(W-2*PADX-8)/2), tH=32, tY=top+44, tGap=8, tX0=W/2-(tW*2+tGap)/2;
+  [["🏁 RACE",false],["💥 KNOCKOUT",true]].forEach(([lbl,isKo],idx)=>{
+    const x=tX0+idx*(tW+tGap), on=(isKo===ko);
+    roundedPanel(x,tY,tW,tH,10, on?(isKo?"#ff5a6a":"#ff8fe0"):"rgba(30,34,48,0.85)");
+    ctx.fillStyle= on?"#12151f":"#8b93ad"; ctx.font="900 15px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+    ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(lbl, x+tW/2, tY+tH/2+1);
+    hudBtns.push({x,y:tY,w:tW,h:tH,act:isKo?"mode:ko":"mode:race"});
+  });
+  ctx.font = "600 14px 'Avenir Next',sans-serif"; ctx.fillStyle="#8b93ad"; ctx.textAlign="center";
   ctx.fillText(input.hasTouch ? pName(0)+" = left thumb · "+pName(1)+" = right thumb"
-                              : pName(0)+" = ARROWS · "+pName(1)+" = WASD", W/2, top+64);
-  ctx.fillText("first to the flag wins  ·  💥 ram to swipe a coin  ·  ⚡ grab a zap  ·  🧱 spring the trap!", W/2, top+86);
-  // arena cards — wrapping grid (scales to any number of arenas)
-  const N = VS_ARENAS.length, availW = W-2*PADX;
-  const perRow = Math.min(N, Math.max(3, Math.floor((availW+12)/(180))));
+                              : pName(0)+" = ARROWS · "+pName(1)+" = WASD", W/2, top+92);
+  ctx.fillText(ko ? "3 lives each · ram (or ⚡zap then ram) your rival into a 🕳️ pit · last one standing wins!"
+                  : "first to the flag · 💥 ram to swipe a coin · ⚡ grab a zap · 🧱 spring the trap!", W/2, top+112);
+  // arena cards — wrapping grid
+  const N = arenas.length, availW = W-2*PADX;
+  const perRow = Math.min(N, Math.max(3, Math.floor((availW+12)/180)));
   const cw = Math.floor((availW - 12*(perRow-1)) / perRow);
   const gRows = Math.ceil(N/perRow);
-  const gridTop = top+104, customH = store.customLevels.length? 78 : 0;
+  const gridTop = top+128, customH = (!ko && store.customLevels.length)? 78 : 0;
   const chh = clamp((H - 40 - safeB - customH - gridTop - 10*(gRows-1))/gRows, 66, 116);
-  VS_ARENAS.forEach((a,i)=>{
+  arenas.forEach((a,i)=>{
     const row=(i/perRow)|0, col=i%perRow;
     const x = PADX + col*(cw+12), y = gridTop + row*(chh+10);
     roundedPanel(x, y, cw, chh, 14);
@@ -3535,8 +3706,8 @@ function drawVsPick(){
     hudBtns.push({x, y, w:cw, h:chh, act:"a:"+i});
   });
   const gridBot = gridTop + gRows*(chh+10);
-  // custom tracks
-  if(store.customLevels.length){
+  // custom tracks (races only)
+  if(!ko && store.customLevels.length){
     ctx.font = "800 14px 'Avenir Next Condensed',sans-serif"; ctx.fillStyle="#8b93ad"; ctx.textAlign="left";
     ctx.fillText("OR RACE A CUSTOM TRACK:", PADX+4, gridBot+8);
     let cx3 = PADX+4;
@@ -3551,12 +3722,15 @@ function drawVsPick(){
       if(cx3 > W-60) break;
     }
   }
+  const pick = i => ko ? startKo(arenas[i]) : startVs(arenas[i]);
   for(const tp of input.taps.splice(0)){
-    if(tp.screen){ AU.ui(); startVs(VS_ARENAS[0]); return; }
+    if(tp.screen){ AU.ui(); pick(0); return; }
     for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){
       AU.ui();
       if(b.act==="back") game.state="series";
-      else if(b.act.startsWith("a:")) startVs(VS_ARENAS[+b.act.slice(2)]);
+      else if(b.act==="mode:ko") game.vsMode='ko';
+      else if(b.act==="mode:race") game.vsMode='race';
+      else if(b.act.startsWith("a:")) pick(+b.act.slice(2));
       else if(b.act.startsWith("ct:")){ const cl=store.customLevels.find(c=>c.id===+b.act.slice(3)); if(cl) startVs(customToLevel(cl)); }
       return;
     }
@@ -3919,6 +4093,7 @@ function tick(now){
   else if(game.state==="vspick"){ drawVsPick(); updateStickers(dt); drawStickers(); }
   else if(game.state==="cooppick"){ drawCoopMap(); updateStickers(dt); drawStickers(); }
   else if(game.state==="vsend"){ updateFx(dt); drawVsEnd(dt); }
+  else if(game.state==="koend"){ updateFx(dt); drawKoEnd(dt); }
   else if(game.state==="clear"){ updateFx(dt); drawClear(dt); drawStickers(); }
   else if(game.state==="cooked"){ updateFx(dt); drawCooked(dt); }
   else if(game.state==="play"){
@@ -3965,7 +4140,7 @@ function tick(now){
         if(b.act==="mute") AU.toggleMute();
         if(b.act==="pause") togglePause();
         if(b.act==="resume") paused=false;
-        if(b.act==="map"){ paused=false; game.state = game.fromBuilder? "build" : game.coop? "cooppick" : "map"; }
+        if(b.act==="map"){ paused=false; game.state = game.fromBuilder? "build" : game.coop? "cooppick" : (game.vs||game.ko)? "vspick" : "map"; }
       }
     }
   }
@@ -4013,7 +4188,7 @@ requestAnimationFrame(frame);
 window.__tm = { game, loadLevel, loadCustom, store, CONFIG, bl, enterBuilder, encodeTrack, decodeTrack,
   shopAction, VEHICLES, PETS, LEVELS, VS_ARENAS, startVs, customToLevel,
   SERIES, seriesUnlocked, seriesBeaten, seriesOf, save,
-  COOP_LEVELS, startCoop,
+  COOP_LEVELS, startCoop, KO_ARENAS, startKo,
   step(sec){ paused = false; let n = last; for(let i=0;i<sec*60;i++){ n += 1000/60; tick(n); } last = performance.now(); } };
 </script>
 </body>

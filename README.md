@@ -44,6 +44,11 @@ of walls shut across the map for a few seconds (spring it when your rival's
 about to pass!). Eight arenas now, from open **Bumper Bowl** to the
 everything-at-once **Overdrive**.
 
+**💥 Knockout mode** — flip the **RACE / KNOCKOUT** toggle on the VS screen for
+last-one-standing. No finish line: you get **3 lives** and win by shoving your
+rival (ram them, or ⚡zap-then-ram) into a **🕳️ hazard pit**. Four arenas of
+molten pits — **The Pit, Danger Zone, Hot Cross,** and the pit-maze **Grinder**.
+
 Feels too fast or the boss too hard? Open `index.html` and tweak
 `speed` and `bossSpeed` in the 🔧 TWEAK ZONE.
 
