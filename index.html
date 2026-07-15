@@ -2491,11 +2491,11 @@ function drawSeries(){
   // world cards — wrapping grid centered in the band between header and garage row
   const garageY = H-104-safeB;
   const N = SERIES.length;
-  const cw = Math.min(230, Math.max(148, (W-2*PADX-32)/Math.min(N,3)));
+  const cw = Math.min(300, Math.max(148, (W-2*PADX-48)/Math.min(N,3)));
   const perRow = Math.max(1, Math.min(N, Math.floor((W-2*PADX+16)/(cw+16))));
   const rows = Math.ceil(N/perRow);
   const bandTop = 82+safeT, bandBot = garageY-14;
-  const chh = clamp((bandBot-bandTop-(rows-1)*16)/rows, 92, 150);
+  const chh = clamp((bandBot-bandTop-(rows-1)*16)/rows, 92, 210);
   const gridH = rows*chh+(rows-1)*16;
   const y0 = Math.round(bandTop + (bandBot-bandTop-gridH)/2);
   for(let s=0;s<N;s++){
@@ -2531,11 +2531,11 @@ function drawSeries(){
   }
   // garage row: BUILD / SHOP / VS / CO-OP + custom tracks (global — lives on the hub)
   const gy = garageY;
-  drawBigBtn(PADX, gy, 104, 48, "🔨 BUILD", "build", "#ffb742", "#12151f");
-  drawBigBtn(PADX+112, gy, 94, 48, "🛒 SHOP", "shop", "#7ef7ff", "#12151f");
-  drawBigBtn(PADX+214, gy, 74, 48, "⚔️ VS", "vs", "#ff8fe0", "#12151f");
-  drawBigBtn(PADX+296, gy, 120, 48, "🤝 CO-OP", "coop", "#9ae6ff", "#12151f");
-  let gcx = PADX+424;
+  drawBigBtn(PADX, gy, 106, 48, "🔨 BUILD", "build", "#ffb742", "#12151f");
+  drawBigBtn(PADX+114, gy, 96, 48, "🛒 SHOP", "shop", "#7ef7ff", "#12151f");
+  drawBigBtn(PADX+218, gy, 92, 48, "⚔️ VS", "vs", "#ff8fe0", "#12151f");
+  drawBigBtn(PADX+318, gy, 124, 48, "🤝 CO-OP", "coop", "#9ae6ff", "#12151f");
+  let gcx = PADX+450;
   for(const cl of store.customLevels){
     const st = store.stars["c:"+cl.id]||0;
     roundedPanel(gcx, gy+2, 48, 46, 12, "rgba(20,24,36,0.92)");
@@ -2599,12 +2599,11 @@ function drawMap(){
   const mx = Math.max(56, W*0.07);
   const perRow = Math.min(n, Math.max(8, Math.round((W-mx*2)/92)+1));
   const nRows = Math.ceil(n/perRow);
-  const R = clamp((W-2*mx)/perRow*0.3, 20, 32);
-  // no garage row on the world map — nodes get the extra space
-  const garageY = H-58-safeB;
-  const yTop = nRows>1 ? Math.max(118+safeT, H*0.26) : H*0.5;
-  const maxY = garageY - R - 20;
-  const rowGap = nRows>1 ? clamp((maxY-yTop)/(nRows-1), 58, 150) : 0;
+  // fill & center the serpentine in the band between header and footer — scales to any screen
+  const bandTop = 104+safeT, bandBot = H-46-safeB, bandH = Math.max(140, bandBot-bandTop);
+  const R = clamp(Math.min((W-2*mx)/perRow*0.34, bandH/(nRows*2.7)), 20, 46);
+  const rowGap = nRows>1 ? clamp(bandH/nRows, R*2.3, 260) : 0;
+  const yTop = nRows>1 ? bandTop + (bandH-(nRows-1)*rowGap)/2 : H*0.5;
   const pts = [];
   for(let i=0;i<n;i++){
     const row = (i/perRow)|0, col = i%perRow;
@@ -3048,11 +3047,11 @@ function drawCoopMap(){
   const mx = Math.max(56, W*0.07);
   const perRow = Math.min(n, Math.max(8, Math.round((W-mx*2)/92)+1));
   const nRows = Math.ceil(n/perRow);
-  const R = clamp((W-2*mx)/perRow*0.3, 20, 32);
-  const garageY = H-52-safeB;
-  const yTop = nRows>1 ? Math.max(112+safeT, H*0.30) : H*0.54;
-  const maxY = garageY - R - 20;
-  const rowGap = nRows>1 ? clamp((maxY-yTop)/(nRows-1), 58, 150) : 0;
+  // fill & center the serpentine — scales to any screen
+  const bandTop = 96+safeT, bandBot = H-44-safeB, bandH = Math.max(140, bandBot-bandTop);
+  const R = clamp(Math.min((W-2*mx)/perRow*0.34, bandH/(nRows*2.7)), 20, 46);
+  const rowGap = nRows>1 ? clamp(bandH/nRows, R*2.3, 260) : 0;
+  const yTop = nRows>1 ? bandTop + (bandH-(nRows-1)*rowGap)/2 : H*0.54;
   const pts = [];
   for(let i=0;i<n;i++){
     const row=(i/perRow)|0, col=i%perRow;
