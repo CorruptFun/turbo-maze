@@ -732,6 +732,183 @@ const LEVELS = [
 "#...n.....N.M.N....#",
 "####################",
 ]},
+/* ---- WORLD 4: METAL MELTDOWN (conveyors · trap doors · sliding crushers) ---- */
+{ name:"CONVEYOR START", emoji:"🏭", hue:"#ffa23c", par:34, grid:[
+"##################",
+"#SS..............#",
+"#..>>>>>>>c......#",
+"#................#",
+"#........c.......#",
+"#................#",
+"#.......>>>>>>...#",
+"#..............F.#",
+"##################"
+]},
+{ name:"TRAP HATCHES", emoji:"🕳️", hue:"#b06ee8", par:40, grid:[
+"##################",
+"#SS..............#",
+"#....O....O......#",
+"#................#",
+"#..O....O....O...#",
+"#.......n........#",
+"#....O....O......#",
+"#................#",
+"#..O....O.....F..#",
+"##################"
+]},
+{ name:"SLIDE ZONE", emoji:"⚙️", hue:"#8b96a8", par:44, grid:[
+"##################",
+"#SS..............#",
+"#.......##.......#",
+"#................#",
+"#.......##.......#",
+"#................#",
+"#.......##.......#",
+"#..............FF#",
+"##################"
+], crushers:[{c:5,r:2,dx:0,dy:1,range:4,period:3,phase:0},{c:12,r:2,dx:0,dy:1,range:4,period:3,phase:0.5}]},
+{ name:"BELT RIDE", emoji:"🎢", hue:"#ffa23c", par:46, grid:[
+"##################",
+"#S>>>>>>>>>>>>>>c#",
+"################v#",
+"################v#",
+"################v#",
+"################v#",
+"################v#",
+"#F<<<<<<<<<<<<<<c#",
+"##################"
+]},
+{ name:"HATCH MAZE", emoji:"🌀", hue:"#b06ee8", par:48, grid:[
+"##################",
+"#SS..............#",
+"#....O......O....#",
+"#c............n..#",
+"#..O.....O.......#",
+"#................#",
+"#.....O......O...#",
+"#c...............#",
+"#..O.....O.......#",
+"#...........F....#",
+"##################"
+]},
+{ name:"CRUSHER ROW", emoji:"⚙️", hue:"#8b96a8", par:52, grid:[
+"##################",
+"#SS.....c.....c..#",
+"#................#",
+"#................#",
+"#c..............c#",
+"#................#",
+"#................#",
+"#....c.....c.....#",
+"#n..............F#",
+"##################"
+], crushers:[{c:4,r:1,dx:0,dy:1,range:6,period:2.8,phase:0},{c:7,r:1,dx:0,dy:1,range:6,period:2.8,phase:0.3},{c:10,r:1,dx:0,dy:1,range:6,period:2.8,phase:0.6},{c:13,r:1,dx:0,dy:1,range:6,period:2.8,phase:0.9}]},
+{ name:"SLICK BELTS", emoji:"🧊", hue:"#7ec9ff", par:50, grid:[
+"##################",
+"#SS.>>>>>>~~~~.c.#",
+"#..#......#......#",
+"#c.>>>..~~..>>...#",
+"#....#......#....#",
+"#..~~..>>>>..~~..#",
+"#n.#......#...c..#",
+"#..>>>..~~..>>...#",
+"#...........F....#",
+"##################"
+]},
+{ name:"LOCKED FACTORY", emoji:"🗝️", hue:"#ffa23c", par:56, grid:[
+"##################",
+"#SS...>>>>>..c...#",
+"#................#",
+"#k.>>>...........#",
+"#................#",
+"#c.........>>n...#",
+"######DD##########",
+"#.....FF.........#",
+"##################"
+]},
+{ name:"SHIFTWORKS", emoji:"🔩", hue:"#c56cff", par:58, grid:[
+"####################",
+"#SS......M.N......c#",
+"#c.......M.N.......#",
+"#........M.N......n#",
+"#..................#",
+"#........N.M......c#",
+"#c.......N.M.......#",
+"#n.......N.M......F#",
+"####################"
+], crushers:[{c:2,r:4,dx:1,dy:0,range:6,period:3,phase:0},{c:17,r:4,dx:-1,dy:0,range:6,period:3,phase:0.5}]},
+{ name:"PORTAL PLANT", emoji:"🌀", hue:"#b06ee8", par:54, grid:[
+"####################",
+"#SS................#",
+"#....O.......O.....#",
+"#c..............T..#",
+"#..O.......O.......#",
+"#..................#",
+"#.....O.......O....#",
+"#T..............c..#",
+"#..O.......O.......#",
+"#...........F......#",
+"####################"
+]},
+{ name:"FOREMAN CHASE", emoji:"👹", hue:"#ff6a5e", par:50, rival:{mult:1.15}, grid:[
+"####################",
+"#SS.>>>>>>>..c.....#",
+"#..#........#......#",
+"#c.>>>>..#..>>>>...#",
+"#....#........#....#",
+"#n..*..>>>>>...#.c.#",
+"#..#........#......#",
+"#..>>>>..#..>>>>...#",
+"#c...........F.....#",
+"####################"
+]},
+{ name:"NIGHT SHIFT", emoji:"🌙", hue:"#4a5a8a", par:56, dark:true, grid:[
+"##################",
+"#SS..............#",
+"#......O.........#",
+"#c......n........#",
+"#...O.......O....#",
+"#................#",
+"#.......O........#",
+"#c...............#",
+"#..O.............#",
+"#..........F.....#",
+"##################"
+]},
+{ name:"MELTDOWN", emoji:"🔥", hue:"#ff8a3c", par:62, grid:[
+"####################",
+"#SS.>>>>>>>....c...#",
+"#.####.####.####.#.#",
+"#c.#....#....#....c#",
+"#..................#",
+"#.>>>>>>....>>>>>>.#",
+"#..#....#....#....n#",
+"#c.####.####.####..#",
+"#....c......c.....F#",
+"####################"
+], crushers:[{c:2,r:4,dx:1,dy:0,range:6,period:2.8,phase:0},{c:17,r:4,dx:-1,dy:0,range:6,period:2.8,phase:0.5}], hazards:[{path:[[3,8],[11,8]],speed:104},{path:[[16,3],[16,7]],speed:98}]},
+{ name:"THE GAUNTLET", emoji:"💀", hue:"#8b96a8", par:66, grid:[
+"####################",
+"#SS.......M.N......#",
+"#....O....M.N....O.#",
+"#.........M.N......#",
+"#..................#",
+"#c........N.M....c.#",
+"#....O....N.M......#",
+"#n........N.M....F.#",
+"####################"
+], crushers:[{c:2,r:4,dx:1,dy:0,range:5,period:2.9,phase:0},{c:17,r:4,dx:-1,dy:0,range:5,period:2.9,phase:0.5}]},
+{ name:"CORE OVERLOAD", emoji:"👑", hue:"#ffd76a", par:80, rival:{mult:1.3}, grid:[
+"####################",
+"#SS...>>>>>>>....c.#",
+"#..................#",
+"#c......OO......c..#",
+"#.......OO..*......#",
+"#..................#",
+"#n...>>>>>>>.......#",
+"#........>>>>>>F...#",
+"####################"
+], crushers:[{c:2,r:2,dx:1,dy:0,range:5,period:2.7,phase:0},{c:17,r:5,dx:-1,dy:0,range:5,period:2.7,phase:0.5}]},
 ];
 
 /* ----------------------------------------------------------------
@@ -746,6 +923,7 @@ const SERIES = [
   { name:"TURBO BASICS", emoji:"🏁", hue:"#ffb742", blurb:"Learn to drift — keys, doors, crates & the first bosses.", count:15 },
   { name:"BRAIN FREEZE", emoji:"🧊", hue:"#7ec9ff", blurb:"Ice, portals, gate mazes, goober swarms & tougher bosses.", count:15 },
   { name:"MAZE MAYHEM",  emoji:"🌀", hue:"#c56cff", blurb:"Shifting walls that rearrange the maze — time your run!", count:15 },
+  { name:"METAL MELTDOWN", emoji:"🏭", hue:"#ff8a3c", blurb:"Conveyor belts, sliding crushers & trap doors — survive the factory!", count:15 },
   { name:"NEW WORLD",    emoji:"🌋", hue:"#ff6a5e", blurb:"Even wilder. In the workshop!", comingSoon:true },
 ];
 (function computeSeriesStarts(){
@@ -863,6 +1041,29 @@ const VS_ARENAS = [
 "#..c.~..B..22.#",
 "###############",
 ]},
+/* ---- World 4 factory arenas: conveyors shove · crusher in the ring · trap doors ---- */
+{ name:"CONVEYOR CLASH", emoji:"⚙️", hue:"#ffa23c", grid:[
+"###############",
+"#SS....O......#",
+"#SS.>>>>>.....#",
+"#.............#",
+"#..>>..F..<<..#",
+"#.............#",
+"#...<<<<<.....#",
+"#......O....2.#",
+"###############"
+], crushers:[{c:5,r:5,dx:1,dy:0,range:4,period:2.6,phase:0}]},
+{ name:"FACTORY FURY", emoji:"🏭", hue:"#ff8a3c", grid:[
+"###############",
+"#SS...O.>>>>..#",
+"#SS...........#",
+"#...>>>>.O....#",
+"#..O..F.......#",
+"#....<<<<.O...#",
+"#...........2.#",
+"#.O....<<<....#",
+"###############"
+], crushers:[{c:7,r:4,dx:0,dy:1,range:2,period:2.8,phase:0}]},
 ];
 
 /* ---------------------------------------------------------------------
@@ -915,6 +1116,29 @@ const KO_ARENAS = [
 "#.c!...z...!..#",
 "###############",
 ]},
+/* ---- World 4 factory KO: belts shove toward the pits · a crusher grinds the ring ---- */
+{ name:"CONVEYOR PITS", emoji:"🕳️", hue:"#ff7a3c", grid:[
+"###############",
+"#S....v.v.....#",
+"#.!!.....!!...#",
+"#.!!..v..!!...#",
+"#...>.F.<.....#",
+"#.!!..^..!!...#",
+"#.!!.....!!.2.#",
+"#.....^.^.....#",
+"###############"
+], crushers:[{c:7,r:2,dx:0,dy:1,range:3,period:2.8,phase:0}]},
+{ name:"SCRAP PRESS", emoji:"⚙️", hue:"#c56cff", grid:[
+"###############",
+"#S...!!.!!....#",
+"#....!!.!!....#",
+"#..>>.....<<..#",
+"#.....F.......#",
+"#..>>.....<<..#",
+"#....!!.!!....#",
+"#...!!.!!....2#",
+"###############"
+], crushers:[{c:6,r:3,dx:1,dy:0,range:3,period:2.6,phase:0}]},
 ];
 
 /* ---------------------------------------------------------------------
@@ -3461,8 +3685,9 @@ function drawMap(){
 const EMOJIS = ["🦖","🌋","👻","🍕","🌈","🐙","🚀","💎","🐸","⚡"];
 const HUES = ["#ffb742","#9ae64a","#ff6a5e","#b98cff","#53e0ff"];
 const SIZES = [[12,8],[16,10],[20,13]];   // [cols, rows]
-const TOOL_LIST = ["wall","road","~","c","n","k","D","G","*","h","S","F"];
-const TOOL_ICON = { wall:"🧱", road:"🧽", "~":"🧊", n:"⚡", k:"🗝️", D:"🔒", G:"🚧", "*":"🔼", h:"👾", S:"🚗", F:"🏁" };
+const TOOL_LIST = ["wall","road","~","c","n","k","D","G","*","h","<",">","^","v","O","S","F"];
+const TOOL_ICON = { wall:"🧱", road:"🧽", "~":"🧊", n:"⚡", k:"🗝️", D:"🔒", G:"🚧", "*":"🔼", h:"👾", S:"🚗", F:"🏁",
+  "<":"⬅️", ">":"➡️", "^":"⬆️", "v":"⬇️", O:"🕳️" };   // < > ^ v = conveyor belts · O = trap door
 const bl = { grid:null, cols:0, rows:0, tool:"wall", hueIx:0, emojiIx:0, sizeIx:1,
   editingId:null, undo:[], ptr:null, lastCell:null, trashT:0, _geo:null };
 
@@ -3617,7 +3842,7 @@ function decodeTrack(s){
     const rows = p[4].split("!");
     const cols = rows[0].length;
     if(rows.length<5||rows.length>16||cols<6||cols>24) return null;
-    if(!rows.every(r=>r.length===cols && /^[#.SFcnkDG*h~]+$/.test(r))) return null;
+    if(!rows.every(r=>r.length===cols && /^[#.SFcnkDG*h~<>^vO]+$/.test(r))) return null;
     if(!validateRows(rows).ok) return null;
     return { name:String(p[1]||"TRACK").slice(0,14), emojiIx:Math.min(EMOJIS.length-1, Math.max(0,+p[2]||0)),
              hueIx:Math.min(HUES.length-1, Math.max(0,+p[3]||0)), grid:rows };
@@ -3738,7 +3963,8 @@ function drawBuild(dt){
   }
   for(let r=0;r<bl.rows;r++) for(let c=0;c<bl.cols;c++){
     const ch = bl.grid[r][c], x = gx+c*cs, y = gy+r*cs;
-    ctx.fillStyle = ch==="#" ? "#0b0d15" : ch==="~" ? "#3a5c82" : "#2e3852";
+    const belt = ch==="<"||ch===">"||ch==="^"||ch==="v";
+    ctx.fillStyle = ch==="#" ? "#0b0d15" : ch==="~" ? "#3a5c82" : belt ? "#17223a" : ch==="O" ? "#140f1e" : "#2e3852";
     ctx.fillRect(x, y, cs-1, cs-1);
     if(ch!=="#" && ch!=="." && ch!=="~") drawGlyph(ch, x+cs/2, y+cs/2, cs);
   }
