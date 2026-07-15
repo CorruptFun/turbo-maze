@@ -1717,8 +1717,39 @@ function varyMaze(L, meta){
   else if(meta.coop && (meta.coopIx||0) >= 15)       key = varietyKey(1000 + meta.coopIx);   // co-op Season 2+
   return key ? transformLevel(L, key) : L;
 }
+/* 🔒 gateFinish — on a key+door level, make the finish reachable ONLY through a door,
+   so the key can't be skipped (some levels were authored with an open bypass around
+   the lock). Verified per level: key reachable BEFORE any door, finish reachable with
+   doors OPEN, finish UNREACHABLE with doors closed. If it can't seal safely it leaves
+   the level as-is (the finish-needs-key check in updateEntities is the backstop). */
+function gateFinish(L){
+  if(!L || !L.grid) return L;
+  const rows = L.grid.map(r=>r.split("")), R=rows.length, C=rows[0].length, key=(c,r)=>c+","+r;
+  let K=null,S=null; const Fs=[],doors=[];
+  for(let r=0;r<R;r++) for(let c=0;c<C;c++){ const ch=rows[r][c];
+    if(ch==="F")Fs.push([c,r]); else if(ch==="k")K=[c,r]; else if(ch==="S")S=[c,r]; else if(ch==="D")doors.push([c,r]); }
+  if(!Fs.length || !doors.length || !K || !S) return L;                 // only real key+door levels
+  const Fset=new Set(Fs.map(f=>key(f[0],f[1]))), dset0=new Set(doors.map(d=>key(d[0],d[1])));
+  const reach=(from,to,sim,blocked)=>{ const seen=new Set([key(from[0],from[1])]), q=[[from[0],from[1]]];
+    while(q.length){ const [c,r]=q.shift(); if(c===to[0]&&r===to[1]) return true;
+      for(const [dc,dr] of [[1,0],[-1,0],[0,1],[0,-1]]){ const nc=c+dc,nr=r+dr; if(nc<0||nr<0||nc>=C||nr>=R||sim[nr][nc]==="#") continue;
+        if(blocked && blocked(key(nc,nr))) continue; const k=key(nc,nr); if(!seen.has(k)){ seen.add(k); q.push([nc,nr]); } } } return false; };
+  if(!reach(S,Fs[0],rows,cr=>dset0.has(cr))) return L;                  // finish already gated → leave it
+  const openings=[], seen=new Set();
+  for(const [fc,fr] of Fs) for(const [dc,dr] of [[1,0],[-1,0],[0,1],[0,-1]]){ const nc=fc+dc,nr=fr+dr,k=key(nc,nr);
+    if(nc<0||nr<0||nc>=C||nr>=R||Fset.has(k)||seen.has(k)) continue; const ch=rows[nr][nc];
+    if(ch==="."||ch==="x"){ openings.push([nc,nr]); seen.add(k); } }                    // road/crate cells bordering the finish
+  const configs=[{e:null}, ...openings.map(o=>({e:o}))];                // use an existing adjacent door, or turn one opening into a door
+  for(const cfg of configs){ const sim=rows.map(row=>row.slice()), dSet=new Set(dset0);
+    for(const [c,r] of openings){ if(cfg.e && c===cfg.e[0] && r===cfg.e[1]){ sim[r][c]="D"; dSet.add(key(c,r)); } else sim[r][c]="#"; }
+    const closed=cr=>dSet.has(cr);
+    if(reach(S,K,sim,closed) && reach(S,Fs[0],sim,null) && !reach(S,Fs[0],sim,closed))
+      return Object.assign({}, L, {grid: sim.map(r=>r.join(""))}); }
+  return L;                                                             // no safe seal → leave as-is (backstop covers it)
+}
 function startLevel(L, meta){
   L = varyMaze(L, meta);        // 🔀 mirror/rotate later-world & co-op mazes for start/finish variety
+  if(meta.ix!==undefined) L = gateFinish(L);   // 🔒 campaign: seal the finish behind the locked door (no key-skip)
   game.levelIx = (meta.ix!==undefined)? meta.ix : -1;
   game.customId = meta.customId || null;
   game.fromBuilder = meta.from === "builder";

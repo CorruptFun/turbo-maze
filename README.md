@@ -35,6 +35,13 @@ brainier than the last.
 `SERIES` array right before the `comingSoon` card. Starts auto-compute and saved
 progress carries over — nothing gets renumbered.
 
+**🔒 Locked levels:** on any level with a key + door, the finish is automatically
+**sealed behind a door at load** (`gateFinish` in `index.html`) so there's no way
+around the lock — you must find the key first. It's verified per level (key
+reachable before the door, finish reachable only with the door open), skips
+levels it can't seal safely, and auto-covers any future key/door level, so you
+can author them loosely. (A finish-needs-key check is the backstop.)
+
 **🔀 Maze variety:** from **World 2 on** (and co-op **Season 2** on), each maze is
 mirrored or rotated at load so the start & finish land in different corners
 instead of always top-left → bottom-right. It's **deterministic per level** (a
