@@ -2409,6 +2409,9 @@ function updateEntities(dt){
       }
       if(game.car.home && game.car2 && game.car2.home){ coopClear(); return; }
     } else if(game.vs){ vsEnd(car); return; }
+    else if(game.key && game.doors.length && !game.hasKey){        // 🔑 locked level: the finish won't open until you grab the key
+      if((game.t-(game._keyNag||-9)) > 1.6){ game._keyNag=game.t; sticker("🔒 GET THE KEY TO FINISH!", "#ffd76a"); AU.bonk(); }
+    }
     else levelClear();
   }
   } // end per-car loop
