@@ -2765,13 +2765,24 @@ function drawSeries(){
     ctx.globalAlpha = 1;
     hudBtns.push({x, y, w:cw, h:chh, act:"s:"+s});
   }
-  // garage row: BUILD / SHOP / VS / CO-OP + custom tracks (global — lives on the hub)
+  // garage row: BUILD / SHOP / VS / CO-OP — responsive (measure labels, size to fit any screen)
   const gy = garageY;
-  drawBigBtn(PADX, gy, 106, 48, "🔨 BUILD", "build", "#ffb742", "#12151f");
-  drawBigBtn(PADX+114, gy, 96, 48, "🛒 SHOP", "shop", "#7ef7ff", "#12151f");
-  drawBigBtn(PADX+218, gy, 92, 48, "⚔️ VS", "vs", "#ff8fe0", "#12151f");
-  drawBigBtn(PADX+318, gy, 124, 48, "🤝 CO-OP", "coop", "#9ae6ff", "#12151f");
-  let gcx = PADX+450;
+  const gbtns = [
+    {label:"🔨 BUILD", act:"build", bg:"#ffb742"},
+    {label:"🛒 SHOP",  act:"shop",  bg:"#7ef7ff"},
+    {label:"⚔️ VS",    act:"vs",    bg:"#ff8fe0"},
+    {label:"🤝 CO-OP", act:"coop",  bg:"#9ae6ff"},
+  ];
+  let gfont = 24, gpad = 34, gGap = 8;
+  const measureG = ()=>{ ctx.font = "900 "+gfont+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+    return gbtns.map(b=> Math.ceil(ctx.measureText(b.label).width) + gpad); };
+  let gws = measureG();
+  const availG = W - 2*PADX;
+  let gtot = gws.reduce((a,b)=>a+b,0) + gGap*(gbtns.length-1);
+  while(gtot > availG && gfont > 14){ gfont--; gpad = Math.max(20, gpad-2); gws = measureG(); gtot = gws.reduce((a,b)=>a+b,0) + gGap*(gbtns.length-1); }
+  let gxb = PADX;
+  gbtns.forEach((b,i)=>{ drawBigBtn(gxb, gy, gws[i], 48, b.label, b.act, b.bg, "#12151f", gfont); gxb += gws[i]+gGap; });
+  let gcx = gxb + gGap;
   for(const cl of store.customLevels){
     const st = store.stars["c:"+cl.id]||0;
     roundedPanel(gcx, gy+2, 48, 46, 12, "rgba(20,24,36,0.92)");
@@ -2832,27 +2843,27 @@ function drawMap(){
   drawIconBtn(W-PADX-94, 12+safeT, 40, "🗺️", "back");
   // serpentine road with nodes (this world's levels only)
   mapNodes.length = 0;
-  const mx = Math.max(56, W*0.07);
-  const perRow = Math.min(n, Math.max(8, Math.round((W-mx*2)/92)+1));
+  const mx = Math.max(PADX+42, W*0.085);                 // keep clear of side notch/island
+  const perRow = Math.min(n, Math.max(7, Math.round((W-mx*2)/104)+1));
   const nRows = Math.ceil(n/perRow);
-  // fill & center the serpentine in the band between header and footer — scales to any screen
-  const bandTop = 104+safeT, bandBot = H-46-safeB, bandH = Math.max(140, bandBot-bandTop);
-  const R = clamp(Math.min((W-2*mx)/perRow*0.34, bandH/(nRows*2.7)), 20, 46);
-  const rowGap = nRows>1 ? clamp(bandH/nRows, R*2.3, 260) : 0;
+  // fill & center the winding track between header and footer — scales to any screen
+  const bandTop = 96+safeT, bandBot = H-42-safeB, bandH = Math.max(140, bandBot-bandTop);
+  const R = clamp(Math.min((W-2*mx)/perRow*0.30, bandH/(nRows*3.0)), 18, 36);
+  const rowGap = nRows>1 ? clamp(bandH/nRows, R*2.6, 220) : 0;
   const yTop = nRows>1 ? bandTop + (bandH-(nRows-1)*rowGap)/2 : H*0.5;
   const pts = [];
   for(let i=0;i<n;i++){
     const row = (i/perRow)|0, col = i%perRow;
     const t = perRow>1 ? col/(perRow-1) : 0.5;
     const tt = row%2 ? 1-t : t;
-    pts.push([mx+(W-2*mx)*tt, yTop + row*rowGap + Math.sin((base+i)*2.2)*9]);
+    const wig = Math.sin((base+i)*1.7)*Math.min(20, rowGap*0.15);   // gentle wind for a track feel
+    pts.push([mx+(W-2*mx)*tt, yTop + row*rowGap + wig]);
   }
-  ctx.strokeStyle = "rgba(139,147,173,0.35)"; ctx.lineWidth = 24; ctx.lineCap="round"; ctx.lineJoin="round";
-  ctx.beginPath();
-  pts.forEach(([x,y],i)=> i? ctx.lineTo(x,y) : ctx.moveTo(x,y));
-  ctx.stroke();
-  ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 3; ctx.setLineDash([12,14]);
-  ctx.stroke(); ctx.setLineDash([]);
+  // winding racetrack: dark shoulder, asphalt, dashed center line
+  ctx.lineCap="round"; ctx.lineJoin="round";
+  ctx.strokeStyle="rgba(9,12,20,0.6)";      ctx.lineWidth=R*0.9+7; traceTrack(pts); ctx.stroke();
+  ctx.strokeStyle="rgba(139,147,173,0.42)"; ctx.lineWidth=R*0.9;   traceTrack(pts); ctx.stroke();
+  ctx.strokeStyle="rgba(255,255,255,0.30)"; ctx.lineWidth=3; ctx.setLineDash([11,15]); traceTrack(pts); ctx.stroke(); ctx.setLineDash([]);
   for(let i=0;i<n;i++){
     const gi = base+i;
     const [x,y] = pts[i];
@@ -3280,23 +3291,25 @@ function drawCoopMap(){
   drawIconBtn(W-PADX-42, 12+safeT, 40, store.muted?"🔇":"🔊", "mute");
   drawIconBtn(W-PADX-94, 12+safeT, 40, "🗺️", "back");
   coopNodes.length = 0;
-  const mx = Math.max(56, W*0.07);
-  const perRow = Math.min(n, Math.max(8, Math.round((W-mx*2)/92)+1));
+  const mx = Math.max(PADX+42, W*0.085);
+  const perRow = Math.min(n, Math.max(7, Math.round((W-mx*2)/104)+1));
   const nRows = Math.ceil(n/perRow);
-  // fill & center the serpentine — scales to any screen
-  const bandTop = 96+safeT, bandBot = H-44-safeB, bandH = Math.max(140, bandBot-bandTop);
-  const R = clamp(Math.min((W-2*mx)/perRow*0.34, bandH/(nRows*2.7)), 20, 46);
-  const rowGap = nRows>1 ? clamp(bandH/nRows, R*2.3, 260) : 0;
+  // fill & center the winding track — scales to any screen
+  const bandTop = 92+safeT, bandBot = H-40-safeB, bandH = Math.max(140, bandBot-bandTop);
+  const R = clamp(Math.min((W-2*mx)/perRow*0.30, bandH/(nRows*3.0)), 18, 36);
+  const rowGap = nRows>1 ? clamp(bandH/nRows, R*2.6, 220) : 0;
   const yTop = nRows>1 ? bandTop + (bandH-(nRows-1)*rowGap)/2 : H*0.54;
   const pts = [];
   for(let i=0;i<n;i++){
     const row=(i/perRow)|0, col=i%perRow;
     const t = perRow>1? col/(perRow-1):0.5, tt = row%2? 1-t : t;
-    pts.push([mx+(W-2*mx)*tt, yTop+row*rowGap+Math.sin(i*2.2)*9]);
+    const wig = Math.sin(i*1.7)*Math.min(20, rowGap*0.15);
+    pts.push([mx+(W-2*mx)*tt, yTop+row*rowGap+wig]);
   }
-  ctx.strokeStyle="rgba(126,247,255,0.25)"; ctx.lineWidth=24; ctx.lineCap="round"; ctx.lineJoin="round";
-  ctx.beginPath(); pts.forEach(([x,y],i)=> i?ctx.lineTo(x,y):ctx.moveTo(x,y)); ctx.stroke();
-  ctx.strokeStyle="rgba(255,255,255,0.22)"; ctx.lineWidth=3; ctx.setLineDash([12,14]); ctx.stroke(); ctx.setLineDash([]);
+  ctx.lineCap="round"; ctx.lineJoin="round";
+  ctx.strokeStyle="rgba(9,12,20,0.6)";      ctx.lineWidth=R*0.9+7; traceTrack(pts); ctx.stroke();
+  ctx.strokeStyle="rgba(126,247,255,0.30)"; ctx.lineWidth=R*0.9;   traceTrack(pts); ctx.stroke();
+  ctx.strokeStyle="rgba(255,255,255,0.28)"; ctx.lineWidth=3; ctx.setLineDash([11,15]); traceTrack(pts); ctx.stroke(); ctx.setLineDash([]);
   const unlockedN = store.coopUnlocked||1;
   for(let i=0;i<n;i++){
     const [x,y]=pts[i];
@@ -3665,16 +3678,26 @@ function drawClear(dt){
     }
   } else input.taps.length = 0;
 }
-function drawBigBtn(x,y,w,h,label,act,bg,fg){
+function drawBigBtn(x,y,w,h,label,act,bg,fg,fontPx){
   ctx.fillStyle = "rgba(12,14,22,0.9)";
   ctx.beginPath(); ctx.roundRect(x+4,y+4,w,h,16); ctx.fill();
   ctx.fillStyle = bg;
   ctx.beginPath(); ctx.roundRect(x,y,w,h,16); ctx.fill();
   ctx.fillStyle = fg;
-  ctx.font = "900 25px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.font = "900 "+(fontPx||25)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.textAlign="center"; ctx.textBaseline="middle";
   ctx.fillText(label, x+w/2, y+h/2+1);
   hudBtns.push({x,y,w,h,act});
+}
+// smooth winding "racetrack" path through the level nodes (rounded corners)
+function traceTrack(pts){
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], pts[0][1]);
+  for(let i=0;i<pts.length-1;i++){
+    const [x0,y0]=pts[i], [x1,y1]=pts[i+1];
+    ctx.quadraticCurveTo(x0, y0, (x0+x1)/2, (y0+y1)/2);   // node = control point, midpoints on-curve
+  }
+  const L=pts[pts.length-1]; ctx.lineTo(L[0], L[1]);
 }
 
 function drawCooked(dt){
