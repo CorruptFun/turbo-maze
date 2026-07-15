@@ -55,6 +55,7 @@ const YELLS = {
 
 const TAU = Math.PI * 2;
 const CELL = 110;                 // world pixels per maze cell
+const SHIFT_CYCLE = 3.8;          // seconds for shifting walls to complete an A→B cycle
 const clamp = (v,a,b)=> v<a?a : v>b?b : v;
 const lerp  = (a,b,t)=> a+(b-a)*t;
 const dist  = (x1,y1,x2,y2)=> Math.hypot(x2-x1, y2-y1);
@@ -530,6 +531,207 @@ const LEVELS = [
 "#............*..FFF#",
 "####################",
 ]},
+/* ================= WORLD 3 — MAZE MAYHEM (levels 31–45) ================= */
+{ name:"SHIFT START", emoji:"🌀", hue:"#c56cff", par:48, grid:[
+"##################",
+"#SS....c...c.....#",
+"#SS.##.###.##.#..#",
+"#...#...M....#...#",
+"#.#.#.#.M.##.#.#.#",
+"#.#...#.M..c.#...#",
+"#.###.#.M.###.#..#",
+"#...c.#.M...#..c.#",
+"#.####..M.#.##...#",
+"#....c..M....FF..#",
+"#...........#FF..#",
+"##################",
+]},
+{ name:"IN & OUT", emoji:"🌀", hue:"#c56cff", par:52, grid:[
+"##################",
+"#SS...c....c.....#",
+"#SS.##.####.##.#.#",
+"#...#..M..N..#...#",
+"#.#.#..M..N.##.#.#",
+"#.#....M..N...c..#",
+"#.####.M..N.###..#",
+"#..c#..M..N....#.#",
+"#.#.#..N..M.##.#.#",
+"#...#..N..M..FF..#",
+"#...c..N..M.#FF..#",
+"##################",
+]},
+{ name:"CROSSFIRE", emoji:"🌀", hue:"#b98cff", par:56, grid:[
+"####################",
+"#SS....c..M.N..c...#",
+"#SS.###.#.M.N.###..#",
+"#...#...#.M.N...#..#",
+"#.#.#.#.#.N.M.#.#..#",
+"#.#...c.#.N.M.c.#..#",
+"#.###.#.#.N.M.###..#",
+"#...#.#.#.M.N...#..#",
+"#.#.#...#.M.N.#.#..#",
+"#...c.#.#.M.N.c.FF.#",
+"#..####...N.M..#FF.#",
+"####################",
+]},
+{ name:"ICE SHIFT", emoji:"🧊", hue:"#7ec9ff", par:56, grid:[
+"##################",
+"#SS...~~~..M...c.#",
+"#SS.#~~~~#.M.##..#",
+"#...#~~~~#.N..#..#",
+"#.###~~~~###N.#..#",
+"#.#..~~~~..M.#...#",
+"#.#.#~~~~#.M##.#.#",
+"#...#~~~~#.N..#..#",
+"#.#.....c.N.##.F.#",
+"#..####...M..FFF.#",
+"##################",
+]},
+{ name:"SHIFT BOSS", emoji:"👾", hue:"#53e0ff", par:54, rival:{mult:1.15}, grid:[
+"####################",
+"#SS......#..M.N..c.#",
+"#SS.####.#..M.N.#..#",
+"#..*.....#..M.N.#..#",
+"#.####.#.#..N.M.#..#",
+"#.#c...#.#..N.M....#",
+"#.#.####.#..N.M.#..#",
+"#...#..c.#..M.N.#..#",
+"#.###.####..M.N.#..#",
+"#.#....n....M.N.FF.#",
+"#...c......#N.M.FF.#",
+"####################",
+]},
+{ name:"PORTAL SHIFT", emoji:"🌀", hue:"#b98cff", par:56, grid:[
+"##################",
+"#SS..T.#...M...c.#",
+"#SS.##.#.#.M.##..#",
+"#...#..#.#.N..#..#",
+"#.#.#.##.#.N.#.#.#",
+"#.#....c.#.M.#...#",
+"#.####.#.#.M##.#.#",
+"#..c#..#.#.N..#..#",
+"#.#.#.##.#.N.#.F.#",
+"#...#..c.#.M.FFF.#",
+"#T..........#....#",
+"##################",
+]},
+{ name:"LOCKDOWN", emoji:"🗝️", hue:"#ff6a5e", par:60, grid:[
+"####################",
+"#SS....#....M..c.k.#",
+"#SS.##.#.##.M.##.#.#",
+"#...#..#..#.N..#.#.#",
+"#.#.#.##..#.N.##.#.#",
+"#.#...#.c.#.M..#.#.#",
+"#.###.#.###.M.#.#..#",
+"#...c.#...#.N..#D#.#",
+"#.####.##.#.N.##F#.#",
+"#.....c...#.M...F#.#",
+"#.........#.M.#..#.#",
+"####################",
+]},
+{ name:"CRATE SHIFT", emoji:"💥", hue:"#ff9f45", par:54, grid:[
+"##################",
+"#SS...x...M...c..#",
+"#SS.......M......#",
+"#..x..c...N..x...#",
+"#.....#...N......#",
+"#..c..#...M..FF..#",
+"#.x...#...M..FF..#",
+"#..c......N......#",
+"#....x....N..c...#",
+"##################",
+]},
+{ name:"NIGHT SHIFT", emoji:"🌙", hue:"#8a7dff", par:58, dark:true, grid:[
+"##################",
+"#SS...c#...M.N.c.#",
+"#SS.##.#.#.M.N.#.#",
+"#...#..#.#.M.N...#",
+"#.#.####.#.N.M.#.#",
+"#.#....#.#.N.M...#",
+"#.####.#.#.N.M.#.#",
+"#..c#..#.#.M.N...#",
+"#.#.#.##.#.M.N.F.#",
+"#...#..c.#.N.M.F.#",
+"#.........#N.M...#",
+"##################",
+]},
+{ name:"GATE & SHIFT", emoji:"🚧", hue:"#ffb742", par:60, grid:[
+"####################",
+"#SS...*..G..M.N..c.#",
+"#SS.####.G..M.N.#..#",
+"#...#....#..M.N.#..#",
+"#.##.#.#.#..N.M.#..#",
+"#.#..c.#.#..N.M....#",
+"#.#.####.#..N.M.#..#",
+"#...#..*.#..M.N.#..#",
+"#.#.#.####..M.N.#..#",
+"#.#...#...G.M.N.FF.#",
+"#...c.#...G.N.M.FF.#",
+"####################",
+]},
+{ name:"THE GRINDER", emoji:"🌀", hue:"#c56cff", par:70, grid:[
+"####################",
+"#SS.M.N.M.N.M.N.c..#",
+"#SS#M#N#M#N#M#N##..#",
+"#..M.N.M.N.M.N..c..#",
+"#.#N#M#N#M#N#M#.#..#",
+"#.c..c...c...c.....#",
+"#.#M#N#M#N#M#N#.#..#",
+"#..N.M.N.M.N.M..c..#",
+"#.#M#N#M#N#M#N#.#..#",
+"#..N.M.N.M.N.M.FF..#",
+"#..#.......#...FF..#",
+"####################",
+]},
+{ name:"GOOBER SHIFT", emoji:"👾", hue:"#ff8fe0", par:60, grid:[
+"##################",
+"#SS...c...M.N.c..#",
+"#SS.......M.N....#",
+"#...#.....M.N....#",
+"#.c.#.c...N.M.F..#",
+"#...#.....N.M.F..#",
+"#.c.#.....M.N....#",
+"#...#.c...M.N....#",
+"#....c....N.M.c..#",
+"##################",
+], hazards:[{path:[[2,2],[7,2]],speed:112},{path:[[9,7],[14,7]],speed:106}]},
+{ name:"OVERLOAD", emoji:"😈", hue:"#ff6a5e", par:60, rival:{mult:1.28}, grid:[
+"####################",
+"#SS..T....M.N..c.F.#",
+"#SS..*....M.N....F.#",
+"#..c......N.M......#",
+"#.....#...N.M..c...#",
+"#..c..#...M.N......#",
+"#.x...#...M.N..c...#",
+"#..c..#...N.M......#",
+"#T....c...N.M..c...#",
+"####################",
+]},
+{ name:"BLACKOUT SHIFT", emoji:"🌙", hue:"#6a5acd", par:62, dark:true, grid:[
+"##################",
+"#SS...M.#..N..c..#",
+"#SS.#.M.#..N.##..#",
+"#...#.M.#..N..#..#",
+"#.#.#.N.#..M.#.#.#",
+"#.#...N.#..M.#...#",
+"#.####N.#..M##.#.#",
+"#..c#.M.#..N..#..#",
+"#.#.#.M.#..N.#.F.#",
+"#...#.M.c..N.FFF.#",
+"##################",
+], hazards:[{path:[[3,4],[13,4]],speed:108}]},
+{ name:"MAYHEM", emoji:"👑", hue:"#ffd76a", par:74, rival:{mult:1.45}, grid:[
+"####################",
+"#SS.*.~~..M.N.M.c..#",
+"#SS...~~..M.N.M....#",
+"#..c..~~..N.M.N.F..#",
+"#.x...~~..N.M.N.F..#",
+"#..c..#...M.N.M....#",
+"#.....#...M.N.M....#",
+"#..c..#...N.M.N.c..#",
+"#...n.....N.M.N....#",
+"####################",
+]},
 ];
 
 /* ----------------------------------------------------------------
@@ -543,7 +745,8 @@ const LEVELS = [
 const SERIES = [
   { name:"TURBO BASICS", emoji:"🏁", hue:"#ffb742", blurb:"Learn to drift — keys, doors, crates & the first bosses.", count:15 },
   { name:"BRAIN FREEZE", emoji:"🧊", hue:"#7ec9ff", blurb:"Ice, portals, gate mazes, goober swarms & tougher bosses.", count:15 },
-  { name:"NEW WORLD",    emoji:"🌋", hue:"#ff6a5e", blurb:"Even brainier mazes. In the workshop!", comingSoon:true },
+  { name:"MAZE MAYHEM",  emoji:"🌀", hue:"#c56cff", blurb:"Shifting walls that rearrange the maze — time your run!", count:15 },
+  { name:"NEW WORLD",    emoji:"🌋", hue:"#ff6a5e", blurb:"Even wilder. In the workshop!", comingSoon:true },
 ];
 (function computeSeriesStarts(){
   let acc = 0;
@@ -987,6 +1190,7 @@ function startLevel(L, meta){
   game.solid = []; game.road = []; game.coins=[]; game.pads=[]; game.gates=[]; game.doors=[]; game.goobers=[]; game.key=null;
   game.slick = []; game.portals = []; game.crates = [];
   game.plates2 = []; game.coopGates = [];
+  game.shiftWalls = []; game.shiftSol = [0,0]; game.shiftT = 0;
   game.hasKey=false; game.playT=0; game.bonks=0;
   game.vs = !!(meta && meta.vs);
   game.coop = !!(meta && meta.coop);
@@ -1017,6 +1221,8 @@ function startLevel(L, meta){
       if(ch==="x") game.crates.push({c,r,x:wx,y:wy,broken:false});
       if(ch==="P") game.plates2.push({c,r,x:wx,y:wy,lit:0});         // co-op pressure plate
       if(ch==="Q") game.coopGates.push({c,r,x:wx,y:wy,open:0});      // co-op gate: open while any plate held
+      if(ch==="M") game.shiftWalls.push({c,r,grp:0});               // shifting wall — set A
+      if(ch==="N") game.shiftWalls.push({c,r,grp:1});               // shifting wall — set B (anti-phase to A)
     }
   }
   game.portals.length = Math.min(2, game.portals.length);   // exactly one pair
@@ -1072,6 +1278,7 @@ function isSolid(c,r){
   for(const d of game.doors) if(d.c===c && d.r===r && d.anim<1) return true;
   for(const g of game.gates) if(g.c===c && g.r===r && g.open<0.5) return true;
   for(const q of game.coopGates) if(q.c===c && q.r===r && q.open<0.5) return true;
+  for(const m of game.shiftWalls) if(m.c===c && m.r===r && game.shiftSol[m.grp]>0.5) return true;
   for(const cr of game.crates) if(cr.c===c && cr.r===r && !cr.broken) return true;
   return false;
 }
@@ -1369,6 +1576,16 @@ function updateEntities(dt){
     const cyc = (g.ph % 3.2) / 3.2;         // 3.2s cycle
     const target = cyc < 0.55 ? 1 : 0;      // open 55% of the time
     g.open = lerp(g.open, target, dt*8);
+  }
+  // shifting walls: set A and set B take turns being solid — the maze rearranges.
+  // safe "both open" gaps between so nobody is ever fully trapped.
+  if(game.shiftWalls.length){
+    game.shiftT = (game.shiftT + dt) % SHIFT_CYCLE;
+    const p = game.shiftT / SHIFT_CYCLE;
+    const tgtA = (p < 0.42) ? 1 : 0;                 // A solid first ~42%
+    const tgtB = (p >= 0.5 && p < 0.92) ? 1 : 0;     // B solid ~50–92%, gaps at 0.42–0.5 & 0.92–1
+    game.shiftSol[0] = lerp(game.shiftSol[0], tgtA, dt*9);
+    game.shiftSol[1] = lerp(game.shiftSol[1], tgtB, dt*9);
   }
   // co-op: a car parked on ANY plate opens EVERY linked gate (hold it for your buddy!)
   if(game.coop && game.coopGates.length){
@@ -1698,6 +1915,7 @@ function drawWorld(dt){
   for(const g of game.gates) drawGate(g);
   for(const q of game.coopGates) drawCoopGate(q);
   for(const p of game.plates2) drawPlate(p);
+  for(const m of game.shiftWalls) drawShiftWall(m);
   for(const cr of game.crates) drawCrate(cr);
   game.portals.forEach((p,i)=>drawPortal(p,i));
   for(const cn of game.coins) if(!cn.got) drawCoin(cn);
@@ -2049,6 +2267,24 @@ function drawGate(g){
   }
   ctx.strokeStyle = "#20242f"; ctx.lineWidth=3; ctx.strokeRect(1.5,1.5,CELL-3,h-3);
   ctx.restore();
+}
+function drawShiftWall(m){
+  const px = m.c*CELL, py = m.r*CELL, sol = game.shiftSol[m.grp]||0;
+  const col = m.grp ? "#5ad1e0" : "#c56cff";     // set B = teal, set A = purple
+  if(sol < 0.5){                                  // open: dashed ghost of where it will close
+    ctx.globalAlpha = 0.2 + sol*0.4;
+    ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.setLineDash([9,9]);
+    ctx.strokeRect(px+6, py+6, CELL-12, CELL-12); ctx.setLineDash([]);
+    ctx.globalAlpha = 1; return;
+  }
+  const inset = (1-sol)*CELL*0.42;                // grows shut as it solidifies
+  ctx.fillStyle = "#161c2b";
+  ctx.fillRect(px+inset, py+inset, CELL-2*inset, CELL-2*inset);
+  ctx.globalAlpha = 0.85; ctx.fillStyle = col;
+  ctx.fillRect(px+inset+5, py+inset+5, CELL-2*inset-10, CELL-2*inset-10);
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = col; ctx.lineWidth = 3;
+  ctx.strokeRect(px+inset+1.5, py+inset+1.5, CELL-2*inset-3, CELL-2*inset-3);
 }
 function drawCoopGate(q){
   const px = q.c*CELL, py = q.r*CELL;
@@ -2491,7 +2727,7 @@ function drawSeries(){
   // world cards — wrapping grid centered in the band between header and garage row
   const garageY = H-104-safeB;
   const N = SERIES.length;
-  const cw = Math.min(300, Math.max(148, (W-2*PADX-48)/Math.min(N,3)));
+  const cw = Math.min(300, Math.max(140, (W-2*PADX-48)/Math.min(N,4)));
   const perRow = Math.max(1, Math.min(N, Math.floor((W-2*PADX+16)/(cw+16))));
   const rows = Math.ceil(N/perRow);
   const bandTop = 82+safeT, bandBot = garageY-14;
