@@ -30,11 +30,19 @@ and the next world unlocks — each one a little brainier than the last.
 progress carries over — nothing gets renumbered.
 
 ## ⚔️ VS mode (two players, one screen)
-Tap **⚔️ VS** on the map. The whole maze fits on screen — P1 steers with the
+Tap **⚔️ VS** on the hub. The whole maze fits on screen — P1 steers with the
 left thumb (or ARROWS), P2 with the right thumb (or WASD). 3-2-1-GO, first
 to the flag wins, coins and aura crown their own champs, and the series
 score is remembered. You can also race any track you built.
 Set the names in the 🔧 TWEAK ZONE (`playerName`, `player2Name`).
+
+**⚔️ Battle mechanics** (in the newer arenas): **💥 bumper cars** — ram your
+rival at speed to spin them out and swipe one of their coins; **⚡ zap
+pickups** — grab one and your rival instantly spins out (it auto-targets, so
+no extra button); **🧱 trap triggers** — drive over a red button to slam a set
+of walls shut across the map for a few seconds (spring it when your rival's
+about to pass!). Eight arenas now, from open **Bumper Bowl** to the
+everything-at-once **Overdrive**.
 
 Feels too fast or the boss too hard? Open `index.html` and tweak
 `speed` and `bossSpeed` in the 🔧 TWEAK ZONE.
