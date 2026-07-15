@@ -1472,6 +1472,9 @@ let store = { unlocked:1, stars:{}, aura:0, coinsBank:0, muted:false, customLeve
   upg:{engine:0,grip:0,nitro:0,magnet:0,lucky:0}, powerups:{}, armed:null,
   cosmetics:[], cosmetic:null, cratesOpened:0, goldenFound:0 };
 try { const s = localStorage.getItem("turboMaze"); if(s) store = Object.assign(store, JSON.parse(s)); } catch(e){}
+// 🎁 retroactively grant each world's reward car for any world ALREADY beaten (older saves recorded the clear before reward cars existed)
+for(let s=0;s<SERIES.length;s++)
+  if(SERIES[s].reward && seriesBeaten(s) && !store.ownedCars.includes(SERIES[s].reward)) store.ownedCars.push(SERIES[s].reward);
 function save(){ try { localStorage.setItem("turboMaze", JSON.stringify(store)); } catch(e){} }
 
 /* ---------------- audio (all synth, no files) ---------------- */
@@ -4987,7 +4990,8 @@ function drawShop(dt){
   const vRows = Math.ceil(VEHICLES.length/4);
   const numH = H<460? 46 : 58;
   const availY = H - y - safeB - 10;
-  const ch2 = Math.max(46, Math.min(96, Math.floor((availY - numH - gap*(vRows+1))/(vRows+1))));
+  // floor at 34 (not 46) so the grid still compresses to fit once the roster needs a 4th row on short phones
+  const ch2 = Math.max(34, Math.min(96, Math.floor((availY - numH - gap*(vRows+1))/(vRows+1))));
   VEHICLES.forEach((v,i)=>{
     const cx3 = x0 + (i%4)*(cw+gap), cy3 = y + ((i/4)|0)*(ch2+gap);
     const owned = store.ownedCars.includes(v.id);
