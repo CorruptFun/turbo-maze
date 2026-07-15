@@ -1453,6 +1453,7 @@ function startLevel(L, meta){
   game.zaps = []; game.traps = []; game.trapWalls = []; game.trapT = 0;   // VS battle: pickups + trap walls
   game.koZones = [];                                                      // knockout: hazard cells ("!")
   game.seqPads = []; game.seqNext = 0; game.seqDone = false;              // co-op: button sequence puzzle
+  game.conveyors = []; game.trapDoors = []; game.crushers = [];           // environmental hazards
   game.hasKey=false; game.playT=0; game.bonks=0;
   game.vs = !!(meta && meta.vs);
   game.coop = !!(meta && meta.coop);
@@ -1491,6 +1492,11 @@ function startLevel(L, meta){
       if(ch==="w") game.trapWalls.push({c,r,x:wx,y:wy,closed:0});   // VS trap wall (slams shut when triggered)
       if(ch==="!") game.koZones.push({c,r,x:wx,y:wy,ph:Math.random()*TAU}); // knockout hazard pit
       if(ch==="o") game.seqPads.push({c,r,x:wx,y:wy,num:0,lit:0});   // co-op sequence pad (order set by L.seq)
+      if(ch==="<") game.conveyors.push({c,r,x:wx,y:wy,dx:-1,dy:0});  // conveyor floors — shove the car
+      if(ch===">") game.conveyors.push({c,r,x:wx,y:wy,dx:1,dy:0});
+      if(ch==="^") game.conveyors.push({c,r,x:wx,y:wy,dx:0,dy:-1});
+      if(ch==="v") game.conveyors.push({c,r,x:wx,y:wy,dx:0,dy:1});
+      if(ch==="O") game.trapDoors.push({c,r,x:wx,y:wy,ph:Math.random()*TAU}); // trap door — fall through & respawn
     }
   }
   game.portals.length = Math.min(2, game.portals.length);   // exactly one pair
@@ -1502,12 +1508,18 @@ function startLevel(L, meta){
   if(!isWallCell(sc+1,sr) || !isWallCell(sc+2,sr)) head = 0;
   else if(!isWallCell(sc,sr+1)) head = Math.PI/2;
   game.car = newCar(sx, sy, head);
+  game.car.spawn = {x:sx, y:sy, h:head};       // trap-door / respawn point
   game.car2 = null;
   if(twoP){
     const p2head = !isWallCell(p2c-1,p2r) ? Math.PI : -Math.PI/2;
     game.car2 = newCar(p2x||sx, p2y||sy, p2x? p2head : head);
     game.car2.p2 = true;
+    game.car2.spawn = {x:p2x||sx, y:p2y||sy, h:p2head};
   }
+  // sliding crushers (hand-authored via L.crushers:[{c,r,dx,dy,range,period,phase}])
+  (L.crushers||[]).forEach(cr=> game.crushers.push({
+    c:cr.c, r:cr.r, dx:cr.dx||0, dy:cr.dy||0, range:cr.range||3,
+    period:cr.period||2.6, phase:cr.phase||0, cc:cr.c, cr:cr.r }));
   if(game.coop){
     game.car.home=false; if(game.car2) game.car2.home=false;
     game.car.spawn = {x:sx, y:sy, h:head};
@@ -1560,6 +1572,7 @@ function isSolid(c,r){
   for(const q of game.coopGates) if(q.c===c && q.r===r && q.open<0.5) return true;
   for(const m of game.shiftWalls) if(m.c===c && m.r===r && game.shiftSol[m.grp]>0.5) return true;
   for(const w of game.trapWalls) if(w.c===c && w.r===r && w.closed>0.5) return true;
+  for(const cr of game.crushers) if(cr.cc===c && cr.cr===r) return true;
   for(const cr of game.crates) if(cr.c===c && cr.r===r && !cr.broken) return true;
   return false;
 }
@@ -1868,6 +1881,13 @@ function updateEntities(dt){
     game.shiftSol[0] = lerp(game.shiftSol[0], tgtA, dt*9);
     game.shiftSol[1] = lerp(game.shiftSol[1], tgtB, dt*9);
   }
+  // sliding crushers: slide a solid block back & forth along its lane
+  for(const cr of game.crushers){
+    const off = cr.range * (0.5 - 0.5*Math.cos((game.t/cr.period + cr.phase)*TAU));  // 0..range ping-pong
+    cr.off = off;
+    cr.cc = cr.c + cr.dx*Math.round(off);
+    cr.cr = cr.r + cr.dy*Math.round(off);
+  }
   // VS battle: zap pickups respawn; trap walls slam shut for a moment when a trigger is hit
   if(game.vs || game.ko){
     for(const z of game.zaps){ if(!z.active){ z.cool -= dt; if(z.cool<=0) z.active = true; } z.ph += dt*4; }
@@ -1956,6 +1976,24 @@ function updateEntities(dt){
         car.sq = 1.25; AU.nitro(); game.shake = Math.min(6, game.shake+3);
         float("BOOST!", car.x, car.y-40, game.lv.hue);
       }
+    }
+  }
+  // conveyor floors: shove the car the way the belt points (you can still steer against it)
+  if(game.conveyors.length){
+    const ccx=Math.floor(car.x/CELL), ccy=Math.floor(car.y/CELL);
+    for(const cv2 of game.conveyors){
+      if(cv2.c===ccx && cv2.r===ccy){ car.vx += cv2.dx*640*dt; car.vy += cv2.dy*640*dt; break; }
+    }
+  }
+  // trap doors: drive on one → drop through → respawn (invuln blocks re-trigger)
+  if(game.trapDoors.length && car.invuln<=0){
+    const tcx=Math.floor(car.x/CELL), tcy=Math.floor(car.y/CELL);
+    if(game.trapDoors.some(t=>t.c===tcx && t.r===tcy)){
+      const sp = car.spawn || {x:car.x, y:car.y, h:car.heading};
+      for(let i=0;i<12;i++) puff(car.x, car.y, "rgba(20,16,28,0.6)");
+      car.x=sp.x; car.y=sp.y; car.heading=sp.h; car.vx=car.vy=0; car.invuln=1.4; car.spinT=0.35; car.sq=0.5;
+      AU.bonk(); AU.beep(200,0.25,"sine",0.16,60); game.shake=Math.min(8,game.shake+4);
+      sticker("🕳️ "+(game.vs||game.coop||game.ko? pName(car.p2?1:0)+" FELL IN!":"WHOOPS — DOWN THE HATCH!"), "#b06ee8");
     }
   }
   // goobers: nitro speed takes HIM out — otherwise he yoinks your coins
@@ -2268,6 +2306,8 @@ function drawWorld(dt){
   game._cam = {cx, cy, z};
   ctx.drawImage(game.groundCv, 0, 0);
   ctx.drawImage(game.skidCv, 0, 0);
+  for(const cv2 of game.conveyors) drawConveyor(cv2);   // floor-level, under everything
+  for(const t of game.trapDoors) drawTrapDoor(t);
 
   if(!game.ko) drawFinish();
   for(const d of game.doors) drawDoor(d);
@@ -2278,6 +2318,7 @@ function drawWorld(dt){
   for(const m of game.shiftWalls) drawShiftWall(m);
   for(const w of game.trapWalls) drawTrapWall(w);
   for(const k of game.koZones) drawKoHazard(k);
+  for(const cr of game.crushers) drawCrusher(cr);
   for(const t of game.traps) drawTrapTrigger(t);
   for(const z of game.zaps) drawZap(z);
   for(const cr of game.crates) drawCrate(cr);
@@ -2723,6 +2764,45 @@ function drawKoHazard(k){
   ctx.fillStyle="rgba(20,8,14,0.9)";
   for(let i=0;i<4;i++){ ctx.save(); ctx.translate(px+CELL/2, py+CELL/2); ctx.rotate(i*Math.PI/2);
     ctx.beginPath(); ctx.moveTo(-8,-CELL*0.42); ctx.lineTo(8,-CELL*0.42); ctx.lineTo(0,-CELL*0.30); ctx.closePath(); ctx.fill(); ctx.restore(); }
+}
+function drawConveyor(cv){
+  const px=cv.c*CELL, py=cv.r*CELL;
+  ctx.fillStyle="#17223a"; ctx.fillRect(px+2,py+2,CELL-4,CELL-4);
+  ctx.save(); ctx.beginPath(); ctx.rect(px+2,py+2,CELL-4,CELL-4); ctx.clip();
+  ctx.translate(px+CELL/2, py+CELL/2); ctx.rotate(Math.atan2(cv.dy, cv.dx));  // +x = belt direction
+  const scroll = (game.t*70) % 40;
+  ctx.strokeStyle="#5f86c8"; ctx.lineWidth=7; ctx.lineCap="round"; ctx.lineJoin="round";
+  for(let i=-2;i<2;i++){ const x=-CELL*0.5 + i*40 + scroll;
+    ctx.beginPath(); ctx.moveTo(x-9,-15); ctx.lineTo(x+9,0); ctx.lineTo(x-9,15); ctx.stroke(); }
+  ctx.restore();
+  ctx.strokeStyle="rgba(95,134,200,0.4)"; ctx.lineWidth=2; ctx.strokeRect(px+3,py+3,CELL-6,CELL-6);
+}
+function drawTrapDoor(t){
+  const cx=t.x, cy=t.y, wob=0.5+Math.sin(game.t*2.4+t.ph)*0.5;
+  ctx.fillStyle="#0a0712"; ctx.beginPath(); ctx.arc(cx,cy,CELL*0.42,0,TAU); ctx.fill();     // void
+  const g=ctx.createRadialGradient(cx,cy,CELL*0.1, cx,cy,CELL*0.42);
+  g.addColorStop(0,"#05040a"); g.addColorStop(0.7,"#1a1226"); g.addColorStop(1,"#2a1e3e");
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(cx,cy,CELL*0.42,0,TAU); ctx.fill();
+  ctx.save(); ctx.translate(cx,cy); ctx.rotate(game.t*1.5);                                  // swirl
+  ctx.strokeStyle="rgba(150,115,200,"+(0.25+wob*0.35)+")"; ctx.lineWidth=3;
+  for(let a=0;a<3;a++){ ctx.beginPath(); ctx.arc(0,0,CELL*(0.16+a*0.1), a*2.1, a*2.1+3.6); ctx.stroke(); }
+  ctx.restore();
+}
+function drawCrusher(cr){
+  const px=(cr.c+cr.dx*(cr.off||0))*CELL, py=(cr.r+cr.dy*(cr.off||0))*CELL;
+  ctx.save(); ctx.translate(px,py);
+  ctx.fillStyle="rgba(8,10,16,0.5)"; ctx.fillRect(6,6,CELL-8,CELL-8);      // shadow
+  ctx.fillStyle="#3a4050"; ctx.fillRect(3,3,CELL-6,CELL-6);
+  ctx.save(); ctx.beginPath(); ctx.rect(6,6,CELL-12,CELL-12); ctx.clip();  // hazard stripes
+  ctx.fillStyle="#565d70"; ctx.fillRect(6,6,CELL-12,CELL-12);
+  ctx.fillStyle="#ffcc33";
+  for(let i=0;i<5;i++){ ctx.save(); ctx.translate(i*28-24,0); ctx.rotate(0.5); ctx.fillRect(0,-24,11,CELL+48); ctx.restore(); }
+  ctx.restore();
+  ctx.strokeStyle="#12151d"; ctx.lineWidth=4; ctx.strokeRect(3,3,CELL-6,CELL-6);
+  // bolts in the corners
+  ctx.fillStyle="#20242e";
+  [[12,12],[CELL-12,12],[12,CELL-12],[CELL-12,CELL-12]].forEach(([bx,by])=>{ ctx.beginPath(); ctx.arc(bx,by,4,0,TAU); ctx.fill(); });
+  ctx.restore();
 }
 function drawCoopGate(q){
   const px = q.c*CELL, py = q.r*CELL;
