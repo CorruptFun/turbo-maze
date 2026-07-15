@@ -177,6 +177,7 @@ cosmetics:[],        // owned cosmetic ids
 cosmetic: null,      // equipped cosmetic id, or null
 cratesOpened: 0,     // lifetime: crates bought in the garage
 goldenFound: 0,      // lifetime: free golden crates smashed in levels (v2)
+goldTaken:   {},     // { levelIx: 1 } — levels whose one-time golden crate is already collected
 ```
 
 Per-run fields set on `game.car` (not persisted): `dbl`, `shield`, `pu`,
@@ -223,7 +224,9 @@ Per-run fields set on `game.car` (not persisted): `dbl`, `shield`, `pu`,
   branch in `cosTrail`/`drawCar`.
 - **VS fairness** → `CONFIG.powerUpsInVs` (`false` = campaign-only, the default).
 - **Golden-crate frequency (v2)** → `CONFIG.goldenCrateChance` (default `0.3` ≈
-  one free crate every ~3 campaign levels; `0` = off, `1` = every level).
+  ~30% of levels deterministically carry a one-time golden crate; `0` = off,
+  `1` = every level). Which levels is stable (`goldenHash`), and each is a
+  one-time grab (`store.goldTaken`).
 - **Turn features on/off, or remove an asset** → the `CONFIG.crates*` toggles
   (**§12 Reverting**) and the per-asset cookbook (**§13 Editing assets**).
 
@@ -247,20 +250,26 @@ wooden `x` crates, `isSolid`, `crateAt`, the `collideWalls` smash branch,
 
 - **Spawn** (`spawnGolden`, called from `startLevel` after the flow field exists):
   campaign-only (`levelIx>=0`, not VS/KO/co-op/builder/custom, and master
-  `cratesEnabled`), rolls `CONFIG.goldenCrateChance`, then places one crate on the
-  `bfsPathCells(start→finish)` racing line — avoiding start/finish, key, doors,
-  coins, other crates, portals, conveyors, trap-doors, **whole crusher lanes**,
-  and goober patrols. No safe cell → no crate (a safe no-op).
+  `cratesEnabled`). A **deterministic per-level** decision (`goldenHash(levelIx) <
+  CONFIG.goldenCrateChance`) picks which levels carry a golden crate — the same
+  ~30% of levels every time, so it can't be farmed by re-racing — and it's skipped
+  once the crate has been **collected on that level** (`store.goldTaken[levelIx]`).
+  Placed on the `bfsPathCells(start→finish)` racing line — avoiding start/finish,
+  key, doors, coins, other crates, portals, conveyors, trap-doors, **whole crusher
+  lanes**, and goober patrols. No safe cell → no crate (a safe no-op).
 - **Grab** (`updateEntities`, human `game.car` only, within `CELL*0.5`) →
   `grabGolden`: rolls `CRATES.golden.odds` `[0,50,32,14,4]` (never common; its
   legendary/secret sit just under the Mega Box), grants + `save()`s **before** any
   FX (banked even if the kid crashes the next frame), then celebrates
   non-blocking — debris, sparkles, floats, screen confetti, sound, and an
-  auto-expiring banner (`drawGoldReveal`, ~2.8s, captures no taps, pauses nothing).
+  auto-expiring banner (`drawGoldReveal`, ~2.8s, captures no taps, pauses nothing),
+  and sets `store.goldTaken[levelIx]` so **this level's crate never comes back**.
 - **The boss rival can't touch it:** the rival smashes only `game.crates`, and the
   grab checks `game.car` only.
 - **Draw:** `drawGold` (world-space pulsing glow + bobbing gold box + 🎁 face).
-- **Off switch:** `CONFIG.goldenCrateChance = 0`, or the master `cratesEnabled`.
+- **One-per-map:** each level's golden crate is a **one-time** find — once grabbed
+  it's gone there forever (`store.goldTaken`), so re-racing a level can't farm more.
+  **Off switch:** `CONFIG.goldenCrateChance = 0`, or the master `cratesEnabled`.
 
 ---
 
@@ -334,7 +343,7 @@ The save lives under key **`turboMaze`** and loads via
 `Object.assign(store, JSON.parse(s))` (a shallow merge onto the `store` literal).
 
 - **Crates code → pre-crates code:** the save still holds `upg`, `powerups`,
-  `armed`, `cosmetics`, `cosmetic`, `cratesOpened`, `goldenFound` — copied onto
+  `armed`, `cosmetics`, `cosmetic`, `cratesOpened`, `goldenFound`, `goldTaken` — copied onto
   `store` but **nothing reads them** → inert. No crash, no wipe.
 - **Pre-crates save → crates code (or flag back ON):** missing keys take their
   `store`-literal defaults. Also safe.

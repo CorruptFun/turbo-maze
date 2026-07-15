@@ -1470,7 +1470,7 @@ let store = { unlocked:1, stars:{}, aura:0, coinsBank:0, muted:false, customLeve
   curSeries:0, seriesCleared:{}, coopUnlocked:1, coopStars:{},
   // 🎁 mystery crates (v1): permanent upgrades, one-use power-ups, cosmetics — see docs/MYSTERY-CRATES.md
   upg:{engine:0,grip:0,nitro:0,magnet:0,lucky:0}, powerups:{}, armed:null,
-  cosmetics:[], cosmetic:null, cratesOpened:0, goldenFound:0 };
+  cosmetics:[], cosmetic:null, cratesOpened:0, goldenFound:0, goldTaken:{} };
 try { const s = localStorage.getItem("turboMaze"); if(s) store = Object.assign(store, JSON.parse(s)); } catch(e){}
 // 🎁 retroactively grant each world's reward car for any world ALREADY beaten (older saves recorded the clear before reward cars existed)
 for(let s=0;s<SERIES.length;s++)
@@ -1824,7 +1824,9 @@ function startLevel(L, meta){
   // boss race: the goober drives his own car, start to finish
   game.rival = null;
   if(L.rival){
-    const path = bfsPathCells(game.startCell, [game.finish.c, game.finish.r]);
+    const trapAvoid = new Set(game.trapDoors.map(t=>t.c+","+t.r));                          // a good driver routes around the hatches
+    let path = bfsPathCells(game.startCell, [game.finish.c, game.finish.r], trapAvoid);
+    if(path.length<=1) path = bfsPathCells(game.startCell, [game.finish.c, game.finish.r]);  // trap door unavoidable → take the normal path
     game.rival = { wp: path.map(([c,r])=>[(c+0.5)*CELL,(r+0.5)*CELL]),
       i:0, x:(game.startCell[0]+0.5)*CELL, y:(game.startCell[1]+0.5)*CELL,
       a:head, speed:(CONFIG.bossSpeed||95)*((L.rival&&L.rival.mult)||1), delay:1.5, done:false };
@@ -1858,13 +1860,21 @@ function isSolid(c,r){
   for(const cr of game.crates) if(cr.c===c && cr.r===r && !cr.broken) return true;
   return false;
 }
+// TIMING obstacles the boss rival must wait out (shifting walls / crushers / timed gates).
+// NOT key-doors (it doesn't collect keys — it barges through) and NOT crates (it smashes them).
+function rivalBlocked(c,r){
+  for(const m of game.shiftWalls) if(m.c===c && m.r===r && game.shiftSol[m.grp]>0.5) return true;
+  for(const cr of game.crushers)  if(cr.cc===c && cr.cr===r) return true;
+  for(const g of game.gates)      if(g.c===c && g.r===r && g.open<0.5) return true;
+  return false;
+}
 function crateAt(c,r){
   for(const cr of game.crates) if(!cr.broken && cr.c===c && cr.r===r) return cr;
   return null;
 }
 
 /* BFS shortest path between two cells (walls only) — the boss's racing line */
-function bfsPathCells(start, goal){
+function bfsPathCells(start, goal, avoid){
   const R = game.rows, C = game.cols;
   const prev = Array.from({length:R},()=>new Array(C).fill(null));
   prev[start[1]][start[0]] = start;
@@ -1874,7 +1884,7 @@ function bfsPathCells(start, goal){
     if(c===goal[0] && r===goal[1]) break;
     for(const [dc,dr] of [[1,0],[-1,0],[0,1],[0,-1]]){
       const nc=c+dc, nr=r+dr;
-      if(nc<0||nr<0||nc>=C||nr>=R||game.solid[nr][nc]||prev[nr][nc]) continue;
+      if(nc<0||nr<0||nc>=C||nr>=R||game.solid[nr][nc]||prev[nr][nc]||(avoid&&avoid.has(nc+","+nr))) continue;
       prev[nr][nc] = [c,r]; q.push([nc,nr]);
     }
   }
@@ -2425,18 +2435,24 @@ function updateEntities(dt){
     if(rv.delay>0) rv.delay -= dt;
     else if(rv.i < rv.wp.length-1){
       const t = rv.wp[rv.i+1];
-      const d = dist(rv.x,rv.y,t[0],t[1]) || 0.001;
-      const pc = clamp(Math.floor(car.x/CELL),0,game.cols-1), pr = clamp(Math.floor(car.y/CELL),0,game.rows-1);
-      const pLeft = (game.flow && game.flow[pr][pc]>=0) ? game.flow[pr][pc] : 99;
-      const rLeft = rv.wp.length-1-rv.i;
-      const band = clamp(1 + (rLeft-pLeft)*0.03, 0.75, 1.3);
-      const spd = rv.speed*band;
-      if(d < spd*dt+2){ rv.x=t[0]; rv.y=t[1]; rv.i++; }
-      else { rv.x += (t[0]-rv.x)/d*spd*dt; rv.y += (t[1]-rv.y)/d*spd*dt; }
-      rv.a += angDiff(rv.a, Math.atan2(t[1]-rv.y, t[0]-rv.x))*Math.min(1,dt*8);
-      if(Math.random()<0.15) puff(rv.x-Math.cos(rv.a)*18, rv.y-Math.sin(rv.a)*18, "rgba(176,110,232,0.25)");
-      const rc = crateAt(Math.floor(rv.x/CELL), Math.floor(rv.y/CELL));
-      if(rc){ rc.broken=true; for(let i=0;i<10;i++) debris(rc.x+rand(-20,20), rc.y+rand(-20,20)); AU.bonk(); }
+      const tc = Math.floor(t[0]/CELL), tr = Math.floor(t[1]/CELL);
+      if(rivalBlocked(tc, tr)){
+        // hold at a shifting wall / crusher / closed gate and face it — same wait the player has to make
+        rv.a += angDiff(rv.a, Math.atan2(t[1]-rv.y, t[0]-rv.x))*Math.min(1,dt*8);
+      } else {
+        const d = dist(rv.x,rv.y,t[0],t[1]) || 0.001;
+        const pc = clamp(Math.floor(car.x/CELL),0,game.cols-1), pr = clamp(Math.floor(car.y/CELL),0,game.rows-1);
+        const pLeft = (game.flow && game.flow[pr][pc]>=0) ? game.flow[pr][pc] : 99;
+        const rLeft = rv.wp.length-1-rv.i;
+        const band = clamp(1 + (rLeft-pLeft)*0.03, 0.75, 1.3);
+        const spd = rv.speed*band;
+        if(d < spd*dt+2){ rv.x=t[0]; rv.y=t[1]; rv.i++; }
+        else { rv.x += (t[0]-rv.x)/d*spd*dt; rv.y += (t[1]-rv.y)/d*spd*dt; }
+        rv.a += angDiff(rv.a, Math.atan2(t[1]-rv.y, t[0]-rv.x))*Math.min(1,dt*8);
+        if(Math.random()<0.15) puff(rv.x-Math.cos(rv.a)*18, rv.y-Math.sin(rv.a)*18, "rgba(176,110,232,0.25)");
+        const rc = crateAt(Math.floor(rv.x/CELL), Math.floor(rv.y/CELL));
+        if(rc){ rc.broken=true; for(let i=0;i<10;i++) debris(rc.x+rand(-20,20), rc.y+rand(-20,20)); AU.bonk(); }
+      }
     }
     if(rv.i >= rv.wp.length-1){ rv.done = true; rivalWins(); }
   }
@@ -4608,12 +4624,15 @@ function openCrate(key){
    modal, no pause, no tap). Toggle: CONFIG.goldenCrateChance (0 = off).
    Full write-up: docs/MYSTERY-CRATES.md
    ================================================================== */
+// deterministic pseudo-random in [0,1) per level — decides WHICH levels carry a golden crate (stable per level, not farmable)
+function goldenHash(ix){ return ((ix*73 + 17) % 101) / 101; }
 function spawnGolden(){
   game.gold = null;
   // campaign single-player only — VS/Knockout/Co-op/builder/custom are all excluded
   if(game.levelIx<0 || game.vs || game.ko || game.coop || game.customId || game.fromBuilder) return;
   if(!CONFIG.cratesEnabled || !CRATES.golden) return;          // 🎁 master toggle, or the golden entry was removed
-  if(Math.random() >= (CONFIG.goldenCrateChance||0)) return;   // rare per-level roll (0 disables)
+  if(store.goldTaken && store.goldTaken[game.levelIx]) return; // already collected on THIS level — never respawns (no re-race farming)
+  if(goldenHash(game.levelIx) >= (CONFIG.goldenCrateChance||0)) return;   // deterministic: does this level carry a golden crate?
   if(!game.finish || !game.startCell || !game.flow) return;
   const F = game.finish, K = (c,r)=> c+","+r, blocked = new Set(), add = (c,r)=> blocked.add(K(c,r));
   add(game.startCell[0], game.startCell[1]); add(F.c, F.r);
@@ -4651,7 +4670,9 @@ function grabGolden(g){
   g.got = true;
   const t = rollTier(CRATES.golden.odds), pool = poolForTier(t);
   const res = grantDrop(pool[(Math.random()*pool.length)|0], t);
-  store.goldenFound = (store.goldenFound||0) + 1; save();       // reward banked BEFORE any FX
+  store.goldenFound = (store.goldenFound||0) + 1;
+  if(store.goldTaken) store.goldTaken[game.levelIx] = 1;        // 🎁 this level's crate is collected — gone for good here
+  save();                                                        // reward banked BEFORE any FX
   game.shake = Math.min(9, game.shake+5);
   for(let i=0;i<16;i++) debris(g.x+rand(-24,24), g.y+rand(-24,24));
   for(let i=0;i<14;i++) sparkle(g.x, g.y);
