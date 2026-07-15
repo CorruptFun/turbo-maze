@@ -36,10 +36,16 @@ const CONFIG = {
   carColor:   "#ff4757",           // 👈 the car! try "#3ddc55" (tractor green)
   stripe:     "#ffe9a3",
   speed:      0.85,                // 👈 car speed: 1 = fast & furious, 0.7 = kid cruise
-  bossSpeed:  95,                  // 👈 boss car speed on BOSS RACE (lower = easier)
+  bossSpeed:  95,                  // 👈 base boss speed; each boss level's rival:{mult:…} scales it (mults climb across the campaign — see LEVELS)
   zoom:       1.3,                 // 👈 bigger cars on screen! (1 = old view, up to 2)
   easyMode:   false,               // true = slower goober, more nitro
   powerUpsInVs: false,             // 🎁 true = crate upgrades & power-ups also work in VS/Knockout (default: campaign only, keeps VS fair)
+  goldenCrateChance: 0.3,          // 🎁 chance a campaign level spawns one free GOLDEN crate to grab (0 = off, 1 = every level)
+  cratesEnabled:    true,          // 🎁 MASTER switch — false = revert to the pre-crates game (CRATES button hidden, saved gear goes inert)
+  cratesUpgrades:   true,          // 🎁 false = drop the UPGRADES bucket (engine/grip/nitro/magnet/lucky)
+  cratesPowerups:   true,          // 🎁 false = drop the POWER-UPS bucket (rocket/double/shield/freeze/ghost/slowmo)
+  cratesCosmetics:  true,          // 🎁 false = drop the COSMETICS bucket (trails/shine/toppers)
+  mazeVariety:      true,          // 🔀 false = every maze keeps the classic top-left → bottom-right layout (no mirror/rotate)
 };
 // Words the game yells. Keep 'em short — he's 7. Add your own!
 const YELLS = {
@@ -365,7 +371,7 @@ const LEVELS = [
 "#.........#......FF#",
 "####################",
 ]},
-{ name:"ICE BOSS", emoji:"❄️", hue:"#53e0ff", par:48, rival:{mult:1.1}, grid:[
+{ name:"ICE BOSS", emoji:"❄️", hue:"#53e0ff", par:48, rival:{mult:1.38}, grid:[
 "####################",
 "#SS......~~~~.....c#",
 "#SS.####.~~~~.####.#",
@@ -486,7 +492,7 @@ const LEVELS = [
 "#...k.c...x....DFF.#",
 "####################",
 ], hazards:[{path:[[6,6],[12,6]],speed:105}]},
-{ name:"TWIN TURBO", emoji:"😈", hue:"#ff6a5e", par:44, rival:{mult:1.22}, grid:[
+{ name:"TWIN TURBO", emoji:"😈", hue:"#ff6a5e", par:44, rival:{mult:1.50}, grid:[
 "####################",
 "#SS......#....c..T.#",
 "#SS.####.#.####.##.#",
@@ -516,7 +522,7 @@ const LEVELS = [
 "#......#....DFF..#",
 "##################",
 ], hazards:[{path:[[4,4],[11,4]],speed:104}]},
-{ name:"THE GAUNTLET", emoji:"👑", hue:"#ffd76a", par:50, rival:{mult:1.4}, grid:[
+{ name:"THE GAUNTLET", emoji:"👑", hue:"#ffd76a", par:50, rival:{mult:1.62}, grid:[
 "####################",
 "#SS...*....~~~....c#",
 "#SS.####.#.~~~.##.##",
@@ -588,7 +594,7 @@ const LEVELS = [
 "#..####...M..FFF.#",
 "##################",
 ]},
-{ name:"SHIFT BOSS", emoji:"👾", hue:"#53e0ff", par:54, rival:{mult:1.15}, grid:[
+{ name:"SHIFT BOSS", emoji:"👾", hue:"#53e0ff", par:54, rival:{mult:1.66}, grid:[
 "####################",
 "#SS......#..M.N..c.#",
 "#SS.####.#..M.N.#..#",
@@ -696,7 +702,7 @@ const LEVELS = [
 "#....c....N.M.c..#",
 "##################",
 ], hazards:[{path:[[2,2],[7,2]],speed:112},{path:[[9,7],[14,7]],speed:106}]},
-{ name:"OVERLOAD", emoji:"😈", hue:"#ff6a5e", par:60, rival:{mult:1.28}, grid:[
+{ name:"OVERLOAD", emoji:"😈", hue:"#ff6a5e", par:60, rival:{mult:1.78}, grid:[
 "####################",
 "#SS..T....M.N..c.F.#",
 "#SS..*....M.N....F.#",
@@ -721,7 +727,7 @@ const LEVELS = [
 "#...#.M.c..N.FFF.#",
 "##################",
 ], hazards:[{path:[[3,4],[13,4]],speed:108}]},
-{ name:"MAYHEM", emoji:"👑", hue:"#ffd76a", par:74, rival:{mult:1.45}, grid:[
+{ name:"MAYHEM", emoji:"👑", hue:"#ffd76a", par:74, rival:{mult:1.90}, grid:[
 "####################",
 "#SS.*.~~..M.N.M.c..#",
 "#SS...~~..M.N.M....#",
@@ -851,7 +857,7 @@ const LEVELS = [
 "#...........F......#",
 "####################"
 ]},
-{ name:"FOREMAN CHASE", emoji:"👹", hue:"#ff6a5e", par:50, rival:{mult:1.15}, grid:[
+{ name:"FOREMAN CHASE", emoji:"👹", hue:"#ff6a5e", par:50, rival:{mult:1.92}, grid:[
 "####################",
 "#SS.>>>>>>>..c.....#",
 "#..#........#......#",
@@ -899,7 +905,7 @@ const LEVELS = [
 "#n........N.M....F.#",
 "####################"
 ], crushers:[{c:2,r:4,dx:1,dy:0,range:5,period:2.9,phase:0},{c:17,r:4,dx:-1,dy:0,range:5,period:2.9,phase:0.5}]},
-{ name:"CORE OVERLOAD", emoji:"👑", hue:"#ffd76a", par:80, rival:{mult:1.3}, grid:[
+{ name:"CORE OVERLOAD", emoji:"👑", hue:"#ffd76a", par:80, rival:{mult:2.05}, grid:[
 "####################",
 "#SS...>>>>>>>....c.#",
 "#..................#",
@@ -921,10 +927,10 @@ const LEVELS = [
    (worlds only group existing level indices — nothing is renumbered).
    ---------------------------------------------------------------- */
 const SERIES = [
-  { name:"TURBO BASICS", emoji:"🏁", hue:"#ffb742", blurb:"Learn to drift — keys, doors, crates & the first bosses.", count:15 },
-  { name:"BRAIN FREEZE", emoji:"🧊", hue:"#7ec9ff", blurb:"Ice, portals, gate mazes, goober swarms & tougher bosses.", count:15 },
-  { name:"MAZE MAYHEM",  emoji:"🌀", hue:"#c56cff", blurb:"Shifting walls that rearrange the maze — time your run!", count:15 },
-  { name:"METAL MELTDOWN", emoji:"🏭", hue:"#ff8a3c", blurb:"Conveyor belts, sliding crushers & trap doors — survive the factory!", count:15 },
+  { name:"TURBO BASICS", emoji:"🏁", hue:"#ffb742", blurb:"Learn to drift — keys, doors, crates & the first bosses.", count:15, reward:"blaze" },
+  { name:"BRAIN FREEZE", emoji:"🧊", hue:"#7ec9ff", blurb:"Ice, portals, gate mazes, goober swarms & tougher bosses.", count:15, reward:"frost" },
+  { name:"MAZE MAYHEM",  emoji:"🌀", hue:"#c56cff", blurb:"Shifting walls that rearrange the maze — time your run!", count:15, reward:"glitch" },
+  { name:"METAL MELTDOWN", emoji:"🏭", hue:"#ff8a3c", blurb:"Conveyor belts, sliding crushers & trap doors — survive the factory!", count:15, reward:"monster" },
   { name:"NEW WORLD",    emoji:"🌋", hue:"#ff6a5e", blurb:"Even wilder. In the workshop!", comingSoon:true },
 ];
 (function computeSeriesStarts(){
@@ -1464,7 +1470,7 @@ let store = { unlocked:1, stars:{}, aura:0, coinsBank:0, muted:false, customLeve
   curSeries:0, seriesCleared:{}, coopUnlocked:1, coopStars:{},
   // 🎁 mystery crates (v1): permanent upgrades, one-use power-ups, cosmetics — see docs/MYSTERY-CRATES.md
   upg:{engine:0,grip:0,nitro:0,magnet:0,lucky:0}, powerups:{}, armed:null,
-  cosmetics:[], cosmetic:null, cratesOpened:0 };
+  cosmetics:[], cosmetic:null, cratesOpened:0, goldenFound:0 };
 try { const s = localStorage.getItem("turboMaze"); if(s) store = Object.assign(store, JSON.parse(s)); } catch(e){}
 function save(){ try { localStorage.setItem("turboMaze", JSON.stringify(store)); } catch(e){} }
 
@@ -1667,7 +1673,49 @@ function loadCustom(cl, from){
   game.sourceCustom = cl;
   startLevel(customToLevel(cl), {customId: from==="builder"? null : cl.id, from});
 }
+/* ==================================================================
+   🔀 MAZE VARIETY — mirror/rotate later-world & co-op mazes at load so
+   the start & finish land in fresh corners (not always top-left →
+   bottom-right). Deterministic per level (stable on replay). World 1 and
+   co-op Season 1 stay the standard diagonal on-ramp. Toggle: CONFIG.mazeVariety.
+   A mirror/rotate is an isometry — PATH LENGTH is preserved, so every
+   level stays solvable and its par/star balance is unchanged.
+   ================================================================== */
+function varietyKey(seed){ return (seed*3) % 4; }   // 0 = none · 1 = H-flip · 2 = V-flip · 3 = 180° (deterministic spread)
+function swapDirs(str, h, v){                        // flip conveyor arrows so they still push the mirrored way
+  let out = "";
+  for(const ch of str){
+    let c = ch;
+    if(h){ if(c==="<") c=">"; else if(c===">") c="<"; }
+    if(v){ if(c==="^") c="v"; else if(c==="v") c="^"; }
+    out += c;
+  }
+  return out;
+}
+function transformLevel(L, key){
+  const h = (key===1||key===3), v = (key===2||key===3);
+  const R = L.grid.length, C = L.grid[0].length;
+  let grid = L.grid.map(row => swapDirs(row, h, v));
+  if(h) grid = grid.map(row => [...row].reverse().join(""));
+  if(v) grid = grid.reverse();
+  const mapC = c => h ? C-1-c : c, mapR = r => v ? R-1-r : r;
+  const out = Object.assign({}, L, {grid});
+  if(L.crushers) out.crushers = L.crushers.map(k => Object.assign({}, k,     // origin + slide direction reflect
+    { c:mapC(k.c), r:mapR(k.r), dx: h? -(k.dx||0) : (k.dx||0), dy: v? -(k.dy||0) : (k.dy||0) }));
+  if(L.hazards)  out.hazards  = L.hazards.map(hz => Object.assign({}, hz,    // sliding-bar patrol waypoints reflect
+    { path: hz.path.map(([c,r]) => [mapC(c), mapR(r)]) }));
+  if(L.seq)      out.seq      = L.seq.map(([c,r]) => [mapC(c), mapR(r)]);    // co-op sequence-pad order reflects
+  return out;
+}
+function varyMaze(L, meta){
+  if(!CONFIG.mazeVariety || !L || !L.grid) return L;
+  let key = 0;
+  if(meta.ix!==undefined && seriesOf(meta.ix) >= 1)  key = varietyKey(meta.ix);              // campaign World 2+
+  else if(meta.coop && (meta.coopIx||0) >= 15)       key = varietyKey(1000 + meta.coopIx);   // co-op Season 2+
+  return key ? transformLevel(L, key) : L;
+}
 function startLevel(L, meta){
+  L = varyMaze(L, meta);        // 🔀 mirror/rotate later-world & co-op mazes for start/finish variety
   game.levelIx = (meta.ix!==undefined)? meta.ix : -1;
   game.customId = meta.customId || null;
   game.fromBuilder = meta.from === "builder";
@@ -1676,6 +1724,7 @@ function startLevel(L, meta){
   game.rows = g.length; game.cols = g[0].length;
   game.solid = []; game.road = []; game.coins=[]; game.pads=[]; game.gates=[]; game.doors=[]; game.goobers=[]; game.key=null;
   game.slick = []; game.portals = []; game.crates = [];
+  game.gold = null; game.goldReveal = null;   // 🎁 v2: golden crate + its reveal banner (cleared every load, all modes)
   game.plates2 = []; game.coopGates = [];
   game.shiftWalls = []; game.shiftSol = [0,0]; game.shiftT = 0;
   game.zaps = []; game.traps = []; game.trapWalls = []; game.trapT = 0;   // VS battle: pickups + trap walls
@@ -1784,6 +1833,7 @@ function startLevel(L, meta){
   game.skidCv = sk; game.skidCtx = sk.getContext("2d");
   updateObjective(true);
   game.raceTotal = game.flow ? Math.max(1, game.flow[game.startCell[1]][game.startCell[0]]) : 1;
+  spawnGolden();                               // 🎁 v2: maybe drop one free golden crate on the racing line
   game.state = "play";
   armRun();                                    // 🎁 set up this run's armed power-up
   sticker(L.emoji+" "+L.name, L.hue);
@@ -2349,6 +2399,11 @@ function updateEntities(dt){
     else levelClear();
   }
   } // end per-car loop
+  // 🎁 v2: grab the golden crate (human car only; a no-op when game.gold is null → every non-campaign mode)
+  if(game.gold && !game.gold.got){
+    if(Math.random()<0.15) sparkle(game.gold.x, game.gold.y);
+    if(dist(game.car.x, game.car.y, game.gold.x, game.gold.y) < CELL*0.5) grabGolden(game.gold);
+  }
 
   // goober patrol movement (shared)
   for(const gb of game.goobers){
@@ -2444,6 +2499,13 @@ function levelClear(){
     store.seriesCleared = store.seriesCleared || {};
     if(!store.seriesCleared[cs]){
       store.seriesCleared[cs] = 1;
+      const rc = SERIES[cs].reward;                                       // 🎁 free reward ride for beating the world
+      if(rc && !store.ownedCars.includes(rc)){
+        store.ownedCars.push(rc);
+        const rv = VEHICLES.find(v=>v.id===rc);
+        const rmsg = "🎁 "+(rv? rv.name : "NEW RIDE")+" UNLOCKED!";
+        if(!unlock) unlock = rmsg; else sticker(rmsg, "#ffd76a");
+      }
       const nxt = SERIES[cs+1];
       const wmsg = (nxt && !nxt.comingSoon) ? "🌟 "+nxt.name+" UNLOCKED!" : "🌟 WORLD COMPLETE!";
       if(!unlock) unlock = wmsg; else sticker(wmsg, "#ffd76a");
@@ -2576,6 +2638,7 @@ function drawWorld(dt){
   for(const t of game.traps) drawTrapTrigger(t);
   for(const z of game.zaps) drawZap(z);
   for(const cr of game.crates) drawCrate(cr);
+  if(game.gold) drawGold(game.gold);   // 🎁 v2 golden crate (world space, same camera as other entities)
   game.portals.forEach((p,i)=>drawPortal(p,i));
   for(const cn of game.coins) if(!cn.got) drawCoin(cn);
   if(game.key && !game.key.got) drawKey(game.key);
@@ -2655,6 +2718,11 @@ const VEHICLES = [
   { id:"ufo",     name:"THE SAUCER", price:40, trail:()=>"#9ad8ff", ownWheels:true, noLights:true },
   { id:"supra",   name:"2FAST",      price:45, trail:()=>"#ff9f45" },
   { id:"beast",   name:"THE BEAST",  price:50, trail:()=>"#aab4c8", ownWheels:true },
+  // 🎁 free reward rides — one per world, unlocked by beating that series (see SERIES[].reward)
+  { id:"blaze",   name:"BLAZE",      price:0, trail:()=>"#ff5533", reward:true },
+  { id:"frost",   name:"FROST GT",   price:0, trail:()=>"#7ec9ff", reward:true },
+  { id:"glitch",  name:"GLITCH GT",  price:0, trail:()=>"#c56cff", reward:true },
+  { id:"monster", name:"CRUSHER",    price:0, trail:()=>"#ff8a3c", reward:true, ownWheels:true },
   { id:"goat",    name:"GOLDEN GOAT", price:0, trail:()=>"#ffd76a", secret:true },
 ];
 const PETS = [
@@ -2786,6 +2854,53 @@ function drawVehicleBody(vid){
     ctx.font = "10px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
     ctx.fillText("🐐", 11, 0);
   }
+  else if(vid==="blaze"){                                    // 🏁 World 1 reward — flame hot rod
+    ctx.fillStyle="#d93b2b"; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,7); ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,0.14)"; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,7.5,7); ctx.fill();
+    ctx.fillStyle="#ff8a1a"; ctx.fillRect(-17,-3.4,30,6.8);                       // orange flame band
+    ctx.fillStyle="#ffd23b"; ctx.fillRect(-17,-1.6,26,3.2);                       // yellow core
+    ctx.fillStyle="#ffd23b"; ctx.beginPath(); ctx.moveTo(13,-3.6); ctx.lineTo(19,0); ctx.lineTo(13,3.6); ctx.closePath(); ctx.fill();  // flame tip
+    ctx.fillStyle="#1b2233"; ctx.beginPath(); ctx.roundRect(-6,-6,12,12,4); ctx.fill();
+    ctx.fillStyle="#8b93ad"; ctx.fillRect(-19,-6,2.4,3.2); ctx.fillRect(-19,2.8,2.4,3.2);   // twin pipes
+  }
+  else if(vid==="frost"){                                    // 🧊 World 2 reward — icy racer
+    ctx.fillStyle="#4aa8d8"; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,8); ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,0.35)"; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,7,8); ctx.fill();  // frosty sheen
+    ctx.fillStyle="#dff4ff";
+    ctx.beginPath(); ctx.moveTo(8,-8); ctx.lineTo(12,-3); ctx.lineTo(9,-1); ctx.lineTo(5,-4); ctx.closePath(); ctx.fill();   // ice shard
+    ctx.beginPath(); ctx.moveTo(11,2); ctx.lineTo(15,6); ctx.lineTo(11,8); ctx.lineTo(8,5); ctx.closePath(); ctx.fill();     // ice shard
+    ctx.fillStyle="#eaf7ff"; ctx.beginPath(); ctx.roundRect(-16,3.8,26,3,1.5); ctx.fill();     // frost skirt
+    ctx.fillStyle="#12303f"; ctx.beginPath(); ctx.roundRect(-6,-6,12,12,4); ctx.fill();        // tinted cockpit
+    ctx.fillStyle="#bfe9ff"; ctx.beginPath(); ctx.roundRect(-3,-4.5,3,9,1.5); ctx.fill();      // icy glint
+  }
+  else if(vid==="glitch"){                                   // 🌀 World 3 reward — neon glitch racer
+    ctx.save(); ctx.shadowColor="#c56cff"; ctx.shadowBlur=8;
+    ctx.fillStyle="#2a1c46"; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,7); ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle="#c56cff"; ctx.lineWidth=1.8; ctx.beginPath(); ctx.roundRect(-16,-8.7,32,17.4,6); ctx.stroke();   // neon outline
+    ctx.fillStyle="#c56cff"; ctx.fillRect(-15,-1.4,28,2.8);                       // neon centerline
+    ctx.fillStyle="#ff5db1"; ctx.fillRect(-15,-1,20,2);                           // magenta core
+    ctx.fillStyle="rgba(126,201,255,0.7)"; ctx.fillRect(-10,-7,5,2); ctx.fillRect(2,5.2,6,2);   // glitch blocks
+    ctx.fillStyle="#0e0a1a"; ctx.beginPath(); ctx.roundRect(-6,-6,12,12,4); ctx.fill();
+    ctx.fillStyle="#c56cff"; ctx.beginPath(); ctx.roundRect(-3,-4.5,3,9,1.5); ctx.fill();       // glowing slit
+  }
+  else if(vid==="monster"){                                  // 🏭 World 4 reward — CRUSHER monster truck (ownWheels)
+    ctx.fillStyle="#15171d";
+    ctx.beginPath(); ctx.roundRect(-15,-13,12,9,3); ctx.fill();   // 4 fat tires
+    ctx.beginPath(); ctx.roundRect(-15,4,12,9,3); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(6,-12,10,8,3); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(6,4,10,8,3); ctx.fill();
+    ctx.strokeStyle="#2a2e38"; ctx.lineWidth=1.4;
+    for(const [tx,ty,tw,th] of [[-15,-13,12,9],[-15,4,12,9],[6,-12,10,8],[6,4,10,8]])
+      for(let k=1;k<3;k++){ ctx.beginPath(); ctx.moveTo(tx+tw*k/3,ty); ctx.lineTo(tx+tw*k/3,ty+th); ctx.stroke(); }
+    ctx.fillStyle="#e8a930"; for(const [wx,wy] of [[-9,-8.5],[-9,8.5],[11,-8],[11,8]]){ ctx.beginPath(); ctx.arc(wx,wy,2,0,TAU); ctx.fill(); }
+    ctx.fillStyle="#c96a2a"; ctx.beginPath(); ctx.roundRect(-13,-8,28,16,4); ctx.fill();        // raised orange body
+    ctx.fillStyle="rgba(255,255,255,0.1)"; ctx.beginPath(); ctx.roundRect(-13,-8,28,6,4); ctx.fill();
+    ctx.fillStyle="#8b6a3a"; ctx.fillRect(-13,-1.6,28,3.2);                       // steel band
+    ctx.fillStyle="#1b2233"; ctx.beginPath(); ctx.roundRect(-6,-6,11,12,3); ctx.fill();         // cab window
+    ctx.fillStyle="#aab4c8"; ctx.beginPath(); ctx.roundRect(14,-9,4,18,2); ctx.fill();          // steel scoop / bull-bar
+    ctx.fillStyle="#8b93ad"; ctx.fillRect(15,-7,2,3); ctx.fillRect(15,4,2,3);
+  }
   else { // rocket
     drawRocketBody(CONFIG.carColor, CONFIG.stripe);
   }
@@ -2861,7 +2976,7 @@ function drawCar(car){
   ctx.restore();
   ctx.globalAlpha = 1;
   // 🎁 equipped cosmetic (player's car only): ✨ shine sparkle + 🐐/👑 topper (world-space, above the car)
-  if(!car.p2 && store.cosmetic){
+  if(!car.p2 && cosOn() && store.cosmetic){
     const cos = COSMETICS[store.cosmetic];
     if(cos && cos.kind==="shine" && Math.random()<0.4) sparkle(car.x+rand(-14,14), car.y+rand(-12,12));
     if(cos && cos.kind==="topper"){
@@ -3562,7 +3677,7 @@ function drawSeries(){
   const gbtns = [
     {label:"🔨 BUILD", act:"build",  bg:"#ffb742"},
     {label:"🛒 SHOP",  act:"shop",   bg:"#7ef7ff"},
-    {label:"🎁 CRATES",act:"crates", bg:"#ffd76a"},
+    ...(CONFIG.cratesEnabled ? [{label:"🎁 CRATES",act:"crates", bg:"#ffd76a"}] : []),   // 🎁 hidden when master off
     {label:"⚔️ VS",    act:"vs",     bg:"#ff8fe0"},
     {label:"🤝 CO-OP", act:"coop",   bg:"#9ae6ff"},
   ];
@@ -3600,7 +3715,7 @@ function drawSeries(){
       game.importedTrack = null;
       if(b.act==="build") enterBuilder(null);
       else if(b.act==="shop") game.state="shop";
-      else if(b.act==="crates") game.state="crates";
+      else if(b.act==="crates" && CONFIG.cratesEnabled) game.state="crates";
       else if(b.act==="vs") game.state="vspick";
       else if(b.act==="coop") game.state="cooppick";
       else if(b.act.startsWith("pc:")){ const cl = store.customLevels.find(c=>c.id===+b.act.slice(3)); if(cl) loadCustom(cl, "map"); }
@@ -4363,6 +4478,7 @@ const RARITY = [
 const CRATES = {
   mystery: { name:"MYSTERY CRATE",    emoji:"🎁", price:100, odds:[54,27,12,6,1] },
   mega:    { name:"MEGA MYSTERY BOX", emoji:"🎉", price:200, odds:[ 0,50,30,15,5] },
+  golden:  { name:"GOLDEN CRATE",     emoji:"🎁", price:0,   odds:[ 0,50,32,14,4] },   // 🎁 v2: free in-level find (never sold; smashed mid-race — see spawnGolden)
 };
 // permanent car upgrades — kept best-of-each. mult[tier]: tier 0 = none, 1..5 = common..secret.
 // stats that touch difficulty (engine/grip) bump small; feel-good ones (nitro/magnet) bump big.
@@ -4397,12 +4513,21 @@ const CURRENCY = {
   sack:  { name:"COIN SACK",  emoji:"💰", rarity:1, coins:100 },
   auraB: { name:"AURA BONUS", emoji:"💫", rarity:0, aura:15 },
 };
+// 🎁 reconcile a loaded save: drop references to any crate item removed from the data tables above (makes deleting an asset safe)
+if(store.armed && !POWERUPS[store.armed]) store.armed = null;
+if(store.cosmetic && !COSMETICS[store.cosmetic]) store.cosmetic = null;
 
 // current multiplier for an upgrade stat (1 = nothing owned yet)
-function upgMul(kind){ return CRATE_UPG[kind].mult[store.upg[kind]||0]; }
+// 🎁 bucket toggles (CONFIG flags) — each folds in the master. See docs/MYSTERY-CRATES.md "Reverting".
+function upgOn(){ return CONFIG.cratesEnabled && CONFIG.cratesUpgrades; }
+function puOn(){  return CONFIG.cratesEnabled && CONFIG.cratesPowerups; }
+function cosOn(){ return CONFIG.cratesEnabled && CONFIG.cratesCosmetics; }
+// current multiplier for an upgrade stat (1 = off / nothing owned / stat deleted)
+function upgMul(kind){ const u = CRATE_UPG[kind]; return (upgOn() && u) ? u.mult[store.upg[kind]||0] : 1; }
 // should the human's upgrades/power-ups apply to this car right now?
 // campaign only — VS/KO/co-op stay fair unless CONFIG.powerUpsInVs is on.
 function boosted(car){
+  if(!upgOn()) return false;          // 🎁 upgrades toggle (also folds in the master cratesEnabled)
   if(car!==game.car) return false;
   if((game.vs||game.ko||game.coop) && !CONFIG.powerUpsInVs) return false;
   return true;
@@ -4417,10 +4542,11 @@ function rollTier(odds){
 // everything that can drop at rarity tier t (0..4). upgrades appear at every tier (weighted x2).
 function poolForTier(t){
   const pool = [];
-  for(const id in POWERUPS)  if(POWERUPS[id].rarity===t) pool.push({type:"pu",  id});
-  for(const id in COSMETICS)  if(COSMETICS[id].rarity===t && !store.cosmetics.includes(id)) pool.push({type:"cos", id});
-  for(const id in CURRENCY)   if(CURRENCY[id].rarity===t)  pool.push({type:"cur", id});
-  pool.push({type:"upg"}, {type:"upg"});   // an upgrade at this tier — the core chase
+  if(puOn())  for(const id in POWERUPS)  if(POWERUPS[id].rarity===t) pool.push({type:"pu",  id});
+  if(cosOn()) for(const id in COSMETICS) if(COSMETICS[id].rarity===t && !store.cosmetics.includes(id)) pool.push({type:"cos", id});
+  for(const id in CURRENCY)  if(CURRENCY[id].rarity===t) pool.push({type:"cur", id});
+  if(upgOn()) pool.push({type:"upg"}, {type:"upg"});   // an upgrade at this tier — the core chase
+  if(!pool.length) pool.push({type:"cur", coins:20*(t+1)});   // floor: a disabled/empty tier still pays coins
   return pool;
 }
 // hand out one drop, mutate store, and return a card description for the reveal
@@ -4436,12 +4562,14 @@ function grantDrop(drop, t){
     return { icon:c.emoji, name:c.name, sub:"New look!" };
   }
   if(drop.type==="cur"){
-    const c = CURRENCY[drop.id];
-    if(c.coins){ store.coinsBank += c.coins; return { icon:c.emoji, name:"+"+c.coins+" COINS", sub:c.name }; }
-    store.aura += c.aura; return { icon:c.emoji, name:"+"+c.aura+" AURA", sub:c.name };
+    const c = CURRENCY[drop.id] || drop;   // (|| drop handles the empty-pool floor coins, which have no id)
+    if(c.coins){ store.coinsBank += c.coins; return { icon:c.emoji||"🪙", name:"+"+c.coins+" COINS", sub:c.name||"Lucky find!" }; }
+    store.aura += c.aura; return { icon:c.emoji||"💫", name:"+"+c.aura+" AURA", sub:c.name||"Aura!" };
   }
   // upgrade: random stat at tier t+1; if you already own that tier or better → coins instead
+  if(!UPG_KEYS.length){ const c=20*(t+1); store.coinsBank+=c; return { icon:"🪙", name:"+"+c+" COINS", sub:"Lucky find!" }; }
   const stat = UPG_KEYS[(Math.random()*UPG_KEYS.length)|0], newTier = t+1;
+  if(!CRATE_UPG[stat]){ const c=20*newTier; store.coinsBank+=c; return { icon:"🪙", name:"+"+c+" COINS", sub:"Lucky find!" }; }
   if((store.upg[stat]||0) >= newTier){
     const c = 20*newTier; store.coinsBank += c;
     return { icon:"🪙", name:"+"+c+" COINS", sub:"(already have "+CRATE_UPG[stat].name+")" };
@@ -4465,6 +4593,107 @@ function openCrate(key){
   AU.ui();
 }
 
+/* ==================================================================
+   🎁 GOLDEN CRATES (v2) — free in-level crate finds
+   ------------------------------------------------------------------
+   ONE rare glowing golden crate can spawn per CAMPAIGN level as a
+   standalone NON-SOLID drive-over pickup (game.gold — it is NEVER
+   added to game.crates, so the wooden 'x' crates, isSolid, crateAt,
+   the collideWalls smash branch, drawCrate and the boss rival are all
+   left untouched). Drive over it -> a FREE pull through the V1 grant
+   pipeline, banked instantly, with a NON-BLOCKING reveal banner (no
+   modal, no pause, no tap). Toggle: CONFIG.goldenCrateChance (0 = off).
+   Full write-up: docs/MYSTERY-CRATES.md
+   ================================================================== */
+function spawnGolden(){
+  game.gold = null;
+  // campaign single-player only — VS/Knockout/Co-op/builder/custom are all excluded
+  if(game.levelIx<0 || game.vs || game.ko || game.coop || game.customId || game.fromBuilder) return;
+  if(!CONFIG.cratesEnabled || !CRATES.golden) return;          // 🎁 master toggle, or the golden entry was removed
+  if(Math.random() >= (CONFIG.goldenCrateChance||0)) return;   // rare per-level roll (0 disables)
+  if(!game.finish || !game.startCell || !game.flow) return;
+  const F = game.finish, K = (c,r)=> c+","+r, blocked = new Set(), add = (c,r)=> blocked.add(K(c,r));
+  add(game.startCell[0], game.startCell[1]); add(F.c, F.r);
+  if(game.key) add(Math.floor(game.key.x/CELL), Math.floor(game.key.y/CELL));
+  for(const cr of game.crates)    add(cr.c, cr.r);
+  for(const cn of game.coins)     add(Math.floor(cn.x/CELL), Math.floor(cn.y/CELL));   // coins + nitro cans
+  for(const p of game.pads)       add(p.c, p.r);
+  for(const g of game.gates)      add(g.c, g.r);
+  for(const d of game.doors)      add(d.c, d.r);
+  for(const p of game.portals)    add(p.c, p.r);
+  for(const cv of game.conveyors) add(cv.c, cv.r);
+  for(const t of game.trapDoors)  add(t.c, t.r);
+  for(const k of game.crushers) for(let s=0;s<=k.range;s++) add(k.c+k.dx*s, k.r+k.dy*s);   // whole swept lane
+  for(const gb of game.goobers) for(const [wx,wy] of gb.path){                            // patrol path + padding
+    const gc=Math.floor(wx/CELL), gr=Math.floor(wy/CELL);
+    for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++) add(gc+dc, gr+dr);
+  }
+  const path = bfsPathCells(game.startCell, [F.c, F.r]);   // walls-only start->finish racing line (every cell reachable)
+  const ok = ([c,r])=> game.flow[r] && game.flow[r][c]>=0 && !blocked.has(K(c,r));
+  const band = (lo,hi)=> path.slice(Math.floor(path.length*lo), Math.ceil(path.length*hi)).filter(ok);
+  let cands = band(0.30, 0.70);                    // mid-race (never the start line or the flag)
+  if(!cands.length) cands = band(0.15, 0.85);      // fallback: widen the band
+  if(!cands.length){                               // fallback: any reachable road cell nearest mid-race
+    const mid = game.raceTotal*0.5;
+    cands = game.road.filter(ok)
+      .sort((a,b)=> Math.abs(game.flow[a[1]][a[0]]-mid) - Math.abs(game.flow[b[1]][b[0]]-mid))
+      .slice(0, 8);
+  }
+  if(!cands.length) return;                        // no safe cell -> no crate (a valid outcome)
+  const [c,r] = cands[(Math.random()*cands.length)|0];
+  game.gold = { c, r, x:(c+0.5)*CELL, y:(r+0.5)*CELL, got:false, ph:Math.random()*TAU, bob:Math.random()*TAU };
+}
+// smash a golden crate -> free V1 pull, banked instantly, non-blocking celebration
+function grabGolden(g){
+  g.got = true;
+  const t = rollTier(CRATES.golden.odds), pool = poolForTier(t);
+  const res = grantDrop(pool[(Math.random()*pool.length)|0], t);
+  store.goldenFound = (store.goldenFound||0) + 1; save();       // reward banked BEFORE any FX
+  game.shake = Math.min(9, game.shake+5);
+  for(let i=0;i<16;i++) debris(g.x+rand(-24,24), g.y+rand(-24,24));
+  for(let i=0;i<14;i++) sparkle(g.x, g.y);
+  float("FREE CRATE!", g.x, g.y-24, "#ffd76a");
+  float(res.icon+" "+res.name, g.x, g.y-52, RARITY[t].col);
+  confettiBurst(W/2, H*0.30, t>=3?120:70, RARITY[t].col);       // needs drawConfettiScreen in the play branch
+  sticker("🎁 "+RARITY[t].name+"! "+res.name, RARITY[t].col);
+  game.goldReveal = { res, tier:t, t:0 };
+  AU.win();
+  if(t>=3) AU.beep(1200,0.3,"sawtooth",0.2,600); else AU.beep(880,0.12,"square",0.14,300);
+}
+// world-space render of the golden crate — pulsing glow, bob, 🎁 face, orbiting sparkles
+function drawGold(g){
+  if(!g || g.got) return;
+  const px=g.c*CELL, py=g.r*CELL, pulse=0.5+0.5*Math.sin(game.t*4+g.ph), oy=Math.sin(game.t*2.2+g.bob)*3;
+  ctx.save(); ctx.globalCompositeOperation="lighter";
+  const gr = ctx.createRadialGradient(g.x, g.y+oy, 6, g.x, g.y+oy, 50+pulse*14);
+  gr.addColorStop(0, "rgba(255,215,106,"+(0.34+pulse*0.28)+")"); gr.addColorStop(1, "rgba(255,215,106,0)");
+  ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(g.x, g.y+oy, 50+pulse*14, 0, TAU); ctx.fill(); ctx.restore();
+  ctx.fillStyle = "#e8a930"; ctx.beginPath(); ctx.roundRect(px+8, py+8+oy, CELL-16, CELL-16, 6); ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.22)"; ctx.fillRect(px+8, py+8+oy, CELL-16, 9);
+  ctx.strokeStyle = "#ffd76a"; ctx.lineWidth = 5; ctx.strokeRect(px+15, py+15+oy, CELL-30, CELL-30);
+  ctx.font = "34px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("🎁", g.x, g.y+oy);
+  for(let i=0;i<3;i++){ const a=game.t*2.4+i*TAU/3;
+    ctx.fillStyle="#fff4cc"; ctx.beginPath();
+    ctx.arc(g.x+Math.cos(a)*(30+pulse*6), g.y+oy+Math.sin(a)*(30+pulse*6), 2.4, 0, TAU); ctx.fill();
+  }
+}
+// non-blocking, auto-expiring reward banner (captures no taps, pauses nothing)
+function drawGoldReveal(dt){
+  const rv = game.goldReveal; if(!rv) return;
+  if(!paused) rv.t += dt;
+  const LIFE=2.8, inA=Math.min(1, rv.t/0.3), outA=Math.min(1, Math.max(0,(LIFE-rv.t)/0.6)), a=Math.min(inA,outA);
+  if(rv.t>=LIFE){ game.goldReveal=null; return; }
+  const col=RARITY[rv.tier].col, w=Math.min(W-40,340), x=W/2-w/2, y=safeT+70-(1-inA)*16, h=64;
+  ctx.save(); ctx.globalAlpha=a;
+  roundedPanel(x, y, w, h, 14, "rgba(12,15,24,0.92)");
+  ctx.strokeStyle=col; ctx.lineWidth=2.5; ctx.beginPath(); ctx.roundRect(x+1.5, y+1.5, w-3, h-3, 13); ctx.stroke();
+  ctx.font="34px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(rv.res.icon, x+34, y+h/2);
+  ctx.textAlign="left";
+  ctx.font="900 15px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle=col; ctx.fillText(RARITY[rv.tier].name+"!", x+64, y+22);
+  ctx.font="800 18px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#f4f6ff"; ctx.fillText(rv.res.name, x+64, y+44);
+  ctx.restore();
+}
+
 /* ---- power-up run lifecycle & auto-triggers (see docs/MYSTERY-CRATES.md) ----
    One power-up is armed at a time (store.armed). rocket/double fire at the
    start of every run; shield/freeze/ghost/slowmo fire reactively and are only
@@ -4478,7 +4707,7 @@ function consumeArmed(){
 function puFloat(msg, x, y){ float(msg, x==null?game.car.x:x, (y==null?game.car.y:y)-46, "#7ef7ff"); }
 function firePU(kind, x, y){          // a reactive power-up went off: spend it + FX
   consumeArmed(); game.car.pu = null;
-  puFloat(POWERUPS[kind].emoji+" "+POWERUPS[kind].name+"!", x, y);
+  const p = POWERUPS[kind]; if(p) puFloat(p.emoji+" "+p.name+"!", x, y);
   AU.nitro(); game.shake = Math.min(8, game.shake+3);
   for(let i=0;i<10;i++) puff(x==null?game.car.x:x, y==null?game.car.y:y, "rgba(126,247,255,0.5)");
 }
@@ -4494,16 +4723,16 @@ function armRun(){
   const c = game.car; if(!c) return;
   c.dbl=false; c.shield=false; c.ghostT=0; c.pu=null; c.luckyAcc=0; game.slowmo=0;
   for(const gb of game.goobers) gb.frozen = 0;
-  const allow = (!game.vs && !game.ko && !game.coop) || CONFIG.powerUpsInVs;
+  const allow = puOn() && ((!game.vs && !game.ko && !game.coop) || CONFIG.powerUpsInVs);   // 🎁 power-ups toggle
   const id = store.armed;
-  if(!allow || !id || !(store.powerups[id]>0)) return;
+  if(!allow || !id || !POWERUPS[id] || !(store.powerups[id]>0)) return;   // !POWERUPS[id] → safe if the id was deleted
   if(id==="rocket"){ c.nitroMeter=100; c.boost=0.3; consumeArmed(); puFloat("🚀 ROCKET START!"); }
   else if(id==="double"){ c.dbl=true; consumeArmed(); puFloat("✌️ DOUBLE COINS!"); }
   else { c.pu=id; if(id==="shield") c.shield=true; }   // shield/freeze/ghost/slowmo fire during the run
 }
 // equipped 🎨 trail cosmetic overrides the car's motion-trail colour (flame = orange, rainbow = cycling hue)
 function cosTrail(car, v){
-  if(!car.p2 && store.cosmetic){
+  if(!car.p2 && cosOn() && store.cosmetic){          // 🎁 cosmetics toggle
     const c = COSMETICS[store.cosmetic];
     if(c && c.kind==="trail") return c.col==="rainbow" ? "hsl("+Math.floor((game.t*120)%360)+",90%,62%)" : c.col;
   }
@@ -4516,7 +4745,7 @@ function sectionLabel(txt, x, y){
   ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillText(txt, x, y+9);
 }
 function crateCard(x, y, w, h, key){
-  const c = CRATES[key], can = store.coinsBank >= c.price;
+  const c = CRATES[key]; if(!c) return; const can = store.coinsBank >= c.price;
   roundedPanel(x, y, w, h, 14, can? "rgba(255,183,66,0.14)" : "rgba(14,17,26,0.85)");
   ctx.strokeStyle = key==="mega"? "#ff5db1" : "#ffb742"; ctx.lineWidth = 2.5;
   ctx.beginPath(); ctx.roundRect(x+1.5, y+1.5, w-3, h-3, 13); ctx.stroke();
@@ -4540,7 +4769,8 @@ function upgChip(x, y, w, h, k){
   ctx.fillText(t? "+"+Math.round((u.mult[t]-1)*100)+"%" : "—", x+w/2, y+h-12);
 }
 function puChip(x, y, w, h, id){
-  const p = POWERUPS[id], n = store.powerups[id], armed = store.armed===id;
+  const p = POWERUPS[id]; if(!p) return;
+  const n = store.powerups[id], armed = store.armed===id;
   roundedPanel(x, y, w, h, 10, armed? "rgba(126,247,255,0.18)" : "rgba(14,17,26,0.85)");
   if(armed){ ctx.strokeStyle="#7ef7ff"; ctx.lineWidth=2.5; ctx.beginPath(); ctx.roundRect(x+1.5,y+1.5,w-3,h-3,9); ctx.stroke(); }
   ctx.font = "24px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
@@ -4552,7 +4782,8 @@ function puChip(x, y, w, h, id){
   hudBtns.push({x, y, w, h, act:"arm:"+id});
 }
 function cosChip(x, y, w, h, id){
-  const c = COSMETICS[id], on = store.cosmetic===id;
+  const c = COSMETICS[id]; if(!c) return;
+  const on = store.cosmetic===id;
   roundedPanel(x, y, w, h, 10, on? "rgba(255,183,66,0.18)" : "rgba(14,17,26,0.85)");
   if(on){ ctx.strokeStyle="#ffb742"; ctx.lineWidth=2.5; ctx.beginPath(); ctx.roundRect(x+1.5,y+1.5,w-3,h-3,9); ctx.stroke(); }
   ctx.font = "22px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
@@ -4569,7 +4800,7 @@ function drawReveal(dt){
     const shake = (0.9-rv.t)*11, s = 46 + rv.t*30;
     ctx.save(); ctx.translate(cx+rand(-shake,shake), cy+rand(-shake,shake));
     ctx.font = s+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-    ctx.fillText(CRATES[rv.from].emoji, 0, 0); ctx.restore();
+    const fc = CRATES[rv.from]; ctx.fillText(fc? fc.emoji : "🎁", 0, 0); ctx.restore();
     if(rv.t>0.5){ ctx.globalAlpha=(rv.t-0.5)/0.4; ctx.globalCompositeOperation="lighter";
       ctx.fillStyle=col; ctx.beginPath(); ctx.arc(cx,cy,s,0,TAU); ctx.fill();
       ctx.globalCompositeOperation="source-over"; ctx.globalAlpha=1; }
@@ -4592,12 +4823,11 @@ function drawReveal(dt){
 }
 function cratesAction(a){
   if(a==="back"){ AU.ui(); game.reveal=null; game.state="series"; return; }
-  if(a==="buy:mystery"){ openCrate("mystery"); return; }
-  if(a==="buy:mega"){ openCrate("mega"); return; }
+  if(a.startsWith("buy:")){ openCrate(a.slice(4)); return; }   // works for any CRATES key
   if(a.startsWith("arm:")){
     const id = a.slice(4);
     store.armed = (store.armed===id)? null : id; save(); AU.key();
-    sticker(store.armed? POWERUPS[id].emoji+" "+POWERUPS[id].name+" ARMED" : "UNARMED", "#7ef7ff");
+    sticker(store.armed && POWERUPS[id]? POWERUPS[id].emoji+" "+POWERUPS[id].name+" ARMED" : "UNARMED", "#7ef7ff");
     return;
   }
   if(a.startsWith("wear:")){
@@ -4623,32 +4853,37 @@ function drawCrates(dt){
 
   const gridW = Math.min(420, W-PADX*2), x0 = Math.round((W-gridW)/2);
   let y = top+58;
-  // two crates to buy
+  // crates to buy — every CRATES entry WITH a price (golden/price:0 is a free in-level find, not sold here)
+  const buyable = Object.keys(CRATES).filter(k=> CRATES[k].price>0);
   const cw = (gridW-14)/2;
-  crateCard(x0,          y, cw, 100, "mystery");
-  crateCard(x0+cw+14,    y, cw, 100, "mega");
-  y += 100+16;
+  buyable.forEach((k,i)=> crateCard(x0 + (i%2)*(cw+14), y + ((i/2)|0)*(100+14), cw, 100, k));
+  y += Math.max(1, Math.ceil(buyable.length/2))*(100+14) + 2;
   // upgrades (info only)
-  sectionLabel("UPGRADES", x0, y); y += 20;
-  const uw = (gridW - 4*8)/5;
-  UPG_KEYS.forEach((k,i)=> upgChip(x0 + i*(uw+8), y, uw, 56, k));
-  y += 56+16;
-  // power-ups — tap to arm ONE
-  sectionLabel("POWER-UPS  ·  tap to arm one", x0, y); y += 20;
-  const owned = Object.keys(store.powerups).filter(id=>store.powerups[id]>0);
-  if(!owned.length){
-    ctx.font="600 14px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#5a6178"; ctx.textAlign="left";
-    ctx.fillText("Open crates to find power-ups!", x0, y+22);
-  } else {
-    const pw = 66;
-    owned.forEach((id,i)=>{ if(x0 + i*(pw+8) + pw <= x0+gridW) puChip(x0 + i*(pw+8), y, pw, 64, id); });
+  if(upgOn()){
+    sectionLabel("UPGRADES", x0, y); y += 20;
+    const uw = (gridW - 4*8)/5;
+    UPG_KEYS.forEach((k,i)=> upgChip(x0 + i*(uw+8), y, uw, 56, k));
+    y += 56+16;
   }
-  y += 64+16;
-  // cosmetics — tap to wear
-  if(store.cosmetics.length){
+  // power-ups — tap to arm ONE
+  if(puOn()){
+    sectionLabel("POWER-UPS  ·  tap to arm one", x0, y); y += 20;
+    const owned = Object.keys(store.powerups).filter(id=>store.powerups[id]>0 && POWERUPS[id]);
+    if(!owned.length){
+      ctx.font="600 14px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#5a6178"; ctx.textAlign="left";
+      ctx.fillText("Open crates to find power-ups!", x0, y+22);
+    } else {
+      const pw = 66;
+      owned.forEach((id,i)=>{ if(x0 + i*(pw+8) + pw <= x0+gridW) puChip(x0 + i*(pw+8), y, pw, 64, id); });
+    }
+    y += 64+16;
+  }
+  // cosmetics — tap to wear (filter to live ids so a deleted cosmetic can't crash)
+  const looks = store.cosmetics.filter(id=> COSMETICS[id]);
+  if(cosOn() && looks.length){
     sectionLabel("LOOKS  ·  tap to wear", x0, y); y += 20;
     const kw = 60;
-    store.cosmetics.forEach((id,i)=>{ if(x0 + i*(kw+8) + kw <= x0+gridW) cosChip(x0 + i*(kw+8), y, kw, 56, id); });
+    looks.forEach((id,i)=>{ if(x0 + i*(kw+8) + kw <= x0+gridW) cosChip(x0 + i*(kw+8), y, kw, 56, id); });
   }
 
   if(game.reveal) drawReveal(dt);
@@ -4756,14 +4991,17 @@ function drawShop(dt){
   VEHICLES.forEach((v,i)=>{
     const cx3 = x0 + (i%4)*(cw+gap), cy3 = y + ((i/4)|0)*(ch2+gap);
     const owned = store.ownedCars.includes(v.id);
-    if(v.secret && !owned){
+    if((v.secret || v.reward) && !owned){
+      const rs = v.reward ? SERIES.findIndex(s=>s.reward===v.id) : -1;   // which world grants this ride
+      const icon = rs>=0 ? SERIES[rs].emoji : "👑";
+      const hint = rs>=0 ? "BEAT "+SERIES[rs].name : "??? — BEAT LEVEL "+LEVELS.length;
       roundedPanel(cx3, cy3, cw, ch2, 14, "rgba(14,17,26,0.85)");
       ctx.font = Math.round(ch2*0.3)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
       ctx.globalAlpha = 0.5; ctx.fillStyle="#f4f6ff";
-      ctx.fillText("👑", cx3+cw/2, cy3+ch2*0.36); ctx.globalAlpha = 1;
-      ctx.font = "800 12px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+      ctx.fillText(icon, cx3+cw/2, cy3+ch2*0.36); ctx.globalAlpha = 1;
+      ctx.font = "800 11px 'Avenir Next Condensed','Arial Narrow',sans-serif";
       ctx.fillStyle = "#8b93ad";
-      ctx.fillText("??? — BEAT LEVEL "+LEVELS.length, cx3+cw/2, cy3+ch2-13);
+      ctx.fillText("🔒 "+hint, cx3+cw/2, cy3+ch2-13);
       return;
     }
     shopCard(cx3, cy3, cw, ch2, "v:"+v.id,
@@ -4957,6 +5195,7 @@ function frame(now){
 function tick(now){
   const dt = Math.max(0, Math.min(0.05, (now-last)/1000)); last = now;
   game.t += dt;
+  if(!CONFIG.cratesEnabled && game.state==="crates") game.state="series";   // 🎁 master off → never strand on the dead crates screen
   ctx.setTransform(DPR,0,0,DPR,0,0);
   ctx.clearRect(0,0,W,H);
   // tablet held upright → ask for landscape (menus only, never mid-game)
@@ -5003,7 +5242,7 @@ function tick(now){
     }
     if(game.state==="play" || game.state==="clear"){  // levelClear may fire mid-update
       drawWorld(paused?0.0001:dt);
-      if(game.state==="play"){ drawHUD(); drawStickers(); }
+      if(game.state==="play"){ drawHUD(); drawConfettiScreen(); if(game.goldReveal) drawGoldReveal(dt); drawStickers(); }
     }
     if(paused && game.state==="play"){
       ctx.fillStyle = "rgba(8,10,16,0.6)"; ctx.fillRect(0,0,W,H);
@@ -5067,7 +5306,7 @@ function tick(now){
 requestAnimationFrame(frame);
 
 // debug handle (safe to ignore)
-window.__tm = { game, loadLevel, loadCustom, store, CONFIG, bl, enterBuilder, encodeTrack, decodeTrack,
+window.__tm = { game, loadLevel, loadCustom, store, CONFIG, CRATES, spawnGolden, grabGolden, bl, enterBuilder, encodeTrack, decodeTrack,
   shopAction, VEHICLES, PETS, LEVELS, VS_ARENAS, startVs, customToLevel,
   SERIES, seriesUnlocked, seriesBeaten, seriesOf, save,
   COOP_LEVELS, startCoop, KO_ARENAS, startKo,

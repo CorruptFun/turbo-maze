@@ -35,6 +35,15 @@ brainier than the last.
 `SERIES` array right before the `comingSoon` card. Starts auto-compute and saved
 progress carries over — nothing gets renumbered.
 
+**🔀 Maze variety:** from **World 2 on** (and co-op **Season 2** on), each maze is
+mirrored or rotated at load so the start & finish land in different corners
+instead of always top-left → bottom-right. It's **deterministic per level** (a
+level always looks the same on replay), World 1 / co-op Season 1 stay the classic
+diagonal as the gentle intro, and it's a true mirror/rotate so path length — and
+therefore par times and star balance — is unchanged (conveyor arrows, crushers,
+and hazard paths all flip correctly too). Turn it off with `mazeVariety:false` in
+the 🔧 TWEAK ZONE.
+
 ## ⚔️ VS mode (two players, one screen)
 Tap **⚔️ VS** on the hub. The whole maze fits on screen — P1 steers with the
 left thumb (or ARROWS), P2 with the right thumb (or WASD). 3-2-1-GO, first
@@ -100,12 +109,22 @@ builder uses: `#` wall · `.` road · `~` ice · `S` start · `F` finish · `c` 
 
 ## The garage shop (v3)
 Tap **🛒 SHOP** on the map. Coins you collect in any level bank up and buy:
-- **8 rides:** Red Rocket, Turbo Taxi, Banana, Big Green (a tractor), Glizzy GT,
-  Cart Racer, Skibidi GT (yes, a racing toilet) and The Saucer
+- **10 buyable rides:** Red Rocket, Turbo Taxi, Banana, Big Green (a tractor),
+  Glizzy GT, Cart Racer, Skibidi GT (yes, a racing toilet), The Saucer, 2FAST and
+  The Beast
 - **4 pets** that chase your car through the maze: Ducky, Buddy, Boo, Rexy
 - **Car number** — every ride wears a roof decal, changeable 0–99 (default: 67, obviously)
 
 First shop visit comes with a grand-opening gift so there's something to buy on day one.
+
+**🎁 Free reward rides — one per world:** beat every level in a world and its
+themed car lands in your garage for free — **BLAZE** (🏁 Turbo Basics, a flame hot
+rod), **FROST GT** (🧊 Brain Freeze, an icy racer), **GLITCH GT** (🌀 Maze Mayhem,
+neon purple), and **CRUSHER** (🏭 Metal Meltdown, a monster truck). Beat the very
+last level too and the secret 🐐 GOLDEN GOAT is still yours. They show as locked
+(🔒 BEAT [WORLD]) in the shop until earned. Grown-ups: each world declares its
+reward via `reward:"id"` on its `SERIES` entry, so a new world just adds a car +
+that one field.
 
 ## 🎁 Mystery Crates (v1)
 Tap **🎁 CRATES** on the hub. Spend coins on a crate and it rolls a **rarity**
@@ -118,8 +137,13 @@ Tap **🎁 CRATES** on the hub. Spend coins on a crate and it rolls a **rarity**
   🚀 rocket start, ✌️ double coins, 🛡️ shield, ❄️ freeze the goobers,
   👻 ghost through walls, ⏱️ slow-mo.
 - **Looks** (pure flair): 🔥/🌈 trails, ✨ gold shine, 🐐/👑 toppers.
+- **🎁 Golden crates (v2)** — a rare glowing crate can appear right inside a
+  campaign level; drive over it mid-race for a **free** pull (no coins spent).
 
 Upgrades and power-ups only help the **single-player campaign** — VS/Knockout
-stay fair. Grown-ups: flip `powerUpsInVs` in the 🔧 TWEAK ZONE to allow them in
-battles, and see [`docs/MYSTERY-CRATES.md`](docs/MYSTERY-CRATES.md) for the full
-loot tables, tuning knobs, and how it's wired.
+stay fair. Grown-ups, in the 🔧 TWEAK ZONE: `powerUpsInVs` allows gear in battles,
+`goldenCrateChance` sets how often free crates appear (`0` = off), and
+`cratesEnabled` / `cratesUpgrades` / `cratesPowerups` / `cratesCosmetics` turn the
+whole system (or any one bucket) off cleanly — see
+[`docs/MYSTERY-CRATES.md`](docs/MYSTERY-CRATES.md) for the full loot tables,
+tuning knobs, **how to revert anything**, and **how to edit/add/remove assets**.
