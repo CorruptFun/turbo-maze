@@ -54,11 +54,18 @@ Feels too fast or the boss too hard? Open `index.html` and tweak
 
 ## 🤝 Co-op mode (two players, one team)
 Tap **🤝 CO-OP** on the hub. Same shared screen and controls as VS, but now
-you **win together** — *both* cars have to reach the flag. The twist is the
-teamwork gate: one player parks on a glowing **pressure plate** to open the
-linked **door** so the other can drive through, then they swap so the first
-one can cross too. **15 levels** that ramp up — ice, double-airlocks, coin
-vaults and mazier rooms. Beat one to unlock the next.
+you **win together** — *both* cars have to reach the flag.
+
+**Season 1** — the teamwork gate: one player parks on a glowing **pressure
+plate** to open the linked **door** so the other can drive through, then they
+swap so the first one can cross too. 15 levels — ice, double-airlocks, coin
+vaults and mazier rooms.
+
+**Season 2** — **button sequences**. Numbered **pads** (1, 2, 3…) must be
+pressed **in order** to open the gate to the flag — but hit one out of order
+and **both cars snap back to the start!** Split the pads between you, call out
+the order, and don't fumble it. 15 tougher levels with ice and mazes.
+Beat a level to unlock the next; the co-op map now runs 30 deep.
 
 ## Build your own tracks (v2)
 Tap **🔨 BUILD** on the map. Finger-paint walls and roads, drop coins, keys,

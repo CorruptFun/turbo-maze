@@ -1050,6 +1050,157 @@ const COOP_LEVELS = [
 "#....~~#..c..#.~.c#",
 "###################",
 ]},
+/* ===== CO-OP SEASON 2 — button sequences (o = pad, press in order; wrong = back to start) ===== */
+{ name:"SIMON SAYS", emoji:"🔢", hue:"#9ae64a", par:44, grid:[
+"################",
+"#SS..o....#....#",
+"#.........#....#",
+"#....o....Q..F.#",
+"#.........#....#",
+"#2...o....#....#",
+"#.........#....#",
+"################",
+]},
+{ name:"THREE STEPS", emoji:"🔢", hue:"#9ae64a", par:46, grid:[
+"################",
+"#SS..o....#....#",
+"#........c#....#",
+"#..c......Q..F.#",
+"#.........#....#",
+"#2..o.....#....#",
+"#......o..#....#",
+"################",
+]},
+{ name:"BACK & FORTH", emoji:"🔁", hue:"#7ef7ff", par:52, grid:[
+"################",
+"#SS.o...o.#....#",
+"#.........#....#",
+"#..c......Q..F.#",
+"#.........#....#",
+"#2..o...o.#....#",
+"#.........#....#",
+"################",
+]},
+{ name:"ICE SEQUENCE", emoji:"🧊", hue:"#7ec9ff", par:54, grid:[
+"################",
+"#SS.o~~~o.#....#",
+"#...~~~~..#....#",
+"#...~~~~..Q..F.#",
+"#2..o~~~o.#....#",
+"#....~~~~.#....#",
+"#.........#....#",
+"################",
+]},
+{ name:"SPLIT DUTY", emoji:"↔", hue:"#c58cff", par:56, grid:[
+"################",
+"#SS.o...o.#....#",
+"#....#....#....#",
+"#....#....Q..F.#",
+"#....#....#....#",
+"#2..o...o.#....#",
+"#.........#....#",
+"################",
+]},
+{ name:"THE CODE", emoji:"🔢", hue:"#9ae64a", par:58, grid:[
+"################",
+"#SS.o.o.o.#....#",
+"#.........#....#",
+"#..c......Q..F.#",
+"#.........#....#",
+"#2.o.o.o..#....#",
+"#.........#....#",
+"################",
+]},
+{ name:"MEMORY LANE", emoji:"🧠", hue:"#ff8fe0", par:60, grid:[
+"################",
+"#SS.o.#.o.#....#",
+"#.....#...#....#",
+"#..c..#...Q..F.#",
+"#.....#...#....#",
+"#2..o.#.o.#....#",
+"#.........#....#",
+"################",
+]},
+{ name:"ZIGZAG CODE", emoji:"🔀", hue:"#7ef7ff", par:62, grid:[
+"################",
+"#SS.o.....#....#",
+"#......o..#....#",
+"#..#......Q..F.#",
+"#..o......#....#",
+"#.........#....#",
+"#2.....o..#....#",
+"################",
+]},
+{ name:"ICE RELAY 2", emoji:"🧊", hue:"#7ec9ff", par:64, grid:[
+"################",
+"#SS.o~~~o.#....#",
+"#...~~~~..#....#",
+"#...~o~~..Q..F.#",
+"#...~~~~..#....#",
+"#2..o~~~o.#....#",
+"#.........#....#",
+"################",
+]},
+{ name:"DOUBLE LOCK", emoji:"🔒", hue:"#9ae64a", par:64, grid:[
+"################",
+"#SS.o...o.#....#",
+"#.........#....#",
+"#..c.o....Q..F.#",
+"#.........#....#",
+"#2..o...o.#....#",
+"#.........#....#",
+"################",
+]},
+{ name:"THE GAUNTLET", emoji:"🧩", hue:"#c58cff", par:68, grid:[
+"################",
+"#SS.o.o.o.#....#",
+"#..#.#.#..#....#",
+"#..c......Q..F.#",
+"#..#.#.#..#....#",
+"#2.o.o.o..#....#",
+"#.........#....#",
+"################",
+]},
+{ name:"CROSS WIRES", emoji:"🔀", hue:"#ff8fe0", par:66, grid:[
+"################",
+"#SS.o...o.#....#",
+"#....#.#..#....#",
+"#....#.#..Q..F.#",
+"#....#.#..#....#",
+"#2..o...o.#....#",
+"#.........#....#",
+"################",
+]},
+{ name:"ICE CODE", emoji:"🧊", hue:"#7ec9ff", par:68, grid:[
+"################",
+"#SS.o~~o..#....#",
+"#...~~~~..#....#",
+"#...~o~~..Q..F.#",
+"#...~~~~..#....#",
+"#2..o~~o..#....#",
+"#.........#....#",
+"################",
+]},
+{ name:"THE VAULT", emoji:"🔒", hue:"#9ae64a", par:72, grid:[
+"################",
+"#SS.o.#.o.#....#",
+"#.....#...#....#",
+"#..c..o...Q..F.#",
+"#.....#...#....#",
+"#2..o.#.o.#....#",
+"#.........#....#",
+"################",
+]},
+{ name:"FINALE CODE", emoji:"👑", hue:"#ffd76a", par:78, grid:[
+"################",
+"#SS.o~o~o.#....#",
+"#...~~~~~.#....#",
+"#..c~~~~~.Q..F.#",
+"#...~~~~~.#....#",
+"#2..o~o~o.#....#",
+"#.........#....#",
+"################",
+]},
 ];
 
 /* ---------------------------------------------------------------- */
@@ -1301,6 +1452,7 @@ function startLevel(L, meta){
   game.shiftWalls = []; game.shiftSol = [0,0]; game.shiftT = 0;
   game.zaps = []; game.traps = []; game.trapWalls = []; game.trapT = 0;   // VS battle: pickups + trap walls
   game.koZones = [];                                                      // knockout: hazard cells ("!")
+  game.seqPads = []; game.seqNext = 0; game.seqDone = false;              // co-op: button sequence puzzle
   game.hasKey=false; game.playT=0; game.bonks=0;
   game.vs = !!(meta && meta.vs);
   game.coop = !!(meta && meta.coop);
@@ -1338,6 +1490,7 @@ function startLevel(L, meta){
       if(ch==="B") game.traps.push({c,r,x:wx,y:wy,cool:0});         // VS trap trigger button
       if(ch==="w") game.trapWalls.push({c,r,x:wx,y:wy,closed:0});   // VS trap wall (slams shut when triggered)
       if(ch==="!") game.koZones.push({c,r,x:wx,y:wy,ph:Math.random()*TAU}); // knockout hazard pit
+      if(ch==="o") game.seqPads.push({c,r,x:wx,y:wy,num:0,lit:0});   // co-op sequence pad (order set by L.seq)
     }
   }
   game.portals.length = Math.min(2, game.portals.length);   // exactly one pair
@@ -1355,7 +1508,15 @@ function startLevel(L, meta){
     game.car2 = newCar(p2x||sx, p2y||sy, p2x? p2head : head);
     game.car2.p2 = true;
   }
-  if(game.coop){ game.car.home=false; if(game.car2) game.car2.home=false; }
+  if(game.coop){
+    game.car.home=false; if(game.car2) game.car2.home=false;
+    game.car.spawn = {x:sx, y:sy, h:head};
+    if(game.car2) game.car2.spawn = {x:p2x||sx, y:p2y||sy, h:game.car2.heading};
+    // number the sequence pads: reading order (top→bottom, left→right) unless the level overrides
+    if(L.seq){ (L.seq||[]).forEach(([sc2,sr2],ix)=>{ const pad = game.seqPads.find(p=>p.c===sc2 && p.r===sr2); if(pad) pad.num = ix+1; }); }
+    else game.seqPads.forEach((p,ix)=> p.num = ix+1);
+    game.seqLen = game.seqPads.length;
+  }
   if(game.ko){                                   // knockout: 3 lives each, remember spawn points
     game.car.lives = 3;  game.car.spawn = {x:sx, y:sy, h:head};
     if(game.car2){ game.car2.lives = 3; game.car2.spawn = {x:p2x||sx, y:p2y||sy, h:game.car2.heading}; }
@@ -1715,7 +1876,7 @@ function updateEntities(dt){
     const closed = game.trapT>0 ? 1 : 0;
     for(const w of game.trapWalls) w.closed = lerp(w.closed, closed, dt*11);
   }
-  // co-op: a car parked on ANY plate opens EVERY linked gate (hold it for your buddy!)
+  // co-op: a plate held (OR the button sequence solved) opens every linked gate
   if(game.coop && game.coopGates.length){
     let held = false;
     for(const p of game.plates2){
@@ -1724,7 +1885,8 @@ function updateEntities(dt){
       if(on) held = true;
     }
     game.coopHeld = held;
-    for(const q of game.coopGates) q.open = lerp(q.open, held?1:0, dt*12);
+    const gateOpen = (held || game.seqDone) ? 1 : 0;
+    for(const q of game.coopGates) q.open = lerp(q.open, gateOpen, dt*12);
   }
   for(const p of game.portals) if(p.cool>0) p.cool -= dt;
   for(const p of game.pads) if(p.cool) p.cool = Math.max(0, p.cool-dt);
@@ -1860,6 +2022,26 @@ function updateEntities(dt){
         if(car.lives <= 0){ koEnd(other); return; }
         car.x=car.spawn.x; car.y=car.spawn.y; car.heading=car.spawn.h; car.vx=car.vy=0;
         sticker("💥 "+pName(car.p2?1:0)+" KNOCKED OUT! — "+car.lives+" ❤ left", car.p2?"#b06ee8":"#7ef7ff");
+      }
+    }
+  }
+  // co-op sequence puzzle: hit the numbered pads IN ORDER — wrong one = back to start!
+  if(game.coop && game.seqPads.length && !game.seqDone){
+    const cc=Math.floor(car.x/CELL), rr=Math.floor(car.y/CELL);
+    const pad = game.seqPads.find(p=>p.c===cc && p.r===rr);
+    if(pad){
+      const idx = pad.num-1;                        // 0-based position in the order
+      if(idx === game.seqNext){                     // correct next → advance
+        game.seqNext++; pad.lit = 1;
+        AU.coin(); float("✓ "+pad.num, pad.x, pad.y-24, "#9ae64a");
+        if(game.seqNext >= game.seqLen){ game.seqDone = true; sticker("SEQUENCE DONE! 🎉 the way is open", "#9ae64a"); AU.win(); }
+        else sticker("✓ "+game.seqNext+" / "+game.seqLen, "#9ae64a");
+      } else if(idx > game.seqNext){                 // pressed out of order → RESET
+        game.seqNext = 0; for(const p of game.seqPads) p.lit = 0;
+        sticker("❌ WRONG ORDER! back to the start", "#ff8f8f");
+        AU.bonk(); AU.beep(150,0.3,"square",0.2,70); game.shake = Math.min(9, game.shake+5);
+        for(const cr of game.cars){ if(cr.spawn){ cr.x=cr.spawn.x; cr.y=cr.spawn.y; cr.heading=cr.spawn.h; cr.vx=cr.vy=0; cr.invuln=1.0; cr.spinT=0.3; } }
+        return;                                      // stop this frame's per-car loop after a reset
       }
     }
   }
@@ -2092,6 +2274,7 @@ function drawWorld(dt){
   for(const g of game.gates) drawGate(g);
   for(const q of game.coopGates) drawCoopGate(q);
   for(const p of game.plates2) drawPlate(p);
+  for(const p of game.seqPads) drawSeqPad(p);
   for(const m of game.shiftWalls) drawShiftWall(m);
   for(const w of game.trapWalls) drawTrapWall(w);
   for(const k of game.koZones) drawKoHazard(k);
@@ -2509,6 +2692,22 @@ function drawTrapWall(w){
   for(let i=0;i<5;i++){ ctx.save(); ctx.beginPath(); ctx.rect(0,0,CELL,h); ctx.clip();
     ctx.translate(i*CELL/5*1.4-20,0); ctx.rotate(0.5); ctx.fillRect(0,-30,15,h+80); ctx.restore(); }
   ctx.strokeStyle="#ff8f8f"; ctx.lineWidth=3; ctx.strokeRect(1.5,1.5,CELL-3,h-3);
+  ctx.restore();
+}
+function drawSeqPad(p){
+  const done = (p.num-1) < game.seqNext;             // already pressed?
+  const isNext = (p.num-1) === game.seqNext && !game.seqDone;
+  const s = CELL*0.34;
+  ctx.save(); ctx.translate(p.x, p.y);
+  ctx.fillStyle = done? "#16351f" : "#241a0e";
+  ctx.beginPath(); ctx.roundRect(-s,-s,s*2,s*2,9); ctx.fill();
+  ctx.strokeStyle = done? "#9ae64a" : (isNext? "#ffd76a" : "#7a6a4a");
+  ctx.lineWidth = isNext? 3+Math.sin(game.t*6)*1.2 : 2;
+  ctx.beginPath(); ctx.roundRect(-s,-s,s*2,s*2,9); ctx.stroke();
+  ctx.fillStyle = done? "#9ae64a" : (isNext? "#ffd76a" : "#c9b98a");
+  ctx.font = "900 "+Math.round(s*1.15)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText(done? "✓" : String(p.num), 0, 1);
   ctx.restore();
 }
 function drawKoHazard(k){
