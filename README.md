@@ -106,3 +106,20 @@ Tap **🛒 SHOP** on the map. Coins you collect in any level bank up and buy:
 - **Car number** — every ride wears a roof decal, changeable 0–99 (default: 67, obviously)
 
 First shop visit comes with a grand-opening gift so there's something to buy on day one.
+
+## 🎁 Mystery Crates (v1)
+Tap **🎁 CRATES** on the hub. Spend coins on a crate and it rolls a **rarity**
+(Common → Rare → Epic → Legendary → **Secret**), then a reward:
+- **🎁 Mystery Crate — 100 coins** · **🎉 Mega Mystery Box — 200 coins** (never
+  gives junk, 5× the Secret odds).
+- **Upgrades** (permanent, tiny bumps, kept best-of-each): 🔧 engine speed,
+  🛞 grip, ⚡ nitro tank, 🧲 coin magnet, 💰 lucky (more coins).
+- **Power-ups** (one-use — **arm ONE** before a race, it fires by itself):
+  🚀 rocket start, ✌️ double coins, 🛡️ shield, ❄️ freeze the goobers,
+  👻 ghost through walls, ⏱️ slow-mo.
+- **Looks** (pure flair): 🔥/🌈 trails, ✨ gold shine, 🐐/👑 toppers.
+
+Upgrades and power-ups only help the **single-player campaign** — VS/Knockout
+stay fair. Grown-ups: flip `powerUpsInVs` in the 🔧 TWEAK ZONE to allow them in
+battles, and see [`docs/MYSTERY-CRATES.md`](docs/MYSTERY-CRATES.md) for the full
+loot tables, tuning knobs, and how it's wired.

@@ -39,6 +39,7 @@ const CONFIG = {
   bossSpeed:  95,                  // 👈 boss car speed on BOSS RACE (lower = easier)
   zoom:       1.3,                 // 👈 bigger cars on screen! (1 = old view, up to 2)
   easyMode:   false,               // true = slower goober, more nitro
+  powerUpsInVs: false,             // 🎁 true = crate upgrades & power-ups also work in VS/Knockout (default: campaign only, keeps VS fair)
 };
 // Words the game yells. Keep 'em short — he's 7. Add your own!
 const YELLS = {
@@ -1460,7 +1461,10 @@ window.addEventListener("resize", resize); resize();
 /* ---------------- save data ---------------- */
 let store = { unlocked:1, stars:{}, aura:0, coinsBank:0, muted:false, customLevels:[], nextTrackId:0,
   ownedCars:["rocket"], car:"rocket", ownedPets:[], pet:null, carNum:67, shopGift:false,
-  curSeries:0, seriesCleared:{}, coopUnlocked:1, coopStars:{} };
+  curSeries:0, seriesCleared:{}, coopUnlocked:1, coopStars:{},
+  // 🎁 mystery crates (v1): permanent upgrades, one-use power-ups, cosmetics — see docs/MYSTERY-CRATES.md
+  upg:{engine:0,grip:0,nitro:0,magnet:0,lucky:0}, powerups:{}, armed:null,
+  cosmetics:[], cosmetic:null, cratesOpened:0 };
 try { const s = localStorage.getItem("turboMaze"); if(s) store = Object.assign(store, JSON.parse(s)); } catch(e){}
 function save(){ try { localStorage.setItem("turboMaze", JSON.stringify(store)); } catch(e){} }
 
@@ -1781,6 +1785,7 @@ function startLevel(L, meta){
   updateObjective(true);
   game.raceTotal = game.flow ? Math.max(1, game.flow[game.startCell[1]][game.startCell[0]]) : 1;
   game.state = "play";
+  armRun();                                    // 🎁 set up this run's armed power-up
   sticker(L.emoji+" "+L.name, L.hue);
   setTimeout(()=> game.state==="play" && sticker("GO GO GO!", "#ffffff"), 900);
 }
@@ -1948,6 +1953,9 @@ function updateCar(car, ctrl, dt){
   const boosting = !!ctrl.nitro && car.nitroMeter>0 && hasInput;
 
   const SPD = CONFIG.speed || 1;
+  // 🎁 crate upgrades buff the human's campaign car only (boosted() gates VS/KO/co-op)
+  const bU = boosted(car);
+  const mSpd = bU? upgMul("engine") : 1, mGrip = bU? upgMul("grip") : 1, mNit = bU? upgMul("nitro") : 1;
   const cellC = clamp(Math.floor(car.x/CELL),0,game.cols-1), cellR = clamp(Math.floor(car.y/CELL),0,game.rows-1);
   const onIce = !!(game.slick[cellR] && game.slick[cellR][cellC]);
   if(car.spinT>0){ car.spinT-=dt; car.heading += dt*12; }
@@ -1958,8 +1966,8 @@ function updateCar(car, ctrl, dt){
     const d = angDiff(car.heading, want);
     car.heading += clamp(d, -tRate*dt, tRate*dt);
   }
-  const maxSp = (boosting? 660 : 400)*SPD;
-  const accel = (boosting? 1300 : 750)*SPD*(onIce?0.55:1);
+  const maxSp = (boosting? 660 : 400)*SPD*mSpd;
+  const accel = (boosting? 1300 : 750)*SPD*mSpd*(onIce?0.55:1);
   if(hasInput && car.spinT<=0){
     car.vx += Math.cos(car.heading)*accel*dt * Math.hypot(iv.x,iv.y);
     car.vy += Math.sin(car.heading)*accel*dt * Math.hypot(iv.x,iv.y);
@@ -1970,7 +1978,7 @@ function updateCar(car, ctrl, dt){
   let latX = car.vx - fwd*fx, latY = car.vy - fwd*fy;
   const sp = Math.hypot(car.vx,car.vy);
   const turningHard = hasInput && Math.abs(angDiff(car.heading, Math.atan2(iv.y,iv.x))) > 0.55;
-  const grip = onIce ? 1.1 : (turningHard && sp>230*SPD) ? 2.4 : 8.5;
+  const grip = (onIce ? 1.1 : (turningHard && sp>230*SPD) ? 2.4 : 8.5) * mGrip;
   const latK = Math.exp(-grip*dt);
   latX*=latK; latY*=latK;
   fwd *= hasInput ? Math.exp(-0.35*dt) : Math.exp(-(onIce?0.7:2.2)*dt);
@@ -1993,12 +2001,12 @@ function updateCar(car, ctrl, dt){
 
   // nitro
   if(boosting){
-    car.nitroMeter = Math.max(0, car.nitroMeter - dt*30);
+    car.nitroMeter = Math.max(0, car.nitroMeter - dt*30/mNit);
     if(car.boost<=0){ AU.nitro(); if(Math.random()<0.5) float(pick(YELLS.nitro), car.x, car.y-40, "#7ef7ff"); }
     car.boost = 0.12;
     flame(car);
   } else {
-    car.nitroMeter = Math.min(100, car.nitroMeter + dt*(CONFIG.easyMode?14:9));
+    car.nitroMeter = Math.min(100, car.nitroMeter + dt*(CONFIG.easyMode?14:9)*mNit);
     car.boost = Math.max(0, car.boost-dt);
   }
   if(ctrl.main) AU.setEngine(spd2, boosting);
@@ -2007,12 +2015,13 @@ function updateCar(car, ctrl, dt){
   const steps = Math.max(1, Math.ceil(spd2*dt/9));
   for(let i=0;i<steps;i++){
     car.x += car.vx*dt/steps; car.y += car.vy*dt/steps;
-    collideWalls(car);
+    if(!(car===game.car && car.ghostT>0)) collideWalls(car);   // 👻 ghost drives through walls
   }
 
   // squash spring
   car.sqv += (1-car.sq)*260*dt; car.sqv *= Math.exp(-14*dt); car.sq += car.sqv*dt;
   car.invuln = Math.max(0, car.invuln-dt);
+  car.ghostT = Math.max(0, (car.ghostT||0)-dt);   // 👻 ghost phase timer
 
   // trail
   car.trail.unshift({x:car.x, y:car.y, a:car.heading});
@@ -2107,10 +2116,25 @@ function updateEntities(dt){
   }
   // sliding crushers: slide a solid block back & forth along its lane
   for(const cr of game.crushers){
-    const off = cr.range * (0.5 - 0.5*Math.cos((game.t/cr.period + cr.phase)*TAU));  // 0..range ping-pong
+    const off = cr.range * (0.5 - 0.5*Math.cos(((game.gt||0)/cr.period + cr.phase)*TAU));  // 0..range ping-pong (⏱️ slow-mo aware)
     cr.off = off;
     cr.cc = cr.c + cr.dx*Math.round(off);
     cr.cr = cr.r + cr.dy*Math.round(off);
+  }
+  // 🎁 reactive player power-ups: ❄️ freeze when a goober threatens · ⏱️ slow-mo near danger
+  if(game.car && game.car.pu){
+    const c = game.car;
+    if(c.pu==="freeze"){
+      for(const gb of game.goobers) if(!gb.dead && gb.frozen<=0 && dist(c.x,c.y,gb.x,gb.y)<150){
+        for(const g2 of game.goobers) if(!g2.dead) g2.frozen = 4;
+        firePU("freeze", c.x, c.y); break;
+      }
+    } else if(c.pu==="slowmo" && game.slowmo<=0){
+      const cc=c.x/CELL, cr2=c.y/CELL;
+      let near = game.crushers.some(k=> Math.abs(k.cc-cc)<1.6 && Math.abs(k.cr-cr2)<1.6);
+      if(!near) near = game.goobers.some(gb=> !gb.dead && dist(c.x,c.y,gb.x,gb.y)<115);
+      if(near){ game.slowmo = 2.5; firePU("slowmo", c.x, c.y); }
+    }
   }
   // VS battle: zap pickups respawn; trap walls slam shut for a moment when a trigger is hit
   if(game.vs || game.ko){
@@ -2136,12 +2160,13 @@ function updateEntities(dt){
   for(const p of game.pads) if(p.cool) p.cool = Math.max(0, p.cool-dt);
 
   for(const car of game.cars){
-  // coins (with a little magnet)
+  // coins (with a little magnet — 🧲 upgrade widens the pull; 💰 lucky / ✌️ double boost the payout)
+  const magR = boosted(car)? 95*upgMul("magnet") : 95;
   for(const cn of game.coins){
     if(cn.got) continue;
     if(cn.cool){ cn.cool = Math.max(0, cn.cool-dt); if(cn.cool>0) continue; }
     const d = dist(car.x,car.y,cn.x,cn.y);
-    if(d<95){ cn.x = lerp(cn.x, car.x, dt*6); cn.y = lerp(cn.y, car.y, dt*6); }
+    if(d<magR){ cn.x = lerp(cn.x, car.x, dt*6); cn.y = lerp(cn.y, car.y, dt*6); }
     if(d<34){
       cn.got = true;
       if(cn.nitro){
@@ -2149,9 +2174,13 @@ function updateEntities(dt){
         float("NITRO FULL!", cn.x, cn.y-20, "#7ef7ff");
         for(let i=0;i<10;i++) puff(cn.x,cn.y,"rgba(126,247,255,0.5)");
       } else {
-        car.coins++; car.aura += 10; store.coinsBank++;
+        car.coins++; car.aura += 10;
+        let gain = car.dbl? 2 : 1;                                   // ✌️ double-coins power-up
+        if(boosted(car)){ car.luckyAcc = (car.luckyAcc||0) + (upgMul("lucky")-1);  // 💰 lucky: fractional bonus banks up over time
+          const lb = Math.floor(car.luckyAcc); if(lb>0){ gain += lb; car.luckyAcc -= lb; } }
+        store.coinsBank += gain;
         AU.coin();
-        float(Math.random()<0.3 ? pick(YELLS.coin) : "+10", cn.x, cn.y-20, "#ffd76a");
+        float(gain>1 ? "+"+gain+" 🪙" : (Math.random()<0.3 ? pick(YELLS.coin) : "+10"), cn.x, cn.y-20, "#ffd76a");
         for(let i=0;i<8;i++) sparkle(cn.x,cn.y);
       }
     }
@@ -2212,7 +2241,7 @@ function updateEntities(dt){
   // trap doors: drive on one → drop through → respawn (invuln blocks re-trigger)
   if(game.trapDoors.length && car.invuln<=0){
     const tcx=Math.floor(car.x/CELL), tcy=Math.floor(car.y/CELL);
-    if(game.trapDoors.some(t=>t.c===tcx && t.r===tcy)){
+    if(game.trapDoors.some(t=>t.c===tcx && t.r===tcy) && !blockHit(car, car.x, car.y)){
       const sp = car.spawn || {x:car.x, y:car.y, h:car.heading};
       for(let i=0;i<12;i++) puff(car.x, car.y, "rgba(20,16,28,0.6)");
       car.x=sp.x; car.y=sp.y; car.heading=sp.h; car.vx=car.vy=0; car.invuln=1.4; car.spinT=0.35; car.sq=0.5;
@@ -2222,7 +2251,7 @@ function updateEntities(dt){
   }
   // goobers: nitro speed takes HIM out — otherwise he yoinks your coins
   for(const gb of game.goobers){
-    if(gb.dead) continue;
+    if(gb.dead || gb.frozen>0) continue;                        // ❄️ frozen goobers are harmless
     if(dist(car.x,car.y,gb.x,gb.y)<38){
       const ramming = car.boost>0 || Math.hypot(car.vx,car.vy) > 450*(CONFIG.speed||1);
       if(ramming){
@@ -2235,7 +2264,7 @@ function updateEntities(dt){
         for(let i=0;i<10;i++) puff(gb.x, gb.y, "rgba(255,143,224,0.5)");
         scatterCoins(gb.x, gb.y, 2);          // he drops his loot
         car.vx *= 0.85; car.vy *= 0.85; car.sq = 1.2;
-      } else if(car.invuln<=0){
+      } else if(car.invuln<=0 && !blockHit(car, car.x, car.y)){
         car.invuln = 1.6; car.spinT = 0.55; car.sq = 0.6;
         game.bonks++; game.shake = 9; AU.goober();
         sticker("👾 "+pick(YELLS.goober), "#ff8fe0");
@@ -2324,6 +2353,7 @@ function updateEntities(dt){
   // goober patrol movement (shared)
   for(const gb of game.goobers){
     if(gb.dead) continue;
+    if(gb.frozen>0){ gb.frozen=Math.max(0, gb.frozen-dt); gb.ph += dt*3; continue; }   // ❄️ frozen: hold still & thaw
     const [tx,ty] = gb.path[(gb.seg+1)%gb.path.length];
     const d = dist(gb.x,gb.y,tx,ty);
     if(d<6) gb.seg = (gb.seg+1)%gb.path.length;
@@ -2788,7 +2818,7 @@ function drawCar(car){
   for(let i=car.trail.length-1;i>=2;i--){
     const t = car.trail[i], a = (1-i/car.trail.length)*0.14;
     ctx.save(); ctx.translate(t.x,t.y); ctx.rotate(t.a);
-    ctx.globalAlpha = a; ctx.fillStyle = v.trail();
+    ctx.globalAlpha = a; ctx.fillStyle = cosTrail(car, v);
     ctx.beginPath(); ctx.roundRect(-16,-9,32,18,6); ctx.fill();
     ctx.restore();
   }
@@ -2830,6 +2860,15 @@ function drawCar(car){
   }
   ctx.restore();
   ctx.globalAlpha = 1;
+  // 🎁 equipped cosmetic (player's car only): ✨ shine sparkle + 🐐/👑 topper (world-space, above the car)
+  if(!car.p2 && store.cosmetic){
+    const cos = COSMETICS[store.cosmetic];
+    if(cos && cos.kind==="shine" && Math.random()<0.4) sparkle(car.x+rand(-14,14), car.y+rand(-12,12));
+    if(cos && cos.kind==="topper"){
+      ctx.font = "18px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText(cos.emoji, car.x, car.y - 20 + Math.sin(game.t*3)*2);
+    }
+  }
 }
 
 function drawCoin(cn){
@@ -3208,6 +3247,16 @@ function drawHUD(){
     ctx.font = "20px sans-serif"; ctx.textAlign="center";
     ctx.fillText("🗝️", pad+146, top+73);
   }
+  // 🎁 armed power-up badge — shows what's ready this run (ghost blinks while phasing)
+  const puId = game.car.pu || (game.car.dbl ? "double" : null);
+  if(puId && POWERUPS[puId]){
+    const by = top+100;
+    roundedPanel(pad, by, 44, 40, 12);
+    ctx.globalAlpha = game.car.ghostT>0 ? 0.5+0.4*Math.sin(game.t*12) : 1;
+    ctx.font = "20px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(POWERUPS[puId].emoji, pad+22, by+20);
+    ctx.globalAlpha = 1;
+  }
   // stopwatch (center-top, small + friendly)
   const tStr = game.playT.toFixed(1)+"s";
   ctx.font = "800 19px 'Avenir Next Condensed','Arial Narrow',sans-serif";
@@ -3511,10 +3560,11 @@ function drawSeries(){
   // garage row: BUILD / SHOP / VS / CO-OP — responsive (measure labels, size to fit any screen)
   const gy = garageY;
   const gbtns = [
-    {label:"🔨 BUILD", act:"build", bg:"#ffb742"},
-    {label:"🛒 SHOP",  act:"shop",  bg:"#7ef7ff"},
-    {label:"⚔️ VS",    act:"vs",    bg:"#ff8fe0"},
-    {label:"🤝 CO-OP", act:"coop",  bg:"#9ae6ff"},
+    {label:"🔨 BUILD", act:"build",  bg:"#ffb742"},
+    {label:"🛒 SHOP",  act:"shop",   bg:"#7ef7ff"},
+    {label:"🎁 CRATES",act:"crates", bg:"#ffd76a"},
+    {label:"⚔️ VS",    act:"vs",     bg:"#ff8fe0"},
+    {label:"🤝 CO-OP", act:"coop",   bg:"#9ae6ff"},
   ];
   let gfont = 24, gpad = 34, gGap = 8;
   const measureG = ()=>{ ctx.font = "900 "+gfont+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
@@ -3550,6 +3600,7 @@ function drawSeries(){
       game.importedTrack = null;
       if(b.act==="build") enterBuilder(null);
       else if(b.act==="shop") game.state="shop";
+      else if(b.act==="crates") game.state="crates";
       else if(b.act==="vs") game.state="vspick";
       else if(b.act==="coop") game.state="cooppick";
       else if(b.act.startsWith("pc:")){ const cl = store.customLevels.find(c=>c.id===+b.act.slice(3)); if(cl) loadCustom(cl, "map"); }
@@ -4287,6 +4338,328 @@ function drawVsEnd(dt){
   } else input.taps.length = 0;
 }
 
+/* ==================================================================
+   🎁 MYSTERY CRATES (v1) — crates, loot, upgrades & power-ups
+   ------------------------------------------------------------------
+   Buy a crate in the garage → it rolls a RARITY, then a reward from
+   that tier. Rewards fall in 4 buckets:
+     • UPGRADES  — permanent tiny bumps, kept best-of-each-type
+     • POWER-UPS — one-use, arm ONE per race (store.armed), auto-fire
+     • COSMETICS — pure looks (trail / shine / topper)
+     • CURRENCY  — coin/aura filler so no pull feels empty
+   All state lives in `store` (see the store literal near the top).
+   Upgrades/power-ups only buff the human's CAMPAIGN car — VS/KO/co-op
+   stay fair unless CONFIG.powerUpsInVs is turned on.
+   Full write-up: docs/MYSTERY-CRATES.md
+   ================================================================== */
+const RARITY = [
+  { key:"common",    name:"COMMON",    col:"#9aa4bd" },
+  { key:"rare",      name:"RARE",      col:"#5bc0ff" },
+  { key:"epic",      name:"EPIC",      col:"#b06ee8" },
+  { key:"legendary", name:"LEGENDARY", col:"#ffb742" },
+  { key:"secret",    name:"SECRET",    col:"#ff5db1" },
+];
+// crate types — odds are % weights for [common, rare, epic, legendary, secret]
+const CRATES = {
+  mystery: { name:"MYSTERY CRATE",    emoji:"🎁", price:100, odds:[54,27,12,6,1] },
+  mega:    { name:"MEGA MYSTERY BOX", emoji:"🎉", price:200, odds:[ 0,50,30,15,5] },
+};
+// permanent car upgrades — kept best-of-each. mult[tier]: tier 0 = none, 1..5 = common..secret.
+// stats that touch difficulty (engine/grip) bump small; feel-good ones (nitro/magnet) bump big.
+const CRATE_UPG = {
+  engine: { name:"ENGINE",     emoji:"🔧", mult:[1,1.02,1.04,1.06,1.09,1.12] }, // top speed
+  grip:   { name:"GRIP TIRES", emoji:"🛞", mult:[1,1.03,1.06,1.10,1.15,1.22] }, // turning / ice
+  nitro:  { name:"NITRO TANK", emoji:"⚡", mult:[1,1.10,1.20,1.35,1.55,1.80] }, // nitro recharge
+  magnet: { name:"MAGNET",     emoji:"🧲", mult:[1,1.12,1.25,1.40,1.60,1.90] }, // coin pull radius
+  lucky:  { name:"LUCKY",      emoji:"💰", mult:[1,1.03,1.06,1.10,1.16,1.25] }, // coins earned
+};
+const UPG_KEYS = Object.keys(CRATE_UPG);
+// one-use power-ups — arm ONE before a race (store.armed). rarity = the tier they drop in.
+const POWERUPS = {
+  rocket: { name:"ROCKET START", emoji:"🚀", rarity:0, desc:"Full nitro off the line" },
+  double: { name:"DOUBLE COINS", emoji:"✌️", rarity:1, desc:"2× coins this run" },
+  shield: { name:"SHIELD",       emoji:"🛡️", rarity:1, desc:"Block one hit" },
+  freeze: { name:"FREEZE",       emoji:"❄️", rarity:2, desc:"Freeze goobers ~4s" },
+  ghost:  { name:"GHOST",        emoji:"👻", rarity:2, desc:"Phase through the next hit" },
+  slowmo: { name:"SLOW-MO",      emoji:"⏱️", rarity:3, desc:"Slow-mo near a crusher" },
+};
+// pure-looks collectibles (no gameplay effect). kind: trail | shine | topper.
+const COSMETICS = {
+  trail_flame:   { name:"FLAME TRAIL",   emoji:"🔥", rarity:1, kind:"trail",  col:"#ff7a1a" },
+  trail_rainbow: { name:"RAINBOW TRAIL", emoji:"🌈", rarity:2, kind:"trail",  col:"rainbow" },
+  shine_gold:    { name:"GOLD SHINE",    emoji:"✨", rarity:3, kind:"shine",   col:"#ffd76a" },
+  topper_goat:   { name:"GOAT TOPPER",   emoji:"🐐", rarity:4, kind:"topper" },
+  topper_crown:  { name:"CROWN TOPPER",  emoji:"👑", rarity:4, kind:"topper" },
+};
+// coin / aura filler so a common pull still feels like progress
+const CURRENCY = {
+  pouch: { name:"COIN POUCH", emoji:"🪙", rarity:0, coins:25 },
+  sack:  { name:"COIN SACK",  emoji:"💰", rarity:1, coins:100 },
+  auraB: { name:"AURA BONUS", emoji:"💫", rarity:0, aura:15 },
+};
+
+// current multiplier for an upgrade stat (1 = nothing owned yet)
+function upgMul(kind){ return CRATE_UPG[kind].mult[store.upg[kind]||0]; }
+// should the human's upgrades/power-ups apply to this car right now?
+// campaign only — VS/KO/co-op stay fair unless CONFIG.powerUpsInVs is on.
+function boosted(car){
+  if(car!==game.car) return false;
+  if((game.vs||game.ko||game.coop) && !CONFIG.powerUpsInVs) return false;
+  return true;
+}
+// weighted 0..4 rarity roll from a crate's odds array
+function rollTier(odds){
+  let tot=0; for(const o of odds) tot+=o;
+  let r=Math.random()*tot;
+  for(let i=0;i<odds.length;i++){ r-=odds[i]; if(r<0) return i; }
+  return 0;
+}
+// everything that can drop at rarity tier t (0..4). upgrades appear at every tier (weighted x2).
+function poolForTier(t){
+  const pool = [];
+  for(const id in POWERUPS)  if(POWERUPS[id].rarity===t) pool.push({type:"pu",  id});
+  for(const id in COSMETICS)  if(COSMETICS[id].rarity===t && !store.cosmetics.includes(id)) pool.push({type:"cos", id});
+  for(const id in CURRENCY)   if(CURRENCY[id].rarity===t)  pool.push({type:"cur", id});
+  pool.push({type:"upg"}, {type:"upg"});   // an upgrade at this tier — the core chase
+  return pool;
+}
+// hand out one drop, mutate store, and return a card description for the reveal
+function grantDrop(drop, t){
+  if(drop.type==="pu"){
+    const p = POWERUPS[drop.id];
+    store.powerups[drop.id] = (store.powerups[drop.id]||0)+1;
+    return { icon:p.emoji, name:p.name, sub:p.desc };
+  }
+  if(drop.type==="cos"){
+    const c = COSMETICS[drop.id];
+    store.cosmetics.push(drop.id);
+    return { icon:c.emoji, name:c.name, sub:"New look!" };
+  }
+  if(drop.type==="cur"){
+    const c = CURRENCY[drop.id];
+    if(c.coins){ store.coinsBank += c.coins; return { icon:c.emoji, name:"+"+c.coins+" COINS", sub:c.name }; }
+    store.aura += c.aura; return { icon:c.emoji, name:"+"+c.aura+" AURA", sub:c.name };
+  }
+  // upgrade: random stat at tier t+1; if you already own that tier or better → coins instead
+  const stat = UPG_KEYS[(Math.random()*UPG_KEYS.length)|0], newTier = t+1;
+  if((store.upg[stat]||0) >= newTier){
+    const c = 20*newTier; store.coinsBank += c;
+    return { icon:"🪙", name:"+"+c+" COINS", sub:"(already have "+CRATE_UPG[stat].name+")" };
+  }
+  store.upg[stat] = newTier;
+  const pct = Math.round((CRATE_UPG[stat].mult[newTier]-1)*100);
+  return { icon:CRATE_UPG[stat].emoji, name:CRATE_UPG[stat].name+" +"+pct+"%", sub:"Upgrade!" };
+}
+// buy + open a crate → kicks off the reveal animation
+function openCrate(key){
+  const c = CRATES[key];
+  if(store.coinsBank < c.price){
+    AU.bonk(); sticker("NEED "+(c.price-store.coinsBank)+" MORE COINS!", "#ff8f8f"); return;
+  }
+  store.coinsBank -= c.price; store.cratesOpened++;
+  const t = rollTier(c.odds);
+  const pool = poolForTier(t);
+  const res = grantDrop(pool[(Math.random()*pool.length)|0], t);
+  save();
+  game.reveal = { res, tier:t, t:0, from:key, popped:false };
+  AU.ui();
+}
+
+/* ---- power-up run lifecycle & auto-triggers (see docs/MYSTERY-CRATES.md) ----
+   One power-up is armed at a time (store.armed). rocket/double fire at the
+   start of every run; shield/freeze/ghost/slowmo fire reactively and are only
+   spent when they actually trigger — so an unused one carries to the next race. */
+function consumeArmed(){
+  const id = store.armed; if(!id) return;
+  store.powerups[id] = (store.powerups[id]||0) - 1;
+  if(store.powerups[id] <= 0){ delete store.powerups[id]; store.armed = null; }
+  save();
+}
+function puFloat(msg, x, y){ float(msg, x==null?game.car.x:x, (y==null?game.car.y:y)-46, "#7ef7ff"); }
+function firePU(kind, x, y){          // a reactive power-up went off: spend it + FX
+  consumeArmed(); game.car.pu = null;
+  puFloat(POWERUPS[kind].emoji+" "+POWERUPS[kind].name+"!", x, y);
+  AU.nitro(); game.shake = Math.min(8, game.shake+3);
+  for(let i=0;i<10;i++) puff(x==null?game.car.x:x, y==null?game.car.y:y, "rgba(126,247,255,0.5)");
+}
+// eat the next hit (trap door / goober) with an armed 🛡️ shield or 👻 ghost
+function blockHit(car, x, y){
+  if(car!==game.car || !car.pu) return false;
+  if(car.pu==="shield"){ car.invuln = Math.max(car.invuln, 1.0); firePU("shield", x, y); return true; }
+  if(car.pu==="ghost"){ car.ghostT = 2.0; car.invuln = Math.max(car.invuln, 2.0); firePU("ghost", x, y); return true; }
+  return false;
+}
+// arm the run's power-up (campaign only unless CONFIG.powerUpsInVs) — call once per run start
+function armRun(){
+  const c = game.car; if(!c) return;
+  c.dbl=false; c.shield=false; c.ghostT=0; c.pu=null; c.luckyAcc=0; game.slowmo=0;
+  for(const gb of game.goobers) gb.frozen = 0;
+  const allow = (!game.vs && !game.ko && !game.coop) || CONFIG.powerUpsInVs;
+  const id = store.armed;
+  if(!allow || !id || !(store.powerups[id]>0)) return;
+  if(id==="rocket"){ c.nitroMeter=100; c.boost=0.3; consumeArmed(); puFloat("🚀 ROCKET START!"); }
+  else if(id==="double"){ c.dbl=true; consumeArmed(); puFloat("✌️ DOUBLE COINS!"); }
+  else { c.pu=id; if(id==="shield") c.shield=true; }   // shield/freeze/ghost/slowmo fire during the run
+}
+// equipped 🎨 trail cosmetic overrides the car's motion-trail colour (flame = orange, rainbow = cycling hue)
+function cosTrail(car, v){
+  if(!car.p2 && store.cosmetic){
+    const c = COSMETICS[store.cosmetic];
+    if(c && c.kind==="trail") return c.col==="rainbow" ? "hsl("+Math.floor((game.t*120)%360)+",90%,62%)" : c.col;
+  }
+  return v.trail();
+}
+
+/* ---------------- CRATES screen (buy · reveal · inventory · arm) ---------------- */
+function sectionLabel(txt, x, y){
+  ctx.font="800 13px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#8b93ad";
+  ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillText(txt, x, y+9);
+}
+function crateCard(x, y, w, h, key){
+  const c = CRATES[key], can = store.coinsBank >= c.price;
+  roundedPanel(x, y, w, h, 14, can? "rgba(255,183,66,0.14)" : "rgba(14,17,26,0.85)");
+  ctx.strokeStyle = key==="mega"? "#ff5db1" : "#ffb742"; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.roundRect(x+1.5, y+1.5, w-3, h-3, 13); ctx.stroke();
+  ctx.font = "36px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.globalAlpha = can? 1 : 0.5; ctx.fillText(c.emoji, x+w/2, y+32); ctx.globalAlpha = 1;
+  ctx.font = "800 14px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.fillStyle = can? "#f4f6ff" : "#8b93ad"; ctx.fillText(c.name, x+w/2, y+h-30);
+  ctx.fillStyle = "#e8a930"; ctx.beginPath(); ctx.arc(x+w/2-24, y+h-13, 6, 0, TAU); ctx.fill();
+  ctx.fillStyle = "#ffd76a"; ctx.beginPath(); ctx.arc(x+w/2-24, y+h-14, 5, 0, TAU); ctx.fill();
+  ctx.fillStyle = can? "#9ae64a" : "#ff8f8f"; ctx.font = "900 14px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.textAlign="left"; ctx.fillText(c.price + "   OPEN ▶", x+w/2-14, y+h-12);
+  hudBtns.push({x, y, w, h, act:"buy:"+key});
+}
+function upgChip(x, y, w, h, k){
+  const u = CRATE_UPG[k], t = store.upg[k]||0;
+  roundedPanel(x, y, w, h, 10, "rgba(14,17,26,0.85)");
+  ctx.font = "20px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.globalAlpha = t? 1 : 0.4; ctx.fillText(u.emoji, x+w/2, y+19); ctx.globalAlpha = 1;
+  ctx.font = "800 12px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.fillStyle = t? RARITY[t-1].col : "#5a6178";
+  ctx.fillText(t? "+"+Math.round((u.mult[t]-1)*100)+"%" : "—", x+w/2, y+h-12);
+}
+function puChip(x, y, w, h, id){
+  const p = POWERUPS[id], n = store.powerups[id], armed = store.armed===id;
+  roundedPanel(x, y, w, h, 10, armed? "rgba(126,247,255,0.18)" : "rgba(14,17,26,0.85)");
+  if(armed){ ctx.strokeStyle="#7ef7ff"; ctx.lineWidth=2.5; ctx.beginPath(); ctx.roundRect(x+1.5,y+1.5,w-3,h-3,9); ctx.stroke(); }
+  ctx.font = "24px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText(p.emoji, x+w/2, y+21);
+  ctx.font = "800 11px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#f4f6ff";
+  ctx.fillText("x"+n, x+w/2, y+h-21);
+  ctx.fillStyle = armed? "#7ef7ff" : "#8b93ad"; ctx.font = "800 10px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.fillText(armed? "ARMED" : "ARM", x+w/2, y+h-9);
+  hudBtns.push({x, y, w, h, act:"arm:"+id});
+}
+function cosChip(x, y, w, h, id){
+  const c = COSMETICS[id], on = store.cosmetic===id;
+  roundedPanel(x, y, w, h, 10, on? "rgba(255,183,66,0.18)" : "rgba(14,17,26,0.85)");
+  if(on){ ctx.strokeStyle="#ffb742"; ctx.lineWidth=2.5; ctx.beginPath(); ctx.roundRect(x+1.5,y+1.5,w-3,h-3,9); ctx.stroke(); }
+  ctx.font = "22px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText(c.emoji, x+w/2, y+20);
+  ctx.fillStyle = on? "#ffb742" : "#8b93ad"; ctx.font = "800 10px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.fillText(on? "ON" : "WEAR", x+w/2, y+h-10);
+  hudBtns.push({x, y, w, h, act:"wear:"+id});
+}
+function drawReveal(dt){
+  const rv = game.reveal; rv.t += dt;
+  ctx.fillStyle = "rgba(6,8,14,0.74)"; ctx.fillRect(0,0,W,H);
+  const cx=W/2, cy=H*0.42, col=RARITY[rv.tier].col;
+  if(rv.t < 0.9){
+    const shake = (0.9-rv.t)*11, s = 46 + rv.t*30;
+    ctx.save(); ctx.translate(cx+rand(-shake,shake), cy+rand(-shake,shake));
+    ctx.font = s+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(CRATES[rv.from].emoji, 0, 0); ctx.restore();
+    if(rv.t>0.5){ ctx.globalAlpha=(rv.t-0.5)/0.4; ctx.globalCompositeOperation="lighter";
+      ctx.fillStyle=col; ctx.beginPath(); ctx.arc(cx,cy,s,0,TAU); ctx.fill();
+      ctx.globalCompositeOperation="source-over"; ctx.globalAlpha=1; }
+  } else {
+    if(!rv.popped){ rv.popped=true; AU.win(); confettiBurst(cx,cy, rv.tier>=3?140:80, col);
+      if(rv.tier>=4) AU.beep(1200,0.3,"sawtooth",0.2,600); }
+    ctx.strokeStyle=col; ctx.lineWidth=4; ctx.globalAlpha=0.85;
+    ctx.beginPath(); ctx.arc(cx, cy, 62+Math.sin(game.t*6)*3, 0, TAU); ctx.stroke(); ctx.globalAlpha=1;
+    ctx.font = "52px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(rv.res.icon, cx, cy);
+    ctx.font = "900 18px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle=col;
+    ctx.fillText(RARITY[rv.tier].name, cx, cy+84);
+    ctx.font = "800 21px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#f4f6ff";
+    ctx.fillText(rv.res.name, cx, cy+110);
+    ctx.font = "600 14px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#8b93ad";
+    ctx.fillText(rv.res.sub, cx, cy+132);
+    ctx.font = "700 13px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#5a6178";
+    ctx.fillText("tap to continue", cx, H*0.72);
+  }
+}
+function cratesAction(a){
+  if(a==="back"){ AU.ui(); game.reveal=null; game.state="series"; return; }
+  if(a==="buy:mystery"){ openCrate("mystery"); return; }
+  if(a==="buy:mega"){ openCrate("mega"); return; }
+  if(a.startsWith("arm:")){
+    const id = a.slice(4);
+    store.armed = (store.armed===id)? null : id; save(); AU.key();
+    sticker(store.armed? POWERUPS[id].emoji+" "+POWERUPS[id].name+" ARMED" : "UNARMED", "#7ef7ff");
+    return;
+  }
+  if(a.startsWith("wear:")){
+    const id = a.slice(5);
+    store.cosmetic = (store.cosmetic===id)? null : id; save(); AU.key();
+    return;
+  }
+}
+function drawCrates(dt){
+  nightSky();
+  hudBtns.length = 0;
+  const top = 8+safeT;
+  drawIconBtn(PADX, top, 44, "↩️", "back");
+  ctx.font = "italic 900 28px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillStyle="#ffb742";
+  ctx.fillText("🎁 CRATES", PADX+56, top+23);
+  const bw2 = 130;
+  roundedPanel(W-PADX-bw2, top, bw2, 44, 12);
+  ctx.fillStyle="#e8a930"; ctx.beginPath(); ctx.arc(W-PADX-bw2+22, top+22, 9, 0, TAU); ctx.fill();
+  ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.arc(W-PADX-bw2+22, top+21, 8, 0, TAU); ctx.fill();
+  ctx.font="900 21px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.fillStyle="#f4f6ff"; ctx.textAlign="left"; ctx.fillText(store.coinsBank, W-PADX-bw2+40, top+23);
+
+  const gridW = Math.min(420, W-PADX*2), x0 = Math.round((W-gridW)/2);
+  let y = top+58;
+  // two crates to buy
+  const cw = (gridW-14)/2;
+  crateCard(x0,          y, cw, 100, "mystery");
+  crateCard(x0+cw+14,    y, cw, 100, "mega");
+  y += 100+16;
+  // upgrades (info only)
+  sectionLabel("UPGRADES", x0, y); y += 20;
+  const uw = (gridW - 4*8)/5;
+  UPG_KEYS.forEach((k,i)=> upgChip(x0 + i*(uw+8), y, uw, 56, k));
+  y += 56+16;
+  // power-ups — tap to arm ONE
+  sectionLabel("POWER-UPS  ·  tap to arm one", x0, y); y += 20;
+  const owned = Object.keys(store.powerups).filter(id=>store.powerups[id]>0);
+  if(!owned.length){
+    ctx.font="600 14px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#5a6178"; ctx.textAlign="left";
+    ctx.fillText("Open crates to find power-ups!", x0, y+22);
+  } else {
+    const pw = 66;
+    owned.forEach((id,i)=>{ if(x0 + i*(pw+8) + pw <= x0+gridW) puChip(x0 + i*(pw+8), y, pw, 64, id); });
+  }
+  y += 64+16;
+  // cosmetics — tap to wear
+  if(store.cosmetics.length){
+    sectionLabel("LOOKS  ·  tap to wear", x0, y); y += 20;
+    const kw = 60;
+    store.cosmetics.forEach((id,i)=>{ if(x0 + i*(kw+8) + kw <= x0+gridW) cosChip(x0 + i*(kw+8), y, kw, 56, id); });
+  }
+
+  if(game.reveal) drawReveal(dt);
+
+  for(const tp of input.taps.splice(0)){
+    if(tp.screen) continue;
+    if(game.reveal){ game.reveal = null; continue; }   // any tap dismisses the reveal
+    for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){ cratesAction(b.act); break; }
+  }
+}
+
 /* ---------------- GARAGE SHOP (v3) ---------------- */
 let shopPending = null;
 function shopAction(a){
@@ -4595,6 +4968,7 @@ function tick(now){
   else if(game.state==="map"){ drawMap(); updateStickers(dt); drawStickers(); }
   else if(game.state==="build"){ drawBuild(dt); updateStickers(dt); drawStickers(); }
   else if(game.state==="shop"){ updateFx(dt); drawShop(dt); drawConfettiScreen(); drawStickers(); }
+  else if(game.state==="crates"){ updateFx(dt); drawCrates(dt); drawConfettiScreen(); drawStickers(); }
   else if(game.state==="vspick"){ drawVsPick(); updateStickers(dt); drawStickers(); }
   else if(game.state==="cooppick"){ drawCoopMap(); updateStickers(dt); drawStickers(); }
   else if(game.state==="vsend"){ updateFx(dt); drawVsEnd(dt); }
@@ -4614,13 +4988,16 @@ function tick(now){
           if(cur2===0) sticker("GO!!", "#9ae64a");
         }
       } else {
-        game.playT += dt;
-        updateCar(game.car, {vec:input.vec, nitro:input.nitro, main:true}, dt);
+        const gdt = game.slowmo>0 ? dt*0.45 : dt;   // ⏱️ slow-mo scales gameplay time (crushers use game.gt)
+        if(game.slowmo>0) game.slowmo -= dt;
+        game.gt = (game.gt||0) + gdt;
+        game.playT += gdt;
+        updateCar(game.car, {vec:input.vec, nitro:input.nitro, main:true}, gdt);
         if(game.car2){
-          updateCar(game.car2, {vec:input.vec2, nitro:false}, dt);
+          updateCar(game.car2, {vec:input.vec2, nitro:false}, gdt);
           carBump(game.car, game.car2);
         }
-        updateEntities(dt);
+        updateEntities(gdt);
       }
       updateFx(dt);
     }
