@@ -62,6 +62,7 @@ const YELLS = {
 
 const TAU = Math.PI * 2;
 const CELL = 110;                 // world pixels per maze cell
+const CRUMBLE_GRACE = 0.9;        // 🧱 foam-float fuse: seconds a tile cracks before it drops (~3× a cruise-crossing → forgiving)
 const SHIFT_CYCLE = 3.8;          // seconds for shifting walls to complete an A→B cycle
 const clamp = (v,a,b)=> v<a?a : v>b?b : v;
 const lerp  = (a,b,t)=> a+(b-a)*t;
@@ -916,6 +917,189 @@ const LEVELS = [
 "#........>>>>>>F...#",
 "####################"
 ], crushers:[{c:2,r:2,dx:1,dy:0,range:5,period:2.7,phase:0},{c:17,r:5,dx:-1,dy:0,range:5,period:2.7,phase:0.5}]},
+
+  // ═══════════════ World 5 · SPLASH ZONE 🌊 (levels 60-74) ═══════════════
+  // L60 · CANNONBALL!
+  { name:"CANNONBALL!", emoji:"🟠", hue:"#2fd0e0", par:36, grid:[
+    "################",
+    "#S..c..J#..cF..#",
+    "#.......#......#",
+    "#.......#......#",
+    "#.......#......#",
+    "#..............#",
+    "#..............#",
+    "################"
+  ]},
+  // L61 · SHALLOW END
+  { name:"SHALLOW END", emoji:"🩴", hue:"#3ac6b0", par:40, grid:[
+    "##################",
+    "#S...............#",
+    "#.....&&&&&&.....#",
+    "#.....&&&&&&.....#",
+    "#.c...&&&&&&.c.F.#",
+    "#.....&&&&&&.....#",
+    "#................#",
+    "#................#",
+    "##################"
+  ]},
+  // L62 · FOAM FLOATS
+  { name:"FOAM FLOATS", emoji:"🧽", hue:"#5ab0ff", par:42, grid:[
+    "##################",
+    "#S....######.....#",
+    "#..n..%%%%%%..c..#",
+    "#.....######.....#",
+    "#.....######..F..#",
+    "#.....######.....#",
+    "#................#",
+    "#.....c..........#",
+    "##################"
+  ]},
+  // L63 · SPLASH & DASH
+  { name:"SPLASH & DASH", emoji:"💦", hue:"#2fd0e0", par:46, grid:[
+    "#################",
+    "#S.............c#",
+    "#..*..J...n....c#",
+    "#.......###.....#",
+    "#.......#.#.....#",
+    "#.......###.....#",
+    "#...............#",
+    "#.............F.#",
+    "#################"
+  ], hazards:[{"path":[[7,2],[8,2]],"speed":92}]},
+  // L64 · CURRENT AFFAIRS
+  { name:"CURRENT AFFAIRS", emoji:"🌊", hue:"#2fd0e0", par:48, grid:[
+    "##################",
+    "#S>>>>>>c>>>>>>&.#",
+    "################.#",
+    "#.&<<<<<<n<<<<<<.#",
+    "#.################",
+    "#.>>>>>>>>>>>>&&F#",
+    "##################"
+  ]},
+  // L65 · WATERSLIDE!
+  { name:"WATERSLIDE!", emoji:"🛝", hue:"#2fd0e0", par:52, grid:[
+    "#################",
+    "#S..*..J#~~~~~~F#",
+    "#........#####..#",
+    "#...c.......c...#",
+    "#..#########....#",
+    "#.......n.......#",
+    "#################"
+  ]},
+  // L66 · STEPPING STONES
+  { name:"STEPPING STONES", emoji:"🪨", hue:"#4fd6c0", par:50, grid:[
+    "################",
+    "#S.%%%.J#..%%.F#",
+    "#.############.#",
+    "#.############.#",
+    "#.############.#",
+    "#.############.#",
+    "#.############.#",
+    "#.......c......#",
+    "################"
+  ]},
+  // L67 · KEY LAGOON
+  { name:"KEY LAGOON", emoji:"🗝️", hue:"#38c8d8", par:56, grid:[
+    "###############",
+    "#S...&&&&....k#",
+    "#.###########.#",
+    "#.###########v#",
+    "#.#....F....#v#",
+    "#.#.........D.#",
+    "#.#.........#.#",
+    "#.###########.#",
+    "#......c......#",
+    "###############"
+  ]},
+  // L68 · THE RAPIDS
+  { name:"THE RAPIDS", emoji:"🚣", hue:"#3a9be0", par:58, grid:[
+    "#################",
+    "#S>>>~~~~%%.c..F#",
+    "#v#############^#",
+    "#v#############^#",
+    "#v#############^#",
+    "#v#############^#",
+    "#v#############^#",
+    "#>>>>>>>n>>>>>>>#",
+    "#################"
+  ]},
+  // L69 · DEEP END
+  { name:"DEEP END", emoji:"🤿", hue:"#2fd0e0", par:56, grid:[
+    "##################",
+    "#S....&&&....c...#",
+    "#.###.####.###...#",
+    "#..%%....J.......#",
+    "#.#####....###...#",
+    "#c...J..&&&&...n.#",
+    "#.###..##..###...#",
+    "#......%%......F.#",
+    "##################"
+  ]},
+  // L70 · THE LIFEGUARD
+  { name:"THE LIFEGUARD", emoji:"🏄", hue:"#22b8d0", par:52, rival:{mult:1.95}, grid:[
+    "##################",
+    "#S>>>>>>>>>>>F...#",
+    "#.####.####.####.#",
+    "#c..&&..J..&&...n#",
+    "#.####.####.####.#",
+    "#....*....%%.....#",
+    "##################"
+  ]},
+  // L71 · NIGHT SWIM
+  { name:"NIGHT SWIM", emoji:"🌙", hue:"#1f7fb0", par:58, dark:true, grid:[
+    "##################",
+    "#S~~~~~~~~~~~~~~~#",
+    "########%#######.#",
+    "#c~~~~J~~~~~~~~~.#",
+    "#.######%#########",
+    "#.~~~~~~~~~~~~~~~#",
+    "########%#######.#",
+    "#n~~~~~~~~~~~~F..#",
+    "##################"
+  ]},
+  // L72 · WAVE POOL
+  { name:"WAVE POOL", emoji:"🌊", hue:"#2fd0e0", par:64, grid:[
+    "##################",
+    "#S...>>>>>>>..c..#",
+    "#..&&......##.<..#",
+    "#.>>>..vv...&&...#",
+    "#..##..&&.%%..>..#",
+    "#c..>>>..<<<..#..#",
+    "#.^^...&&..vv....#",
+    "#..>>>..##..&&...#",
+    "#.&&..<<<...>>...#",
+    "#c....%%....^^...#",
+    "#....&&....>>F...#",
+    "##################"
+  ]},
+  // L73 · SPILLWAY
+  { name:"SPILLWAY", emoji:"🚧", hue:"#39c7e8", par:68, grid:[
+    "##################",
+    "#S..>>>>~~~~..k..#",
+    "#..&&......##.>..#",
+    "#.J......%%..>>..#",
+    "#..>>>..&&...^^..#",
+    "######D###########",
+    "#..~~..J....&&...#",
+    "#.<<<...%%...>>..#",
+    "#..&&.J.....>>>..#",
+    "#....>>>..&&..F..#",
+    "##################"
+  ]},
+  // L74 · TIDAL TITAN
+  { name:"TIDAL TITAN", emoji:"🐙", hue:"#1f9fd0", par:84, rival:{mult:2.12}, grid:[
+    "####################",
+    "#S..>>>n>>.J...>>>F#",
+    "#..##...&&....##...#",
+    "#.>>>..%%...>>>>...#",
+    "#..&&....J.....^^..#",
+    "#>>...~~~~....>>>..#",
+    "#..##...&&...%%....#",
+    "#.<<<....J....>>>..#",
+    "#c..&&.....vv....c.#",
+    "#..>>>..%%....&&...#",
+    "####################"
+  ]},
 ];
 
 /* ----------------------------------------------------------------
@@ -931,6 +1115,7 @@ const SERIES = [
   { name:"BRAIN FREEZE", emoji:"🧊", hue:"#7ec9ff", blurb:"Ice, portals, gate mazes, goober swarms & tougher bosses.", count:15, reward:"frost" },
   { name:"MAZE MAYHEM",  emoji:"🌀", hue:"#c56cff", blurb:"Shifting walls that rearrange the maze — time your run!", count:15, reward:"glitch" },
   { name:"METAL MELTDOWN", emoji:"🏭", hue:"#ff8a3c", blurb:"Conveyor belts, sliding crushers & trap doors — survive the factory!", count:15, reward:"monster" },
+  { name:"SPLASH ZONE", emoji:"🌊", hue:"#2fd0e0", blurb:"Splash pads, sticky shallows & sinking foam floats — ride the currents and waterslides!", count:15, reward:"wave" },
   { name:"NEW WORLD",    emoji:"🌋", hue:"#ff6a5e", blurb:"Even wilder. In the workshop!", comingSoon:true },
 ];
 (function computeSeriesStarts(){
@@ -1592,6 +1777,9 @@ cv.addEventListener("touchstart", e=>{
   e.preventDefault(); AU.init(); AU.resume(); input.hasTouch = true;
   for(const t of e.changedTouches){
     const x=t.clientX, y=t.clientY;
+    // 🛒 showroom: don't fire a tap on press — a drag scrolls the carousel, a
+    // release-without-movement becomes the tap (so swiping never triggers a button).
+    if(game.state==="shop"){ if(!sh.ptr) sh.ptr = {id:t.identifier, x0:x, y0:y, x, y, s0:sh.scroll, moved:false}; continue; }
     input.taps.push({x, y});
     if(game.state==="play" && (game.vs || game.coop || game.ko)){
       if(x < W/2){ if(!input.joy) input.joy = {id:t.identifier, ox:x, oy:y, x, y}; }
@@ -1610,6 +1798,7 @@ cv.addEventListener("touchmove", e=>{
     if(input.joy && t.identifier===input.joy.id){ input.joy.x=t.clientX; input.joy.y=t.clientY; }
     if(input.joy2 && t.identifier===input.joy2.id){ input.joy2.x=t.clientX; input.joy2.y=t.clientY; }
     if(bl.ptr && t.identifier===bl.ptr.id){ bl.ptr.x=t.clientX; bl.ptr.y=t.clientY; }
+    if(sh.ptr && t.identifier===sh.ptr.id) shopDrag(t.clientX, t.clientY);
   }
 },{passive:false});
 function endTouch(e){
@@ -1618,17 +1807,42 @@ function endTouch(e){
     if(input.joy && t.identifier===input.joy.id) input.joy=null;
     if(input.joy2 && t.identifier===input.joy2.id) input.joy2=null;
     if(bl.ptr && t.identifier===bl.ptr.id){ bl.ptr=null; bl.lastCell=null; }
+    if(sh.ptr && t.identifier===sh.ptr.id) shopDragEnd();
     if(touches[t.identifier]==="nitro"){ delete touches[t.identifier]; if(!Object.keys(touches).length) input.nitro=false; }
   }
+}
+// 🛒 showroom carousel drag: horizontal-dominant movement scrolls; <10px is treated as a tap.
+function shopDrag(x, y){
+  if(!sh.ptr) return;
+  sh.ptr.x = x; sh.ptr.y = y;
+  const dx = x - sh.ptr.x0, dy = y - sh.ptr.y0;
+  if(!sh.ptr.moved && Math.hypot(dx,dy) > 10) sh.ptr.moved = true;
+  if(sh.ptr.moved && Math.abs(dx) > Math.abs(dy)) sh.scroll = clamp(sh.ptr.s0 - dx/sh.strip.step, 0, sh.max);
+}
+function shopDragEnd(){
+  if(!sh.ptr) return;
+  if(game.state==="shop"){
+    if(!sh.ptr.moved) input.taps.push({x:sh.ptr.x0, y:sh.ptr.y0});                       // released without moving → tap
+    else { sh.sel = clamp(Math.round(sh.scroll), 0, sh.max); sh.target = sh.sel; AU.ui(); }   // dragged → snap to nearest
+  }
+  sh.ptr = null;
 }
 cv.addEventListener("touchend", endTouch, {passive:false});
 cv.addEventListener("touchcancel", endTouch, {passive:false});
 cv.addEventListener("mousedown", e=>{
-  AU.init(); input.taps.push({x:e.clientX, y:e.clientY});
+  AU.init();
+  if(game.state==="shop"){ sh.ptr = {id:"m", x0:e.clientX, y0:e.clientY, x:e.clientX, y:e.clientY, s0:sh.scroll, moved:false}; return; }
+  input.taps.push({x:e.clientX, y:e.clientY});
   if(game.state==="build") bl.ptr = {id:"m", x:e.clientX, y:e.clientY, stroke:false};
 });
-window.addEventListener("mousemove", e=>{ if(bl.ptr && bl.ptr.id==="m"){ bl.ptr.x=e.clientX; bl.ptr.y=e.clientY; } });
-window.addEventListener("mouseup", ()=>{ if(bl.ptr && bl.ptr.id==="m"){ bl.ptr=null; bl.lastCell=null; } });
+window.addEventListener("mousemove", e=>{
+  if(bl.ptr && bl.ptr.id==="m"){ bl.ptr.x=e.clientX; bl.ptr.y=e.clientY; }
+  if(sh.ptr && sh.ptr.id==="m") shopDrag(e.clientX, e.clientY);
+});
+window.addEventListener("mouseup", ()=>{
+  if(bl.ptr && bl.ptr.id==="m"){ bl.ptr=null; bl.lastCell=null; }
+  if(sh.ptr && sh.ptr.id==="m") shopDragEnd();
+});
 window.addEventListener("contextmenu", e=> e.preventDefault());
 function readInput(){
   if(game.vs || game.coop || game.ko){
@@ -1666,7 +1880,7 @@ const game = {
 
 function newCar(x,y,heading){
   return { x, y, vx:0, vy:0, heading, speed:0, nitroMeter:70,
-    drifting:false, spinT:0, invuln:0, sq:1, sqv:0, trail:[], boost:0,
+    drifting:false, spinT:0, invuln:0, sq:1, sqv:0, airT:0, airMax:0, wasSticky:false, trail:[], boost:0,
     aura:0, coins:0, portalCool:0, driftT:0 };
 }
 
@@ -1757,7 +1971,7 @@ function startLevel(L, meta){
   const g = L.grid;
   game.rows = g.length; game.cols = g[0].length;
   game.solid = []; game.road = []; game.coins=[]; game.pads=[]; game.gates=[]; game.doors=[]; game.goobers=[]; game.key=null;
-  game.slick = []; game.portals = []; game.crates = [];
+  game.slick = []; game.portals = []; game.crates = []; game.sticky = [];
   game.gold = null; game.goldReveal = null;   // 🎁 v2: golden crate + its reveal banner (cleared every load, all modes)
   game.plates2 = []; game.coopGates = [];
   game.shiftWalls = []; game.shiftSol = [0,0]; game.shiftT = 0;
@@ -1765,6 +1979,7 @@ function startLevel(L, meta){
   game.koZones = [];                                                      // knockout: hazard cells ("!")
   game.seqPads = []; game.seqNext = 0; game.seqDone = false;              // co-op: button sequence puzzle
   game.conveyors = []; game.trapDoors = []; game.crushers = [];           // environmental hazards
+  game.bounces = []; game.crumbles = [];                                  // 🌊 World 5: splash pads + foam floats
   game.hasKey=false; game.playT=0; game.bonks=0;
   game.vs = !!(meta && meta.vs);
   game.coop = !!(meta && meta.coop);
@@ -1775,12 +1990,13 @@ function startLevel(L, meta){
   game.parts=[]; game.floats=[]; game.stickers=[]; game.confetti=[]; game.hintT=0;
   let sx=1, sy=1, fx=1, fy=1, p2x=0, p2y=0, p2c=1, p2r=1;
   for(let r=0;r<game.rows;r++){
-    game.solid[r]=[]; game.slick[r]=[];
+    game.solid[r]=[]; game.slick[r]=[]; game.sticky[r]=[];
     for(let c=0;c<game.cols;c++){
       const ch = g[r][c]||"#";
       const wall = ch==="#";
       game.solid[r][c] = wall?1:0;
       game.slick[r][c] = ch==="~"?1:0;
+      game.sticky[r][c] = ch==="&"?1:0;                             // 🟣 sticky shallows (inverse of ice)
       if(!wall) game.road.push([c,r]);
       const wx=(c+0.5)*CELL, wy=(r+0.5)*CELL;
       if(ch==="S"){ sx=wx; sy=wy; game.startCell=[c,r]; }
@@ -1808,6 +2024,8 @@ function startLevel(L, meta){
       if(ch==="^") game.conveyors.push({c,r,x:wx,y:wy,dx:0,dy:-1});
       if(ch==="v") game.conveyors.push({c,r,x:wx,y:wy,dx:0,dy:1});
       if(ch==="O") game.trapDoors.push({c,r,x:wx,y:wy,ph:Math.random()*TAU}); // trap door — fall through & respawn
+      if(ch==="J") game.bounces.push({c,r,x:wx,y:wy,ph:Math.random()*TAU,cool:0});          // 🟠 splash / bounce pad
+      if(ch==="%") game.crumbles.push({c,r,x:wx,y:wy,state:"intact",t0:0,ph:Math.random()*TAU}); // 🧱 foam float
     }
   }
   game.portals.length = Math.min(2, game.portals.length);   // exactly one pair
@@ -1856,6 +2074,7 @@ function startLevel(L, meta){
   game.rival = null;
   if(L.rival){
     const trapAvoid = new Set(game.trapDoors.map(t=>t.c+","+t.r));                          // a good driver routes around the hatches
+    for(const cm of game.crumbles) trapAvoid.add(cm.c+","+cm.r);                            // 🧱 rival routes around foam floats too
     let path = bfsPathCells(game.startCell, [game.finish.c, game.finish.r], trapAvoid);
     if(path.length<=1) path = bfsPathCells(game.startCell, [game.finish.c, game.finish.r]);  // trap door unavoidable → take the normal path
     game.rival = { wp: path.map(([c,r])=>[(c+0.5)*CELL,(r+0.5)*CELL]),
@@ -1950,6 +2169,24 @@ function updateObjective(force){
   game.flow = dst;
 }
 
+// walls-only distance-to-finish field — orients direction hints (boost/splash pads) down the racing line
+function finishDist(){
+  if(!game.finish) return null;
+  const d = Array.from({length:game.rows},()=>new Array(game.cols).fill(-1));
+  const q=[[game.finish.c, game.finish.r]]; d[game.finish.r][game.finish.c]=0;
+  for(let qi=0; qi<q.length; qi++){
+    const [c,r]=q[qi];
+    for(const [dc,dr] of [[1,0],[-1,0],[0,1],[0,-1]]){
+      const nc=c+dc, nr=r+dr;
+      if(nc<0||nr<0||nc>=game.cols||nr>=game.rows) continue;
+      if(d[nr][nc]!==-1) continue;
+      if(isWallCell(nc,nr)) continue;             // doors/gates treated as passable → gradient always reaches
+      d[nr][nc]=d[r][c]+1; q.push([nc,nr]);
+    }
+  }
+  return d;
+}
+
 /* ---------------- pre-rendered ground + walls ---------------- */
 function prerenderGround(L){
   const w = game.cols*CELL, h = game.rows*CELL;
@@ -1980,6 +2217,14 @@ function prerenderGround(L){
       x.beginPath(); x.moveTo(c*CELL+12, yy); x.lineTo(c*CELL+CELL-12, yy-9); x.stroke();
     }
   }
+  // 🟣 sticky shallow-water slow zones — murky teal + ripples (reads OPPOSITE to the icy sheen above)
+  for(const [c,r] of game.road){
+    if(!(game.sticky[r] && game.sticky[r][c])) continue;
+    x.fillStyle = "rgba(60,150,140,0.26)";            x.fillRect(c*CELL, r*CELL, CELL, CELL);
+    x.fillStyle = "rgba(30,90,80,0.20)";              x.fillRect(c*CELL+6, r*CELL+6, CELL-12, CELL-12);   // darker inset = zone-edge telegraph
+    x.strokeStyle = "rgba(180,240,220,0.30)"; x.lineWidth = 2;
+    for(let i=0;i<3;i++){ x.beginPath(); x.arc((c+0.5)*CELL, (r+0.5)*CELL, 14+i*13, 0, TAU); x.stroke(); }
+  }
   // center dashes on straights
   x.strokeStyle = "rgba(255,255,255,0.07)"; x.lineWidth=4; x.setLineDash([16,20]);
   for(const [c,r] of game.road){
@@ -2005,11 +2250,17 @@ function prerenderGround(L){
     if(ch==="2") checker(c,r,"rgba(176,110,232,0.14)");
     if(ch==="F") checker(c,r,"rgba(255,255,255,0.16)");
   }
-  // boost pads (chevrons)
+  // boost pads (chevrons) — point down the racing line toward the finish (fixes mirrored/right-start levels)
+  const padDist = finishDist();
   for(const p of game.pads){
-    x.save(); x.translate(p.x,p.y);
-    const horiz = !isWallCell(p.c+1,p.r) || !isWallCell(p.c-1,p.r);
-    if(!horiz) x.rotate(Math.PI/2);
+    let ang, best = Infinity, found = false;
+    for(const [dc,dr,a] of [[1,0,0],[-1,0,Math.PI],[0,1,Math.PI/2],[0,-1,-Math.PI/2]]){
+      const nr=p.r+dr, nc=p.c+dc;
+      const v = (padDist && padDist[nr]) ? padDist[nr][nc] : -1;
+      if(v>=0 && v<best){ best=v; ang=a; found=true; }     // step toward the lower finish-distance neighbor
+    }
+    if(!found) ang = (!isWallCell(p.c+1,p.r) || !isWallCell(p.c-1,p.r)) ? 0 : Math.PI/2;  // fallback: corridor axis
+    x.save(); x.translate(p.x,p.y); x.rotate(ang);
     x.strokeStyle = L.hue; x.lineWidth = 7; x.lineCap="round"; x.globalAlpha=0.75;
     for(let i=-1;i<=1;i++){
       x.beginPath(); x.moveTo(i*22-9, -18); x.lineTo(i*22+9, 0); x.lineTo(i*22-9, 18); x.stroke();
@@ -2050,18 +2301,37 @@ function updateCar(car, ctrl, dt){
   // 🎁 crate upgrades buff the human's campaign car only (boosted() gates VS/KO/co-op)
   const bU = boosted(car);
   const mSpd = bU? upgMul("engine") : 1, mGrip = bU? upgMul("grip") : 1, mNit = bU? upgMul("nitro") : 1;
+  // 🚗 per-vehicle stat multipliers — the campaign game.car only (carPerk gates VS/KO/co-op),
+  // stacking ON TOP of the crate mults. All k* are exactly 1 for a stat of 5, so ROCKET and
+  // every non-player car are a pure no-op. Only BOOST reaches 10; spd/acc/hnd cap the rest at ±12%.
+  const cs = carPerk(car) ? carStat(store.car) : null;
+  const kSpd  = cs ? 1+(cs.spd-5)*0.020 : 1;   // maxSp
+  const kAcc  = cs ? 1+(cs.acc-5)*0.024 : 1;   // accel
+  const kGrip = cs ? 1+(cs.hnd-5)*0.030 : 1;   // lateral grip
+  const kTurn = cs ? 1+(cs.hnd-5)*0.015 : 1;   // steering rate
+  const kNit  = cs ? 1+(cs.bst-5)*0.050 : 1;   // nitro economy
   const cellC = clamp(Math.floor(car.x/CELL),0,game.cols-1), cellR = clamp(Math.floor(car.y/CELL),0,game.rows-1);
   const onIce = !!(game.slick[cellR] && game.slick[cellR][cellC]);
+  const onSticky = !((car.airT||0)>0) && !!(game.sticky[cellR] && game.sticky[cellR][cellC]);   // 🟣 goop drag (inert mid-hop)
+  const _spS = Math.hypot(car.vx,car.vy);
+  if(onSticky && !car.wasSticky && _spS>120){                        // 💦 entering the shallows
+    car.sq = 0.82;
+    for(let i=0;i<9;i++) puff(car.x, car.y, "rgba(150,225,210,0.55)");
+    AU.beep(320,0.18,"sine",0.12,120);
+    if(ctrl.main) float("SPLASH!", car.x, car.y-34, "#6fe0d0");
+    game.shake = Math.min(4, game.shake+1.5);
+  }
+  car.wasSticky = onSticky;
   if(car.spinT>0){ car.spinT-=dt; car.heading += dt*12; }
   else if(hasInput){
     const want = Math.atan2(iv.y, iv.x);
     const sp = Math.hypot(car.vx, car.vy);
-    const tRate = lerp(9, 3.1, clamp(sp/(460*SPD),0,1));   // nimble slow, wide fast
+    const tRate = lerp(9, 3.1, clamp(sp/(460*SPD),0,1)) * kTurn;   // nimble slow, wide fast (·handling)
     const d = angDiff(car.heading, want);
     car.heading += clamp(d, -tRate*dt, tRate*dt);
   }
-  const maxSp = (boosting? 660 : 400)*SPD*mSpd;
-  const accel = (boosting? 1300 : 750)*SPD*mSpd*(onIce?0.55:1);
+  const maxSp = (boosting? 660 : 400)*SPD*mSpd*kSpd*(car.airT>0?1.6:1)*(onSticky?(boosting?0.8:0.6):1);   // 🟠 airborne cap ↑ · 🟣 goop cap ↓ (nitro punches through)
+  const accel = (boosting? 1300 : 750)*SPD*mSpd*kAcc*(onIce?0.55: onSticky?0.7 :1);
   if(hasInput && car.spinT<=0){
     car.vx += Math.cos(car.heading)*accel*dt * Math.hypot(iv.x,iv.y);
     car.vy += Math.sin(car.heading)*accel*dt * Math.hypot(iv.x,iv.y);
@@ -2072,10 +2342,10 @@ function updateCar(car, ctrl, dt){
   let latX = car.vx - fwd*fx, latY = car.vy - fwd*fy;
   const sp = Math.hypot(car.vx,car.vy);
   const turningHard = hasInput && Math.abs(angDiff(car.heading, Math.atan2(iv.y,iv.x))) > 0.55;
-  const grip = (onIce ? 1.1 : (turningHard && sp>230*SPD) ? 2.4 : 8.5) * mGrip;
+  const grip = (onIce ? 1.1 : onSticky ? 11 : (turningHard && sp>230*SPD) ? 2.4 : 8.5) * mGrip * kGrip;   // 🟣 goop = planted, never spins a kid out
   const latK = Math.exp(-grip*dt);
   latX*=latK; latY*=latK;
-  fwd *= hasInput ? Math.exp(-0.35*dt) : Math.exp(-(onIce?0.7:2.2)*dt);
+  fwd *= (hasInput || car.airT>0) ? Math.exp(-(onSticky?1.6:0.35)*dt) : Math.exp(-(onIce?0.7: onSticky?5.5 :2.2)*dt);   // 🟠 low drag airborne · 🟣 goop bleeds coast speed fast
   car.vx = fwd*fx + latX; car.vy = fwd*fy + latY;
   const spd2 = Math.hypot(car.vx,car.vy);
   if(spd2 > maxSp){ car.vx *= maxSp/spd2; car.vy *= maxSp/spd2; }
@@ -2095,12 +2365,12 @@ function updateCar(car, ctrl, dt){
 
   // nitro
   if(boosting){
-    car.nitroMeter = Math.max(0, car.nitroMeter - dt*30/mNit);
+    car.nitroMeter = Math.max(0, car.nitroMeter - dt*30/(mNit*kNit));
     if(car.boost<=0){ AU.nitro(); if(Math.random()<0.5) float(pick(YELLS.nitro), car.x, car.y-40, "#7ef7ff"); }
     car.boost = 0.12;
     flame(car);
   } else {
-    car.nitroMeter = Math.min(100, car.nitroMeter + dt*(CONFIG.easyMode?14:9)*mNit);
+    car.nitroMeter = Math.min(100, car.nitroMeter + dt*(CONFIG.easyMode?14:9)*mNit*kNit);
     car.boost = Math.max(0, car.boost-dt);
   }
   if(ctrl.main) AU.setEngine(spd2, boosting);
@@ -2109,13 +2379,34 @@ function updateCar(car, ctrl, dt){
   const steps = Math.max(1, Math.ceil(spd2*dt/9));
   for(let i=0;i<steps;i++){
     car.x += car.vx*dt/steps; car.y += car.vy*dt/steps;
-    if(!(car===game.car && car.ghostT>0)) collideWalls(car);   // 👻 ghost drives through walls
+    if(!(car===game.car && car.ghostT>0) && !(car.airT>0)) collideWalls(car);   // 👻 ghost / 🟠 airborne fly over walls
   }
 
   // squash spring
   car.sqv += (1-car.sq)*260*dt; car.sqv *= Math.exp(-14*dt); car.sq += car.sqv*dt;
   car.invuln = Math.max(0, car.invuln-dt);
   car.ghostT = Math.max(0, (car.ghostT||0)-dt);   // 👻 ghost phase timer
+  const wasAir = car.airT>0;
+  car.airT = Math.max(0, (car.airT||0)-dt);
+  if(wasAir && car.airT<=0){                                   // 🟠 SPLASHDOWN — hop lands
+    car.sq = 0.55;                                             // max flatten (the spring above pops it back)
+    game.shake = Math.min(6, game.shake+2);
+    for(let i=0;i<14;i++) puff(car.x+rand(-14,14), car.y+rand(-14,14), "rgba(120,200,255,0.5)");
+    for(let i=0;i<6;i++) sparkle(car.x, car.y);
+    AU.bonk(); AU.beep(320,0.14,"sine",0.14,140);
+    if(ctrl.main) float(pick(["SPLASH!","STUCK IT!","WHEEE!"]), car.x, car.y-34, "#7ec9ff");
+    let lc=Math.floor(car.x/CELL), lr=Math.floor(car.y/CELL);   // 🟠 never land STUCK in a wall — snap to nearest open cell
+    if(isSolid(lc,lr)){
+      let best=null, bd=1e9;
+      for(let rr=Math.max(0,lr-3); rr<=Math.min(game.rows-1,lr+3); rr++)
+        for(let cc=Math.max(0,lc-3); cc<=Math.min(game.cols-1,lc+3); cc++){
+          if(isSolid(cc,rr)) continue;
+          const dd=(cc-lc)*(cc-lc)+(rr-lr)*(rr-lr); if(dd<bd){ bd=dd; best=[cc,rr]; }
+        }
+      const sp = best ? {x:(best[0]+0.5)*CELL, y:(best[1]+0.5)*CELL} : (car.spawn||{x:car.x,y:car.y});
+      car.x=sp.x; car.y=sp.y; car.vx=car.vy=0;
+    }
+  }
 
   // trail
   car.trail.unshift({x:car.x, y:car.y, a:car.heading});
@@ -2252,6 +2543,14 @@ function updateEntities(dt){
   }
   for(const p of game.portals) if(p.cool>0) p.cool -= dt;
   for(const p of game.pads) if(p.cool) p.cool = Math.max(0, p.cool-dt);
+  for(const bp of game.bounces) if(bp.cool>0) bp.cool = Math.max(0, bp.cool-dt);   // 🟠 splash-pad cooldowns
+  for(const cm of game.crumbles){                                                  // 🧱 foam collapse — once/frame, car-count-independent
+    if(cm.state==="cracking" && game.gt - cm.t0 >= CRUMBLE_GRACE){
+      cm.state="gone";
+      for(let i=0;i<16;i++) puff(cm.x+rand(-24,24), cm.y+rand(-24,24), i%2?"rgba(255,255,255,0.7)":"rgba(120,195,235,0.75)");
+      AU.bonk(); AU.beep(360,0.18,"sine",0.14,110); game.shake=Math.min(7, game.shake+3);
+    }
+  }
 
   for(const car of game.cars){
   // coins (with a little magnet — 🧲 upgrade widens the pull; 💰 lucky / ✌️ double boost the payout)
@@ -2314,7 +2613,7 @@ function updateEntities(dt){
   // boost pads
   for(const p of game.pads){
     if(Math.floor(car.x/CELL)===p.c && Math.floor(car.y/CELL)===p.r){
-      if(!p.cool){
+      if(!p.cool && car.airT<=0){
         p.cool = 0.9;
         const sp = Math.hypot(car.vx,car.vy)||1;
         const kick = 330*(CONFIG.speed||1);
@@ -2325,15 +2624,35 @@ function updateEntities(dt){
       }
     }
   }
+  // 🟠 splash pads: fling airborne — sails over walls, gaps & hazards, lands with a splash
+  if(game.bounces.length){
+    const bcx=Math.floor(car.x/CELL), bcy=Math.floor(car.y/CELL);
+    for(const bp of game.bounces){
+      if(bp.c===bcx && bp.r===bcy && bp.cool<=0 && car.airT<=0){
+        bp.cool = 0.5;
+        const SPD = CONFIG.speed||1, sp = Math.hypot(car.vx,car.vy);
+        const launch = clamp(sp + 300*SPD, 480*SPD, 620*SPD);      // never a dud, never a rocket → ~2.4–3.1 cells
+        car.vx = Math.cos(car.heading)*launch;                     // fly the way the car POINTS (readable, kills drift)
+        car.vy = Math.sin(car.heading)*launch;
+        car.airT = car.airMax = 0.55;                              // airtime knob (Space will reuse/crank this)
+        car.nitroMeter = Math.min(100, car.nitroMeter+15);
+        car.sq = 1.35;                                             // STRETCH tall on take-off
+        AU.nitro(); game.shake = Math.min(6, game.shake+3);
+        for(let i=0;i<10;i++) puff(bp.x+rand(-16,16), bp.y+rand(-16,16), "rgba(120,200,255,0.55)");
+        if(car===game.car) float("BOING!", car.x, car.y-40, "#59d0ff");
+        break;
+      }
+    }
+  }
   // conveyor floors: shove the car the way the belt points (you can still steer against it)
-  if(game.conveyors.length){
+  if(game.conveyors.length && car.airT<=0){                       // 🟠 no mid-air current shove
     const ccx=Math.floor(car.x/CELL), ccy=Math.floor(car.y/CELL);
     for(const cv2 of game.conveyors){
       if(cv2.c===ccx && cv2.r===ccy){ car.vx += cv2.dx*640*dt; car.vy += cv2.dy*640*dt; break; }
     }
   }
   // trap doors: drive on one → drop through → respawn (invuln blocks re-trigger)
-  if(game.trapDoors.length && car.invuln<=0){
+  if(game.trapDoors.length && car.invuln<=0 && car.airT<=0){
     const tcx=Math.floor(car.x/CELL), tcy=Math.floor(car.y/CELL);
     if(game.trapDoors.some(t=>t.c===tcx && t.r===tcy) && !blockHit(car, car.x, car.y)){
       const sp = car.spawn || {x:car.x, y:car.y, h:car.heading};
@@ -2343,9 +2662,29 @@ function updateEntities(dt){
       sticker("🕳️ "+(game.vs||game.coop||game.ko? pName(car.p2?1:0)+" FELL IN!":"WHOOPS — DOWN THE HATCH!"), "#b06ee8");
     }
   }
+  // 🧱 foam floats: first touch arms the collapse; standing on a collapsed hole drops you (bounce hop sails over)
+  if(game.crumbles.length && !(car.airT>0)){
+    const fcx=Math.floor(car.x/CELL), fcy=Math.floor(car.y/CELL);
+    for(const cm of game.crumbles){
+      if(cm.c!==fcx || cm.r!==fcy) continue;
+      if(cm.state==="intact"){                                    // first contact → arm + telegraph (NOT invuln-gated)
+        cm.state="cracking"; cm.t0=game.gt;
+        AU.beep(520,0.08,"square",0.06,300);
+        for(let i=0;i<5;i++) puff(cm.x+rand(-30,30), cm.y+rand(-30,30), "rgba(255,255,255,0.6)");
+      } else if(cm.state==="gone" && car.invuln<=0 && !blockHit(car, car.x, car.y)){   // fall (shield/ghost saves you)
+        const sp = car.spawn || {x:car.x, y:car.y, h:car.heading};
+        for(let i=0;i<14;i++) puff(car.x, car.y, "rgba(90,170,220,0.7)");
+        car.x=sp.x; car.y=sp.y; car.heading=sp.h; car.vx=car.vy=0;
+        car.invuln=1.4; car.spinT=0.35; car.sq=0.5;               // trap-door respawn contract
+        AU.bonk(); AU.beep(240,0.25,"sine",0.16,70); game.shake=Math.min(8,game.shake+4);
+        sticker("💦 "+(game.vs||game.coop||game.ko? pName(car.p2?1:0)+" TOOK A DIP!":"SPLASH! — HOP BACK IN!"), "#4fc3e8");
+      }
+      break;   // one crumble per cell
+    }
+  }
   // goobers: nitro speed takes HIM out — otherwise he yoinks your coins
   for(const gb of game.goobers){
-    if(gb.dead || gb.frozen>0) continue;                        // ❄️ frozen goobers are harmless
+    if(gb.dead || gb.frozen>0 || car.airT>0) continue;          // ❄️ frozen goobers harmless · 🟠 hop sails over
     if(dist(car.x,car.y,gb.x,gb.y)<38){
       const ramming = car.boost>0 || Math.hypot(car.vx,car.vy) > 450*(CONFIG.speed||1);
       if(ramming){
@@ -2397,7 +2736,7 @@ function updateEntities(dt){
       }
     }
     // 💥 knockout: shoved into a hazard pit → lose a life & respawn (0 lives = out)
-    if(game.ko && car.invuln<=0){
+    if(game.ko && car.invuln<=0 && car.airT<=0){
       const cc=Math.floor(car.x/CELL), rr=Math.floor(car.y/CELL);
       if(game.koZones.some(k=>k.c===cc && k.r===rr)){
         car.lives = (car.lives||1) - 1;
@@ -2677,6 +3016,8 @@ function drawWorld(dt){
   ctx.drawImage(game.skidCv, 0, 0);
   for(const cv2 of game.conveyors) drawConveyor(cv2);   // floor-level, under everything
   for(const t of game.trapDoors) drawTrapDoor(t);
+  for(const bp of game.bounces) drawBounce(bp);          // 🟠 splash pads
+  for(const cm of game.crumbles) drawCrumble(cm);        // 🧱 foam floats
 
   if(!game.ko) drawFinish();
   for(const d of game.doors) drawDoor(d);
@@ -2776,6 +3117,7 @@ const VEHICLES = [
   { id:"frost",   name:"FROST GT",   price:0, trail:()=>"#7ec9ff", reward:true },
   { id:"glitch",  name:"GLITCH GT",  price:0, trail:()=>"#c56cff", reward:true },
   { id:"monster", name:"CRUSHER",    price:0, trail:()=>"#ff8a3c", reward:true, ownWheels:true },
+  { id:"wave",    name:"TIDAL WAVE", price:0, trail:()=>"#25d4e0", reward:true },
   { id:"goat",    name:"GOLDEN GOAT", price:0, trail:()=>"#ffd76a", secret:true },
 ];
 const PETS = [
@@ -2785,6 +3127,42 @@ const PETS = [
   { id:"dino",  name:"REXY",  price:20, emoji:"🦖" },
 ];
 const vehicleById = id => VEHICLES.find(v=>v.id===id) || VEHICLES[0];
+
+/* ---------------- vehicle stats (the showroom "spec sheet") ----------------
+   Four stats, 1..10. Baseline is 5 → every physics multiplier is ×1.000 at 5,
+   so the free ROCKET (all 5s) drives EXACTLY like the pre-stats game, and any
+   car missing from the table safely falls back to the rocket baseline.
+   Stats feed updateCar() via carPerk() — the human's CAMPAIGN car only, so
+   VS / KO / co-op stay perfectly fair. See docs/GARAGE-SHOWROOM.md. */
+const CAR_STATS = {
+  rocket:  {spd:5, acc:5, hnd:5, bst:5},   // free starter — exact baseline
+  taxi:    {spd:6, acc:3, hnd:6, bst:4},   // heavy cab: fast-ish, sluggish, planted
+  banana:  {spd:5, acc:7, hnd:3, bst:6},   // light & slippery, skates
+  tractor: {spd:3, acc:4, hnd:9, bst:3},   // slow, unstoppable grip tank
+  hotdog:  {spd:6, acc:6, hnd:5, bst:6},   // honest all-rounder
+  cart:    {spd:4, acc:8, hnd:7, bst:4},   // twitchy: darts & turns, no top end
+  toilet:  {spd:6, acc:6, hnd:6, bst:6},   // meme mid, no weakness
+  ufo:     {spd:6, acc:5, hnd:7, bst:8},   // hover: great handling + big nitro
+  supra:   {spd:8, acc:7, hnd:6, bst:6},   // real sports car — top paid
+  beast:   {spd:8, acc:6, hnd:6, bst:7},   // bruiser, big speed & boost
+  blaze:   {spd:8, acc:8, hnd:6, bst:7},   // 🏁 W1 reward: hot-rod launch monster
+  frost:   {spd:7, acc:7, hnd:9, bst:7},   // 🧊 W2 reward: ice-grip king
+  glitch:  {spd:8, acc:8, hnd:7, bst:8},   // 🌀 W3 reward: no weakness
+  monster: {spd:9, acc:6, hnd:7, bst:8},   // 🏭 W4 reward: top-speed bruiser
+  wave:    {spd:7, acc:8, hnd:8, bst:7},   // 🌊 W5 reward: nimble all-rounder that rides the currents
+  goat:    {spd:9, acc:9, hnd:9, bst:10},  // 👑 secret: best overall, the lone S
+};
+const STAT_KEYS = ["spd","acc","hnd","bst"];
+const STAT_META = {   // label + short label + bar hue for the showroom stat panel
+  spd:{label:"SPEED",    short:"SPEED", hue:"#ff6a5e"},
+  acc:{label:"ACCEL",    short:"ACCEL", hue:"#ffd23b"},
+  hnd:{label:"HANDLING", short:"GRIP",  hue:"#7ec9ff"},
+  bst:{label:"BOOST",    short:"BOOST", hue:"#9ae64a"},
+};
+function carStat(vid){ return CAR_STATS[vid] || CAR_STATS.rocket; }
+function carPI(s){ return Math.round((s.spd + s.acc + s.hnd + s.bst) * 25); }   // 100..1000
+function carClass(pi){ return pi>=800?"S" : pi>=700?"A" : pi>=600?"B" : pi>=450?"C" : "D"; }
+const CLASS_COL = { S:"#ffd76a", A:"#ffb742", B:"#9ae64a", C:"#7ec9ff", D:"#8b93ad" };
 
 function stdWheels(){
   ctx.fillStyle = "#151824";
@@ -2954,6 +3332,29 @@ function drawVehicleBody(vid){
     ctx.fillStyle="#aab4c8"; ctx.beginPath(); ctx.roundRect(14,-9,4,18,2); ctx.fill();          // steel scoop / bull-bar
     ctx.fillStyle="#8b93ad"; ctx.fillRect(15,-7,2,3); ctx.fillRect(15,4,2,3);
   }
+  else if(vid==="wave"){                                     // 🌊 World 5 reward — cresting-wave racer
+    ctx.fillStyle="#12a6c4"; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,8); ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,0.30)"; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,7,8); ctx.fill();
+    ctx.fillStyle="#8fe9ff";
+    ctx.beginPath();
+    ctx.moveTo(-17,1); ctx.quadraticCurveTo(-8,-4,0,0); ctx.quadraticCurveTo(8,4,17,-1);
+    ctx.lineTo(17,5); ctx.quadraticCurveTo(8,9,0,5); ctx.quadraticCurveTo(-8,1,-17,6);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle="#eafcff"; ctx.lineWidth=1.6;
+    ctx.beginPath(); ctx.moveTo(-17,1); ctx.quadraticCurveTo(-8,-4,0,0); ctx.quadraticCurveTo(8,4,17,-1); ctx.stroke();
+    ctx.fillStyle="#eafcff";
+    ctx.beginPath(); ctx.moveTo(12,-4); ctx.quadraticCurveTo(19,-6,18,0); ctx.quadraticCurveTo(17,3,13,2); ctx.quadraticCurveTo(15,-1,12,-4); ctx.closePath(); ctx.fill();
+    ctx.fillStyle="#bff4ff";
+    for(const [dx,dy,s] of [[-11,-6,2],[-3,7,1.6]]){
+      ctx.beginPath(); ctx.moveTo(dx,dy-s*2.2);
+      ctx.quadraticCurveTo(dx+s,dy-s*0.3,dx+s,dy); ctx.arc(dx,dy,s,0,Math.PI);
+      ctx.quadraticCurveTo(dx-s,dy-s*0.3,dx,dy-s*2.2); ctx.closePath(); ctx.fill();
+    }
+    ctx.fillStyle="#0b3a44"; ctx.beginPath(); ctx.roundRect(-6,-6,12,12,4); ctx.fill();
+    ctx.fillStyle="#7fe4ff"; ctx.beginPath(); ctx.roundRect(-3,-4.5,3,9,1.5); ctx.fill();
+    ctx.fillStyle="#eafcff"; ctx.beginPath(); ctx.roundRect(-17,4,10,3,1.5); ctx.fill();
+    ctx.fillStyle="#25d4e0"; ctx.fillRect(-19,-6,2.4,3.2); ctx.fillRect(-19,2.8,2.4,3.2);
+  }
   else { // rocket
     drawRocketBody(CONFIG.carColor, CONFIG.stripe);
   }
@@ -2997,6 +3398,14 @@ function drawCar(car){
   ctx.fillStyle = game.lv.hue; ctx.globalAlpha = 0.3;
   ctx.beginPath(); ctx.ellipse(0, 0, 24, 17, 0, 0, TAU); ctx.fill();
   ctx.globalAlpha = 1;
+  const air = (car.airT>0) ? Math.sin((1-car.airT/(car.airMax||0.55))*Math.PI) : 0;   // 🟠 0→1→0 hop parabola
+  if(air>0){
+    ctx.save(); ctx.globalAlpha=0.28*(1-air*0.6); ctx.fillStyle="#0a0e18";
+    ctx.beginPath(); ctx.ellipse(0,4,22*(1-air*0.35),13*(1-air*0.35),0,0,TAU); ctx.fill();   // ground shadow shrinks as it lifts
+    ctx.restore();
+    ctx.translate(0,-air*30);                    // lift screen-up (≤30px at apex)
+    ctx.scale(1+air*0.22, 1+air*0.22);           // bigger = closer to camera
+  }
   ctx.rotate(car.heading);
   if(vid==="ufo"){ const hov = 1+Math.sin(game.t*4)*0.04; ctx.scale(hov,hov); }
   const sq = clamp(car.sq, 0.55, 1.35);
@@ -3217,6 +3626,52 @@ function drawTrapDoor(t){
   ctx.save(); ctx.translate(cx,cy); ctx.rotate(game.t*1.5);                                  // swirl
   ctx.strokeStyle="rgba(150,115,200,"+(0.25+wob*0.35)+")"; ctx.lineWidth=3;
   for(let a=0;a<3;a++){ ctx.beginPath(); ctx.arc(0,0,CELL*(0.16+a*0.1), a*2.1, a*2.1+3.6); ctx.stroke(); }
+  ctx.restore();
+}
+function drawBounce(bp){                                  // 🟠 splash / bounce pad
+  const pulse = 0.5+0.5*Math.sin(game.t*4+bp.ph);
+  const press = bp.cool>0 ? bp.cool/0.5 : 0;
+  ctx.save(); ctx.translate(bp.x,bp.y);
+  ctx.strokeStyle = "rgba(90,200,255,"+(0.35+0.3*pulse)+")"; ctx.lineWidth=4;
+  ctx.beginPath(); ctx.arc(0,0,30+4*pulse,0,TAU); ctx.stroke();
+  const grd = ctx.createRadialGradient(0,0,4,0,0,26);
+  grd.addColorStop(0,"#bfefff"); grd.addColorStop(1,"#2aa8e0"); ctx.fillStyle = grd;
+  ctx.beginPath(); ctx.ellipse(0,0,26,22*(1-press*0.4),0,0,TAU); ctx.fill();
+  ctx.strokeStyle="rgba(255,255,255,0.85)"; ctx.lineWidth=3; ctx.lineCap="round";
+  for(let i=0;i<2;i++){ const yy = 6 - i*9 - pulse*4;
+    ctx.beginPath(); ctx.moveTo(-9,yy); ctx.lineTo(0,yy-8); ctx.lineTo(9,yy); ctx.stroke(); }
+  ctx.restore();
+}
+function drawCrumble(cm){                                 // 🧱 foam float: intact bob → amber crack → aqua hole
+  const cx=cm.x, cy=cm.y, hs=CELL/2;
+  if(cm.state==="gone"){
+    const g=ctx.createRadialGradient(cx,cy,4, cx,cy,hs-8);
+    g.addColorStop(0,"#08121f"); g.addColorStop(1,"#123a55");
+    ctx.fillStyle=g; ctx.beginPath(); ctx.roundRect(cx-hs+7, cy-hs+7, CELL-14, CELL-14, 14); ctx.fill();
+    const rp=(game.t*1.4 + cm.ph)%1;
+    ctx.strokeStyle="rgba(130,205,240,"+(0.5*(1-rp))+")"; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.arc(cx,cy, 8+rp*(hs-12), 0, TAU); ctx.stroke();
+    return;
+  }
+  const cracking = cm.state==="cracking";
+  const frac = cracking ? clamp((game.gt - cm.t0)/CRUMBLE_GRACE, 0, 1) : 0;
+  const critical = frac>0.5;
+  const jit = cracking ? (critical?3:1.2)*frac*Math.sin(game.t*(critical?46:22)+cm.ph) : 0;
+  const bob = Math.sin(game.t*2 + cm.ph)*2, sink = frac*6;
+  ctx.save(); ctx.translate(jit, bob+sink);
+  ctx.fillStyle="#eaf6ff"; ctx.beginPath(); ctx.roundRect(cx-hs+6, cy-hs+6, CELL-12, CELL-12, 16); ctx.fill();
+  ctx.fillStyle="rgba(150,200,235,0.35)"; ctx.beginPath(); ctx.roundRect(cx-hs+6, cy+6, CELL-12, hs-12, 12); ctx.fill();
+  ctx.fillStyle="rgba(255,255,255,0.85)";
+  for(let i=0;i<4;i++){ ctx.beginPath(); ctx.arc(cx-28+i*18, cy-24+(i%2)*40, 7-(i%2)*2, 0, TAU); ctx.fill(); }
+  if(cracking){
+    ctx.fillStyle="rgba(255,196,60,"+(0.5*frac)+")"; ctx.beginPath(); ctx.roundRect(cx-hs+6, cy-hs+6, CELL-12, CELL-12, 16); ctx.fill();
+    ctx.strokeStyle="rgba(40,55,80,"+(0.35+0.5*frac)+")"; ctx.lineWidth=1+2*frac; ctx.lineCap="round";
+    const seed=cm.c*7+cm.r*13;
+    for(let k=0;k<3+Math.floor(frac*3);k++){ const a=seed+k*2.3;
+      ctx.beginPath(); ctx.moveTo(cx+Math.cos(a)*6, cy+Math.sin(a)*6);
+      ctx.lineTo(cx+Math.cos(a)*hs*0.9*frac, cy+Math.sin(a)*hs*0.9*frac); ctx.stroke(); }
+    if(critical && Math.random()<0.4) puff(cx+rand(-24,24), cy+rand(-24,24), "rgba(230,245,255,0.8)");
+  }
   ctx.restore();
 }
 function drawCrusher(cr){
@@ -3767,7 +4222,7 @@ function drawSeries(){
       if(b.act==="mute"){ AU.toggleMute(); return; }
       game.importedTrack = null;
       if(b.act==="build") enterBuilder(null);
-      else if(b.act==="shop") game.state="shop";
+      else if(b.act==="shop"){ sh.tab="cars"; shopSyncSel(); game.state="shop"; }   // centre the showroom on the equipped car every time it opens
       else if(b.act==="crates" && CONFIG.cratesEnabled) game.state="crates";
       else if(b.act==="vs") game.state="vspick";
       else if(b.act==="coop") game.state="cooppick";
@@ -3904,9 +4359,9 @@ function drawMap(){
 const EMOJIS = ["🦖","🌋","👻","🍕","🌈","🐙","🚀","💎","🐸","⚡"];
 const HUES = ["#ffb742","#9ae64a","#ff6a5e","#b98cff","#53e0ff"];
 const SIZES = [[12,8],[16,10],[20,13]];   // [cols, rows]
-const TOOL_LIST = ["wall","road","~","c","n","k","D","G","*","h","<",">","^","v","O","S","F"];
+const TOOL_LIST = ["wall","road","~","c","n","k","D","G","*","h","<",">","^","v","O","J","&","%","S","F"];
 const TOOL_ICON = { wall:"🧱", road:"🧽", "~":"🧊", n:"⚡", k:"🗝️", D:"🔒", G:"🚧", "*":"🔼", h:"👾", S:"🚗", F:"🏁",
-  "<":"⬅️", ">":"➡️", "^":"⬆️", "v":"⬇️", O:"🕳️" };   // < > ^ v = conveyor belts · O = trap door
+  "<":"⬅️", ">":"➡️", "^":"⬆️", "v":"⬇️", O:"🕳️", J:"🟠", "&":"🟣", "%":"🧱" };   // < > ^ v conveyors · O trap door · J splash pad · & sticky · % foam float
 const bl = { grid:null, cols:0, rows:0, tool:"wall", hueIx:0, emojiIx:0, sizeIx:1,
   editingId:null, undo:[], ptr:null, lastCell:null, trashT:0, _geo:null };
 
@@ -4061,7 +4516,7 @@ function decodeTrack(s){
     const rows = p[4].split("!");
     const cols = rows[0].length;
     if(rows.length<5||rows.length>16||cols<6||cols>24) return null;
-    if(!rows.every(r=>r.length===cols && /^[#.SFcnkDG*h~<>^vO]+$/.test(r))) return null;
+    if(!rows.every(r=>r.length===cols && /^[#.SFcnkDG*h~<>^vOJ&%]+$/.test(r))) return null;   // incl. World-5 J/&/% so water-park tracks share
     if(!validateRows(rows).ok) return null;
     return { name:String(p[1]||"TRACK").slice(0,14), emojiIx:Math.min(EMOJIS.length-1, Math.max(0,+p[2]||0)),
              hueIx:Math.min(HUES.length-1, Math.max(0,+p[3]||0)), grid:rows };
@@ -4183,7 +4638,7 @@ function drawBuild(dt){
   for(let r=0;r<bl.rows;r++) for(let c=0;c<bl.cols;c++){
     const ch = bl.grid[r][c], x = gx+c*cs, y = gy+r*cs;
     const belt = ch==="<"||ch===">"||ch==="^"||ch==="v";
-    ctx.fillStyle = ch==="#" ? "#0b0d15" : ch==="~" ? "#3a5c82" : belt ? "#17223a" : ch==="O" ? "#140f1e" : "#2e3852";
+    ctx.fillStyle = ch==="#" ? "#0b0d15" : ch==="~" ? "#3a5c82" : belt ? "#17223a" : ch==="O" ? "#140f1e" : ch==="J" ? "#1d6b8f" : ch==="&" ? "#2f5a52" : ch==="%" ? "#5a7a98" : "#2e3852";
     ctx.fillRect(x, y, cs-1, cs-1);
     if(ch!=="#" && ch!=="." && ch!=="~") drawGlyph(ch, x+cs/2, y+cs/2, cs);
   }
@@ -4585,6 +5040,14 @@ function boosted(car){
   if((game.vs||game.ko||game.coop) && !CONFIG.powerUpsInVs) return false;
   return true;
 }
+// 🚗 per-vehicle stat perks: the human's CAMPAIGN car only. Same multiplayer-fairness
+// envelope as boosted(), but independent of the crate toggle — a car's identity is core
+// progression, so its handling character applies even with crates switched off.
+function carPerk(car){
+  if(car!==game.car) return false;
+  if((game.vs||game.ko||game.coop) && !CONFIG.powerUpsInVs) return false;
+  return true;
+}
 // weighted 0..4 rarity roll from a crate's odds array
 function rollTier(odds){
   let tot=0; for(const o of odds) tot+=o;
@@ -4679,6 +5142,8 @@ function spawnGolden(){
   for(const p of game.portals)    add(p.c, p.r);
   for(const cv of game.conveyors) add(cv.c, cv.r);
   for(const t of game.trapDoors)  add(t.c, t.r);
+  for(const bp of game.bounces)   add(bp.c, bp.r);   // 🟠 can't stop on a trampoline to grab it
+  for(const cm of game.crumbles)  add(cm.c, cm.r);   // 🧱 vanishing floor — never place gold on foam
   for(const k of game.crushers) for(let s=0;s<=k.range;s++) add(k.c+k.dx*s, k.r+k.dy*s);   // whole swept lane
   for(const gb of game.goobers) for(const [wx,wy] of gb.path){                            // patrol path + padding
     const gc=Math.floor(wx/CELL), gr=Math.floor(wy/CELL);
@@ -4953,10 +5418,33 @@ function drawCrates(dt){
   }
 }
 
-/* ---------------- GARAGE SHOP (v3) ---------------- */
+/* ---------------- GARAGE SHOWROOM (v4) ----------------
+   A Forza/NFS-style showroom: one hero car on a lit turntable with an animated
+   Performance-Index badge + segmented stat bars, and a swipeable filmstrip below.
+   The flat grid is gone. See docs/GARAGE-SHOWROOM.md. */
 let shopPending = null;
+const sh = { tab:"cars", sel:0, scroll:0, target:0, ptr:null,
+             bars:{spd:0,acc:0,hnd:0,bst:0}, pi:0, max:0,
+             strip:{cx:0,y:0,h:0,step:64} };
+function shopRoster(){ return sh.tab==="cars" ? VEHICLES : PETS; }
+// centre the carousel on whatever's currently equipped (called on entry + tab switch)
+function shopSyncSel(){
+  const r = shopRoster();
+  sh.max = r.length-1;                                  // keep max in step with the roster (before drawShop next frame)
+  const cur = sh.tab==="cars" ? store.car : store.pet;
+  let i = r.findIndex(o=>o.id===cur); if(i<0) i = 0;
+  sh.sel = i; sh.scroll = i; sh.target = i;
+  const cs = sh.tab==="cars" ? carStat(r[i].id) : {spd:0,acc:0,hnd:0,bst:0};
+  sh.bars = {spd:cs.spd,acc:cs.acc,hnd:cs.hnd,bst:cs.bst};
+  sh.pi = sh.tab==="cars" ? carPI(cs) : 0;
+  shopPending = null;
+}
 function shopAction(a){
-  if(a==="back"){ AU.ui(); game.state="series"; return; }
+  if(a==="back"){ AU.ui(); sh.ptr = null; shopPending = null; game.state="series"; return; }
+  if(a==="noop"){ AU.bonk(); return; }
+  if(a==="tab:cars"||a==="tab:pets"){ AU.ui(); sh.tab = a.slice(4); shopSyncSel(); return; }
+  if(a==="prev"||a==="next"){ AU.ui(); sh.sel = clamp(sh.sel + (a==="next"?1:-1), 0, sh.max); sh.target = sh.sel; shopPending = null; return; }
+  if(a.startsWith("sel:")){ AU.ui(); sh.sel = clamp(+a.slice(4), 0, sh.max); sh.target = sh.sel; shopPending = null; return; }
   if(a==="num-"||a==="num+"){
     AU.ui();
     store.carNum = ((store.carNum==null?67:store.carNum) + (a==="num+"?1:99)) % 100;
@@ -4965,6 +5453,8 @@ function shopAction(a){
   const kind = a.slice(0,1), id = a.slice(2);
   const item = kind==="v" ? VEHICLES.find(v=>v.id===id) : PETS.find(p=>p.id===id);
   if(!item) return;
+  // can never buy an unearned reward/secret car — belt-and-suspenders with the "noop" button
+  if(kind==="v" && (item.reward||item.secret) && !store.ownedCars.includes(id)){ AU.bonk(); return; }
   const owned = kind==="v" ? store.ownedCars.includes(id) : store.ownedPets.includes(id);
   if(owned){
     AU.key();
@@ -4992,28 +5482,189 @@ function shopAction(a){
     shopPending = {act:a, t:2.5};
   }
 }
-function shopCard(x, y, w, h, act, preview, name, price, owned, active){
-  const pending = shopPending && shopPending.act===act;
-  roundedPanel(x, y, w, h, 14, active? "rgba(255,183,66,0.2)" : "rgba(14,17,26,0.85)");
-  if(active || pending){
-    ctx.strokeStyle = pending? "#9ae64a" : "#ffb742";
-    ctx.lineWidth = pending? 3+Math.sin(game.t*8)*1.5 : 2.5;
-    ctx.beginPath(); ctx.roundRect(x+1.5, y+1.5, w-3, h-3, 13); ctx.stroke();
+// --- resolve the primary BUY/EQUIP button for the current selection ---
+function shopBtnState(sel, isCars, owned, locked){
+  const id = sel.id, act = locked ? "noop" : (isCars?"v:":"p:")+id;
+  const equipped = isCars ? store.car===id : store.pet===id;
+  let label, bg, fg = "#12151f";
+  if(locked){
+    const si = SERIES.findIndex(s=>s.reward===id);
+    label = si>=0 ? "🔒 BEAT "+SERIES[si].name : "🔒 BEAT LEVEL "+LEVELS.length;
+    bg = "rgba(60,66,86,0.92)"; fg = "#8b93ad";
+  } else if(owned){
+    if(equipped){ label = isCars? "✓ RIDING" : "✓ WITH YOU · TAP TO REMOVE"; bg = isCars? "rgba(60,66,86,0.92)":"#ff8fe0"; fg = isCars? "#9ae64a":"#12151f"; }
+    else { label = isCars? "EQUIP" : "BRING ALONG"; bg = "#9ae64a"; }
+  } else if(shopPending && shopPending.act===act){ label = "TAP TO BUY!"; bg = "#9ae64a"; }
+  else if(store.coinsBank < sel.price){ label = "NEED "+(sel.price-store.coinsBank)+" MORE COINS"; bg = "rgba(60,66,86,0.92)"; fg = "#ff8f8f"; }
+  else { label = "BUY   "+sel.price+" 🪙"; bg = "#ffb742"; }
+  return { label, act, bg, fg };
+}
+function shopTab(x,y,w,h,label,act,active){
+  roundedPanel(x, y, w, h, h/2, active? "rgba(255,183,66,0.22)" : "rgba(14,17,26,0.85)");
+  if(active){ ctx.strokeStyle="#ffb742"; ctx.lineWidth=2; ctx.beginPath(); ctx.roundRect(x+1,y+1,w-2,h-2,h/2); ctx.stroke(); }
+  ctx.font="900 14px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.fillStyle = active? "#ffb742" : "#8b93ad"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText(label, x+w/2, y+h/2+1);
+  hudBtns.push({x,y,w,h,act});
+}
+// hero car on a lit, slowly-spinning turntable
+function shopHero(r, sel, locked, isCars){
+  const cx = r.x + r.w/2;
+  // reserve bottom room for the spec card ONLY on a narrow stage, where a centred car
+  // would overlap the card horizontally. On a wide stage the card sits in a corner over
+  // empty space, so the car can fill the height.
+  const wide = r.w > r.h*1.3;
+  const reserved = wide ? 40 : (isCars ? 150 : 92);
+  // never exceed the stage height (guards tiny short-landscape stages from spilling into the carousel)
+  const usableH = Math.min(r.h, Math.max(90, r.h - reserved));
+  const nameGap = Math.min(24, usableH*0.14);
+  // spotlight cone
+  const g = ctx.createRadialGradient(cx, r.y+usableH*0.06, 8, cx, r.y+usableH*0.06, usableH*1.05);
+  g.addColorStop(0,"rgba(255,237,194,0.11)"); g.addColorStop(1,"rgba(255,237,194,0)");
+  ctx.fillStyle = g; ctx.fillRect(r.x, r.y, r.w, r.h);
+  // car sizing — centred in the room above the card
+  const scale = isCars ? clamp(Math.min(usableH*0.58/42, r.w*0.72/22), 1.6, 5.4) : 0;
+  const carCy = r.y + nameGap + (usableH-nameGap)*0.46;
+  const discR = isCars ? clamp(scale*20, 40, r.w*0.46) : clamp(usableH*0.24, 44, r.w*0.42);
+  const discCy = carCy + (isCars? scale*15 : usableH*0.18);
+  // turntable disc (ellipse, rotating ticks)
+  ctx.save(); ctx.translate(cx, discCy); ctx.scale(1, 0.32);
+  ctx.fillStyle="rgba(40,46,66,0.55)"; ctx.beginPath(); ctx.arc(0,0,discR,0,TAU); ctx.fill();
+  ctx.strokeStyle="rgba(126,201,255,0.22)"; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,0,discR*0.96,0,TAU); ctx.stroke();
+  ctx.strokeStyle="rgba(255,255,255,0.07)"; ctx.beginPath(); ctx.arc(0,0,discR*0.6,0,TAU); ctx.stroke();
+  ctx.strokeStyle="rgba(126,201,255,0.3)"; ctx.lineWidth=2;
+  for(let i=0;i<24;i++){ const a=game.t*0.5 + i*TAU/24; ctx.beginPath();
+    ctx.moveTo(Math.cos(a)*discR*0.82, Math.sin(a)*discR*0.82); ctx.lineTo(Math.cos(a)*discR*0.97, Math.sin(a)*discR*0.97); ctx.stroke(); }
+  ctx.fillStyle="rgba(0,0,0,0.32)"; ctx.beginPath(); ctx.arc(0,0,discR*0.52,0,TAU); ctx.fill();   // contact shadow
+  ctx.restore();
+  // the star of the show
+  if(isCars){
+    const sway = Math.sin(game.t*0.9)*0.14, bob = Math.sin(game.t*1.7)*r.h*0.012;
+    ctx.save(); ctx.translate(cx, carCy+bob); ctx.rotate(sway);
+    drawVehiclePreview(sel.id, 0, 0, scale, locked? 0.22 : 1);
+    ctx.restore();
+    if(locked){ ctx.font="40px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.globalAlpha=0.92; ctx.fillText("🔒", cx, carCy); ctx.globalAlpha=1; }
+  } else {
+    ctx.font=(r.h*0.4)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(sel.emoji, cx, carCy);
   }
-  preview(x+w/2, y+h*0.4, owned? 1 : 0.32);
-  ctx.font = "800 13px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  // name plate (top of stage)
+  ctx.font="900 italic "+(r.w<300?20:24)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillStyle = locked? "#8b93ad" : "#f4f6ff";
+  ctx.fillText(sel.name, cx, r.y+16);
+}
+// translucent "spec card" — PI + class + compact stat bars, overlaid in a
+// corner of the showroom stage. Small on purpose: the car is the star, the
+// carousel is the control; the stats are a glance-able HUD, not a wall chart.
+function shopSpec(stage, sel, isCars){
+  const pw = clamp(stage.w*0.5, 190, 258);
+  // clamp the card into the stage so it never draws upward over the header on a tiny stage
+  const ph = Math.min(isCars ? 150 : 88, stage.h - 6);
+  const px = stage.x + 14, py = Math.max(stage.y + 2, stage.y + stage.h - ph - 12);
+  ctx.fillStyle = "rgba(9,11,18,0.74)"; ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 14); ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.09)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.roundRect(px+0.5, py+0.5, pw-1, ph-1, 14); ctx.stroke();
+  if(!isCars){
+    ctx.textAlign="left"; ctx.textBaseline="middle";
+    ctx.font="900 15px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#8b93ad";
+    ctx.fillText("COMPANION", px+16, py+30);
+    ctx.font="600 12px 'Avenir Next',sans-serif"; ctx.fillStyle="#6b7390";
+    ctx.fillText("rides along and", px+16, py+52);
+    ctx.fillText("cheers you on", px+16, py+68);
+    return;
+  }
+  const s = carStat(sel.id), pi = carPI(s), cl = carClass(pi), col = CLASS_COL[cl];
+  // PI + class header
+  ctx.textAlign="left"; ctx.textBaseline="middle";
+  ctx.font="700 9px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#8b93ad";
+  ctx.fillText("PERFORMANCE", px+16, py+16);
+  ctx.font="900 italic 27px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#ffd76a";
+  ctx.fillText(String(Math.round(sh.pi)), px+16, py+40);
+  const cw=42, chh=24, chx=px+pw-cw-14, chy=py+13;
+  ctx.save(); if(cl==="S"){ ctx.shadowColor=col; ctx.shadowBlur=8; }
+  ctx.fillStyle=col; ctx.beginPath(); ctx.roundRect(chx, chy, cw, chh, 6); ctx.fill(); ctx.restore();
+  ctx.fillStyle="#12151f"; ctx.textAlign="center"; ctx.font="900 17px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.fillText(cl, chx+cw/2, chy+chh/2+1);
+  ctx.strokeStyle="rgba(255,255,255,0.07)"; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(px+14, py+53); ctx.lineTo(px+pw-14, py+53); ctx.stroke();
+  // compact animated bars
+  const barsY = py+58, rowH = (ph-58-8)/4;
+  const labelW=38, valW=16, barX=px+14+labelW, barW=pw-28-labelW-valW;
+  const segN=10, segGap=2, segW=(barW-segGap*(segN-1))/segN;
+  STAT_KEYS.forEach((k,i)=>{
+    const mid = barsY + i*rowH + rowH/2, meta = STAT_META[k], val = sh.bars[k];
+    ctx.textAlign="left"; ctx.textBaseline="middle";
+    ctx.font="800 10px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#8b93ad";
+    ctx.fillText(meta.short, px+14, mid);
+    const by = mid-2.5, bh = 5;
+    for(let sN=0;sN<segN;sN++){
+      const sx = barX + sN*(segW+segGap), fa = clamp(val-sN, 0, 1);
+      ctx.fillStyle="rgba(60,66,86,0.5)"; ctx.beginPath(); ctx.roundRect(sx, by, segW, bh, 1.5); ctx.fill();
+      if(fa>0){ ctx.globalAlpha=fa; ctx.fillStyle=meta.hue; ctx.beginPath(); ctx.roundRect(sx, by, segW, bh, 1.5); ctx.fill(); ctx.globalAlpha=1; }
+    }
+    ctx.textAlign="right"; ctx.font="900 11px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#f4f6ff";
+    ctx.fillText(String(Math.round(val)), px+pw-14, mid);
+  });
+}
+// big swipeable carousel — the primary browse control. Center car is largest,
+// neighbours shrink & fade with distance so it's obvious which way to swipe.
+function shopStrip(r, roster, isCars){
+  const step = clamp(r.w/4.2, 92, 150);
+  sh.strip.step = step; sh.strip.cx = r.x + r.w/2; sh.strip.y = r.y; sh.strip.h = r.h;
+  const cx0 = r.x + r.w/2, iconCy = r.y + r.h/2;
+  ctx.save(); ctx.beginPath(); ctx.rect(r.x, r.y-8, r.w, r.h+16); ctx.clip();
+  // draw far→near so the centred tile lands on top
+  const order = roster.map((o,i)=>i).sort((a,b)=>Math.abs(b-sh.scroll)-Math.abs(a-sh.scroll));
+  for(const i of order){
+    const o = roster[i], off = i - sh.scroll, cx = cx0 + off*step;
+    if(Math.abs(cx-cx0) > r.w/2 + step) continue;           // cull off-strip
+    const prox = clamp(1 - Math.abs(off)*0.42, 0, 1);        // 1 at centre → 0 for far tiles
+    const ts = 0.78 + prox*0.22;                             // centre tile biggest
+    const tileW = (step-12)*ts, tileH = r.h*0.96*ts;
+    const seld = i===sh.sel;
+    const owned = isCars ? store.ownedCars.includes(o.id) : store.ownedPets.includes(o.id);
+    const lk = isCars && (o.reward||o.secret) && !owned;
+    const equipped = isCars ? store.car===o.id : store.pet===o.id;
+    ctx.globalAlpha = 0.4 + prox*0.6;
+    roundedPanel(cx-tileW/2, iconCy-tileH/2, tileW, tileH, 12, seld? "rgba(255,183,66,0.16)" : "rgba(16,19,30,0.85)");
+    if(seld){ ctx.strokeStyle="#ffb742"; ctx.lineWidth=3; ctx.beginPath(); ctx.roundRect(cx-tileW/2+2, iconCy-tileH/2+2, tileW-4, tileH-4, 10); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+    if(isCars){
+      if(lk){ ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.globalAlpha=(0.5+prox*0.5)*0.9;
+        ctx.font=(tileH*0.3)+"px sans-serif"; const si=SERIES.findIndex(s=>s.reward===o.id);
+        ctx.fillText(si>=0? SERIES[si].emoji : "👑", cx, iconCy-tileH*0.08);
+        ctx.font=(tileH*0.22)+"px sans-serif"; ctx.fillText("🔒", cx, iconCy+tileH*0.26); ctx.globalAlpha=1; }
+      else drawVehiclePreview(o.id, cx, iconCy, clamp(tileH*0.52/42, 0.8, 3.0), 0.55+prox*0.45);
+    } else {
+      ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.globalAlpha=0.5+prox*0.5;
+      ctx.font=(tileH*0.46)+"px sans-serif"; ctx.fillText(o.emoji, cx, iconCy); ctx.globalAlpha=1;
+    }
+    if(equipped){ ctx.fillStyle="#9ae64a"; ctx.beginPath(); ctx.arc(cx+tileW/2-9, iconCy-tileH/2+9, 4, 0, TAU); ctx.fill(); }
+    hudBtns.push({x:cx-step/2, y:r.y, w:step, h:r.h, act:"sel:"+i});
+  }
+  ctx.restore();
+}
+function shopNumber(r){
+  roundedPanel(r.x, r.y, r.w, r.h, 12);
+  const bh = Math.min(r.h-8, 40), by = r.y + (r.h-bh)/2;
+  const plusX = r.x + r.w - 8 - bh, minusX = plusX - 42 - bh;
+  ctx.font="900 13px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#8b93ad";
+  ctx.textAlign="left"; ctx.textBaseline="middle";
+  ctx.fillText(r.w < 210 ? "CAR #" : "CAR NUMBER", r.x+14, r.y+r.h/2);
+  drawBigBtn(minusX, by, bh, bh, "−", "num-", "rgba(60,66,86,0.95)", "#f4f6ff", 22);
+  drawBigBtn(plusX,  by, bh, bh, "+", "num+", "rgba(60,66,86,0.95)", "#f4f6ff", 22);
+  ctx.font="900 22px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#ffd76a";
   ctx.textAlign="center"; ctx.textBaseline="middle";
-  ctx.fillStyle = owned? "#f4f6ff" : "#8b93ad";
-  ctx.fillText(name, x+w/2, y+h-26);
-  if(pending){ ctx.fillStyle="#9ae64a"; ctx.fillText("TAP TO BUY!", x+w/2, y+h-11); }
-  else if(active){ ctx.fillStyle="#ffb742"; ctx.fillText(act.startsWith("p:")? "✓ WITH YOU" : "✓ RIDING", x+w/2, y+h-11); }
-  else if(owned){ ctx.fillStyle="#8b93ad"; ctx.fillText("TAP TO USE", x+w/2, y+h-11); }
-  else {
-    ctx.fillStyle="#e8a930"; ctx.beginPath(); ctx.arc(x+w/2-13, y+h-11, 5, 0, TAU); ctx.fill();
-    ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.arc(x+w/2-13, y+h-11.8, 4.4, 0, TAU); ctx.fill();
-    ctx.fillStyle="#f4f6ff"; ctx.fillText(price, x+w/2+7, y+h-11);
-  }
-  hudBtns.push({x, y, w, h, act});
+  ctx.fillText(String(store.carNum==null?67:store.carNum), (minusX+bh+plusX)/2, r.y+r.h/2+1);
+}
+function shopBuy(r, btn){
+  const pending = shopPending && shopPending.act===btn.act;
+  ctx.fillStyle="rgba(12,14,22,0.9)"; ctx.beginPath(); ctx.roundRect(r.x+3, r.y+4, r.w, r.h, 14); ctx.fill();
+  ctx.fillStyle=btn.bg; ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 14); ctx.fill();
+  if(pending){ ctx.strokeStyle="#9ae64a"; ctx.lineWidth=3+Math.sin(game.t*8)*1.5; ctx.beginPath(); ctx.roundRect(r.x+1.5, r.y+1.5, r.w-3, r.h-3, 13); ctx.stroke(); }
+  let fs = 24; ctx.font="900 "+fs+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  while(ctx.measureText(btn.label).width > r.w-26 && fs>12){ fs--; ctx.font="900 "+fs+"px 'Avenir Next Condensed','Arial Narrow',sans-serif"; }
+  ctx.fillStyle=btn.fg; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText(btn.label, r.x+r.w/2, r.y+r.h/2+1);
+  hudBtns.push({x:r.x, y:r.y, w:r.w, h:r.h, act:btn.act});
 }
 function drawShop(dt){
   nightSky();
@@ -5025,73 +5676,89 @@ function drawShop(dt){
     confettiBurst(W/2, H*0.3, 90, "#ffd76a");
     AU.win();
   }
+  const roster = shopRoster();
+  sh.max = roster.length-1;
+  sh.sel = clamp(sh.sel, 0, sh.max);
+  const isCars = sh.tab==="cars";
+  const sel = roster[sh.sel];
+  const owned = isCars ? store.ownedCars.includes(sel.id) : store.ownedPets.includes(sel.id);
+  const locked = isCars && (sel.reward||sel.secret) && !owned;
+
+  // ---- header: back · title · coins ----
   drawIconBtn(PADX, top, 44, "↩️", "back");
-  ctx.font = "italic 900 28px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.font = "italic 900 26px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillStyle="#ffb742";
   ctx.fillText("🛒 GARAGE", PADX+56, top+23);
-  const bw2 = 130;
+  const bw2 = 128;
   roundedPanel(W-PADX-bw2, top, bw2, 44, 12);
   ctx.fillStyle="#e8a930"; ctx.beginPath(); ctx.arc(W-PADX-bw2+22, top+22, 9, 0, TAU); ctx.fill();
   ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.arc(W-PADX-bw2+22, top+21, 8, 0, TAU); ctx.fill();
-  ctx.font="900 21px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-  ctx.fillStyle="#f4f6ff"; ctx.textAlign="left";
+  ctx.font="900 21px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#f4f6ff"; ctx.textAlign="left";
   ctx.fillText(store.coinsBank, W-PADX-bw2+40, top+23);
-  // layout: car rows, pet row, number panel (compresses on short phone screens)
-  let y = top+54;
-  const gap = 8;
-  const cw = Math.min(170, (W-PADX*2-gap*3)/4);
-  const gridW = cw*4+gap*3;
-  const x0 = Math.round((W-gridW)/2);
-  const vRows = Math.ceil(VEHICLES.length/4);
-  const numH = H<460? 46 : 58;
-  const availY = H - y - safeB - 10;
-  // floor at 34 (not 46) so the grid still compresses to fit once the roster needs a 4th row on short phones
-  const ch2 = Math.max(34, Math.min(96, Math.floor((availY - numH - gap*(vRows+1))/(vRows+1))));
-  VEHICLES.forEach((v,i)=>{
-    const cx3 = x0 + (i%4)*(cw+gap), cy3 = y + ((i/4)|0)*(ch2+gap);
-    const owned = store.ownedCars.includes(v.id);
-    if((v.secret || v.reward) && !owned){
-      const rs = v.reward ? SERIES.findIndex(s=>s.reward===v.id) : -1;   // which world grants this ride
-      const icon = rs>=0 ? SERIES[rs].emoji : "👑";
-      const hint = rs>=0 ? "BEAT "+SERIES[rs].name : "??? — BEAT LEVEL "+LEVELS.length;
-      roundedPanel(cx3, cy3, cw, ch2, 14, "rgba(14,17,26,0.85)");
-      ctx.font = Math.round(ch2*0.3)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-      ctx.globalAlpha = 0.5; ctx.fillStyle="#f4f6ff";
-      ctx.fillText(icon, cx3+cw/2, cy3+ch2*0.36); ctx.globalAlpha = 1;
-      ctx.font = "800 11px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-      ctx.fillStyle = "#8b93ad";
-      ctx.fillText("🔒 "+hint, cx3+cw/2, cy3+ch2-13);
-      return;
-    }
-    shopCard(cx3, cy3, cw, ch2, "v:"+v.id,
-      (px,py,al)=>drawVehiclePreview(v.id, px, py, Math.min(1.4, ch2/72), al),
-      v.name, v.price, owned, store.car===v.id);
-  });
-  y += vRows*(ch2+gap);
-  PETS.forEach((p,i)=>{
-    const cx3 = x0 + i*(cw+gap);
-    shopCard(cx3, y, cw, ch2, "p:"+p.id,
-      (px,py,al)=>{ ctx.globalAlpha=al; ctx.font=Math.round(ch2*0.42)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(p.emoji, px, py); ctx.globalAlpha=1; },
-      p.name, p.price, store.ownedPets.includes(p.id), store.pet===p.id);
-  });
-  y += ch2+gap;
-  const nh = numH;
-  roundedPanel(x0, y, gridW, nh, 14);
-  ctx.font="900 16px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-  ctx.fillStyle="#8b93ad"; ctx.textAlign="left"; ctx.textBaseline="middle";
-  ctx.fillText("CAR NUMBER", x0+16, y+nh/2);
-  const ncx = x0+gridW/2;
-  drawBigBtn(ncx-98, y+7, 46, nh-14, "−", "num-", "rgba(60,66,86,0.95)", "#f4f6ff");
-  ctx.font="900 "+(nh>50?32:24)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-  ctx.fillStyle="#ffd76a"; ctx.textAlign="center";
-  ctx.fillText(String(store.carNum==null?67:store.carNum), ncx, y+nh/2+1);
-  drawBigBtn(ncx+52, y+7, 46, nh-14, "+", "num+", "rgba(60,66,86,0.95)", "#f4f6ff");
-  drawVehiclePreview(store.car, x0+gridW-54, y+nh/2, nh>50?1.4:1.1);
+  // ---- tabs ----
+  const land = W > H*1.2;
+  const tabH = land?32:36, tabW = Math.min(land?240:300, W-2*PADX), tabX = (W-tabW)/2, tabY = top+50;
+  shopTab(tabX, tabY, tabW/2, tabH, "🏎 CARS", "tab:cars", isCars);
+  shopTab(tabX+tabW/2, tabY, tabW/2, tabH, "🐾 PETS", "tab:pets", !isCars);
+
+  // ---- responsive region math: big STAGE up top, big CAROUSEL below ----
+  const botSafe = safeB + 10, contentTop = tabY + tabH + 10, colBot = H - botSafe;
+  const availH = colBot - contentTop;
+  let stage, stripR, numR, buyR;
+  if(land){
+    // wide: full-width stage over a full-width carousel; number + buy share the bottom row
+    const rowH = clamp(availH*0.16, 46, 58), rowY = colBot - rowH;
+    let stripH = clamp(availH*0.34, 96, 156);
+    // protect a minimum stage height on very short landscape (e.g. H≤320) by shrinking the carousel
+    const overflow = (rowY - 20 - contentTop) - stripH - 110;
+    if(overflow < 0) stripH = Math.max(56, stripH + overflow);
+    const stripY = rowY - 10 - stripH;
+    stage  = {x:PADX, y:contentTop, w:W-2*PADX, h:Math.max(90, stripY-10-contentTop)};
+    stripR = {x:PADX, y:stripY, w:W-2*PADX, h:stripH};
+    if(isCars){ const nw = clamp((W-2*PADX)*0.34, 168, 240);
+      numR = {x:PADX, y:rowY, w:nw, h:rowH}; buyR = {x:PADX+nw+10, y:rowY, w:W-PADX-(PADX+nw+10), h:rowH}; }
+    else { numR = {x:0,y:0,w:0,h:0}; buyR = {x:PADX, y:rowY, w:W-2*PADX, h:rowH}; }
+  } else {
+    // tall: stage, carousel, number, buy stacked; only the stage absorbs slack
+    const CW = Math.min(W-2*PADX, 560), cx0 = (W-CW)/2, G = 10;
+    const buyH = clamp(availH*0.10, 46, 60);
+    const numH = isCars ? clamp(availH*0.065, 34, 44) : 0;
+    const stripH = clamp(availH*0.26, 116, 176);
+    const buyY = colBot - buyH, numY = numH? buyY-G-numH : buyY;
+    const stripY = (numH?numY:buyY) - G - stripH;
+    stage  = {x:cx0, y:contentTop, w:CW, h:Math.max(150, stripY - G - contentTop)};
+    stripR = {x:cx0, y:stripY, w:CW, h:stripH};
+    numR   = {x:cx0, y:numY, w:CW, h:numH};
+    buyR   = {x:cx0, y:buyY, w:CW, h:buyH};
+  }
+
+  // ---- animation easing (game.t/dt already advanced before dispatch) ----
+  const tb = isCars ? carStat(sel.id) : {spd:0,acc:0,hnd:0,bst:0};
+  for(const k of STAT_KEYS) sh.bars[k] += (tb[k]-sh.bars[k])*Math.min(1,dt*8);
+  sh.pi += ((isCars? carPI(carStat(sel.id)) : 0) - sh.pi)*Math.min(1,dt*6);
+  if(!(sh.ptr && sh.ptr.moved)) sh.scroll += (sh.target - sh.scroll)*Math.min(1,dt*12);
+  sh.scroll = clamp(sh.scroll, 0, sh.max);
+
+  // ---- draw: car first, spec card overlaid on the stage, then the carousel ----
+  shopHero(stage, sel, locked, isCars);
+  shopSpec(stage, sel, isCars);
+  shopStrip(stripR, roster, isCars);
+  const ay = stripR.y + (stripR.h-44)/2;
+  drawIconBtn(stripR.x-4, ay, 44, "◀", "prev");
+  drawIconBtn(stripR.x+stripR.w-40, ay, 44, "▶", "next");
+  if(isCars && numR.h>0) shopNumber(numR);
+  const btn = shopBtnState(sel, isCars, owned, locked);
+  shopBuy(buyR, btn);
+
+  // ---- input ----
   if(shopPending){ shopPending.t -= dt; if(shopPending.t<=0) shopPending = null; }
   for(const tp of input.taps.splice(0)){
-    if(tp.screen) continue;
+    if(tp.screen){ shopAction(btn.act); continue; }
     let hit = false;
-    for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){ shopAction(b.act); hit=true; break; }
+    // walk hudBtns back-to-front so a later-drawn control (◀/▶ arrows) wins over the
+    // carousel tile hit-boxes it overlaps — topmost wins, matching what the eye sees.
+    for(let bi=hudBtns.length-1; bi>=0; bi--){ const b=hudBtns[bi];
+      if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){ shopAction(b.act); hit=true; break; } }
     if(!hit) shopPending = null;
   }
 }

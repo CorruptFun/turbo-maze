@@ -12,20 +12,26 @@ One HTML file, no dependencies. Runs on a tablet or with a keyboard.
 - Watch out for the goober 👾 — he yoinks your coins (steal 'em back).
   Or hit him at **nitro speed** for the 💥 TAKEDOWN: +25 aura and he drops his loot.
 - Finish fast + all coins = ⭐⭐⭐
-- **60 levels across 4 worlds** with ice to drift on 🧊, portals 🌀, smashable
+- **75 levels across 5 worlds** with ice to drift on 🧊, portals 🌀, smashable
   crates 💥, goober gangs, headlights-only night levels 🌙, gate mazes 🚧,
-  shifting walls that rearrange the maze mid-run, and a whole **factory floor**
-  of conveyor belts, sliding crushers and trap doors — plus BOSS RACES against
+  shifting walls that rearrange the maze mid-run, a whole **factory floor**
+  of conveyor belts, sliding crushers and trap doors, and a **water park** 🌊
+  with splash pads that fling you airborne, sticky shallows and sinking foam
+  floats — plus BOSS RACES against
   the goober's purple car (lose and it's an instant rematch).
   Beat the very last level to unlock the secret 🐐 GOLDEN GOAT.
 
 ## 🌍 Worlds
 The campaign is grouped into **worlds**: **TURBO BASICS** (learn to drift),
 **BRAIN FREEZE** (ice, portals, gate mazes, goober swarms, meaner bosses),
-**MAZE MAYHEM** (shifting walls that rearrange the maze while you drive) and
+**MAZE MAYHEM** (shifting walls that rearrange the maze while you drive),
 **METAL MELTDOWN** (the factory floor 🏭 — conveyor belts that shove you around,
-sliding crushers to time your dash past, and trap doors to weave around, all on
-top of everything from the earlier worlds). The title screen opens a **PICK YOUR
+sliding crushers to time your dash past, and trap doors to weave around) and
+**SPLASH ZONE** (the water park 🌊 — 🟠 splash pads that fling you *over* walls
+and gaps, 🟣 sticky shallows that slow you to a wade (hit nitro to power through),
+and 🧱 foam floats that sink a beat after you touch them, all riding on water
+currents and waterslides — see [docs/SPLASH-ZONE.md](docs/SPLASH-ZONE.md)). The
+title screen opens a **PICK YOUR
 WORLD** hub: tap a world to see its level map, or 🗺️ to come back. Beat every
 level in a world (1 ⭐ each) and the next world unlocks — each one a little
 brainier than the last.
@@ -114,13 +120,23 @@ builder uses: `#` wall · `.` road · `~` ice · `S` start · `F` finish · `c` 
 `T` portal · `x` crate · `M`/`N` shifting walls · `<` `>` `^` `v` conveyor belts ·
 `O` trap door. (Sliding crushers are a per-level `crushers:[...]` property.)
 
-## The garage shop (v3)
-Tap **🛒 SHOP** on the map. Coins you collect in any level bank up and buy:
+## The garage showroom (v4)
+Tap **🛒 SHOP** on the map for a **Forza-style showroom**: your car stands on a
+lit turntable, **swipe** the big carousel (or tap / use the ◀ ▶ arrows) to browse
+every ride, and a translucent **spec card** shows its **Performance Index**
+(100–1000), a **class** (D·C·B·A·S), and four bars — **SPEED · ACCEL · GRIP ·
+BOOST**. Coins you collect in any level bank up and buy:
 - **10 buyable rides:** Red Rocket, Turbo Taxi, Banana, Big Green (a tractor),
   Glizzy GT, Cart Racer, Skibidi GT (yes, a racing toilet), The Saucer, 2FAST and
   The Beast
 - **4 pets** that chase your car through the maze: Ducky, Buddy, Boo, Rexy
 - **Car number** — every ride wears a roof decal, changeable 0–99 (default: 67, obviously)
+
+**The stats are real.** Each car has its own SPEED / ACCEL / GRIP / BOOST, and in
+the campaign your equipped car actually drives to them — a nippy cart darts, a
+tractor corners like it's on rails, the Golden Goat does everything. Differences
+are gentle (~±10%) and apply to **your campaign car only**, so VS / Knockout /
+Co-op stay perfectly fair. Full spec & tuning: [`docs/GARAGE-SHOWROOM.md`](docs/GARAGE-SHOWROOM.md).
 
 First shop visit comes with a grand-opening gift so there's something to buy on day one.
 

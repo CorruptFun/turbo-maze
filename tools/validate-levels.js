@@ -36,12 +36,14 @@ function bfs(rows, starts, passable){
       d[nr][nc]=d[r][c]+1; q.push([nc,nr]); } }
   return d;
 }
-// M/N shifting walls, w trap walls, ! pits, O trap doors, conveyors, ~ ice, T/z/B/o/*/c/n are all
-// PASSABLE for reachability (temporary or floor). Only # is a permanent wall. Crushers are a runtime
-// property (not in the grid) so they never affect grid reachability. Crates x are solid until smashed.
+// M/N shifting walls, w trap walls, ! pits, O trap doors, conveyors, ~ ice, & sticky shallows,
+// J splash pad, % foam float, T/z/B/o/*/c/n are all PASSABLE for reachability (temporary or floor).
+// Only # is a permanent wall. Crushers are a runtime property (not in the grid). Crates x are solid
+// until smashed; foam % is checked separately (it can't be the SOLE bridge — see checkCampaign).
 const openPass  = ch => ch!=="#";                 // gates/doors treated open
 const shutPass  = ch => ch!=="#" && ch!=="Q";     // co-op gate Q shut
 const noCrate   = ch => ch!=="#" && ch!=="x";     // crate x as a wall (no forced smash)
+const noFoam    = ch => ch!=="#" && ch!=="%";     // 🧱 foam float as already-collapsed (post-collapse reachability)
 
 function frame(rows, issues){
   const W = rows[0].length;
@@ -59,6 +61,7 @@ function checkCampaign(L){                          // LEVELS: single car, race 
   if(rows.some(r=>r.includes("D")) && !key) iss.push("door needs a key");
   if(S&&F){
     if(bfs(rows,[S],openPass)[F[1]][F[0]]<0) iss.push("CAN'T REACH THE FLAG");
+    else if(bfs(rows,[S],noFoam)[F[1]][F[0]]<0) iss.push("a foam float (%) is the only S→F bridge — after it collapses a kid respawns stranded; add an alternate ground route");
     if(bfs(rows,[S],noCrate)[F[1]][F[0]]<0) iss.push("⚠ crate on the sole path — fine ONLY if it's a smashable-crate level with runway to build speed");
     if(key && bfs(rows,[S],shutPass)[key[1]][key[0]]<0) iss.push("key is locked behind its own door");
     const d=bfs(rows,[S],openPass);
