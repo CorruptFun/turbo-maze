@@ -3241,8 +3241,31 @@ function carClass(pi){ return pi>=800?"S" : pi>=700?"A" : pi>=600?"B" : pi>=450?
 const CLASS_COL = { S:"#ffd76a", A:"#ffb742", B:"#9ae64a", C:"#7ec9ff", D:"#8b93ad" };
 
 function stdWheels(){
-  ctx.fillStyle = "#151824";
-  for(const [wx,wy] of [[-10,-10],[-10,10],[9,-10],[9,10]]){ ctx.beginPath(); ctx.roundRect(wx-4,wy-3,8,6,2); ctx.fill(); }
+  for(const [wx,wy] of [[-10,-10],[-10,10],[9,-10],[9,10]]){
+    // tire: rounded rect, top-left lit -> bottom-right dark
+    let tg = ctx.createLinearGradient(wx-4,wy-3,wx+4,wy+3);
+    tg.addColorStop(0,"#2b3042");
+    tg.addColorStop(0.5,"#181c28");
+    tg.addColorStop(1,"#0b0d14");
+    ctx.fillStyle = tg;
+    ctx.beginPath(); ctx.roundRect(wx-4,wy-3,8,6,2.2); ctx.fill();
+    // faint top-left rim light on the tire edge
+    ctx.strokeStyle = "rgba(255,255,255,0.14)"; ctx.lineWidth = 0.7;
+    ctx.beginPath(); ctx.roundRect(wx-3.7,wy-2.7,7.4,5.4,1.9); ctx.stroke();
+    // metallic hub cap: radial gradient, bright silver top-left -> dark steel
+    let rg = ctx.createRadialGradient(wx-1.1,wy-1.1,0.2, wx,wy,3.4);
+    rg.addColorStop(0,"#f4f6fc");
+    rg.addColorStop(0.45,"#c4cbda");
+    rg.addColorStop(0.78,"#7a8399");
+    rg.addColorStop(1,"#3a4054");
+    ctx.fillStyle = rg;
+    ctx.beginPath(); ctx.roundRect(wx-2.8,wy-1.9,5.6,3.8,1.6); ctx.fill();
+    // hub center + tiny specular
+    ctx.fillStyle = "#2a2f3d";
+    ctx.beginPath(); ctx.ellipse(wx,wy,1.1,0.9,0,0,TAU); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.5)";
+    ctx.beginPath(); ctx.ellipse(wx-0.4,wy-0.5,0.5,0.4,0,0,TAU); ctx.fill();
+  }
 }
 function drawNumDecal(vid){
   const n = String(store.carNum==null? 67 : store.carNum);
@@ -3260,193 +3283,648 @@ function drawNumDecal(vid){
 }
 function drawVehicleBody(vid){
   if(vid==="taxi"){
-    ctx.fillStyle="#ffc93c"; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,6); ctx.fill();
-    ctx.fillStyle="rgba(255,255,255,0.15)"; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,8,6); ctx.fill();
+    // body — top-left lit gradient over the same rounded shape
+    const bg=ctx.createLinearGradient(-17,-9.5,17,9.5);
+    bg.addColorStop(0,"#ffe6a0"); bg.addColorStop(0.5,"#ffc93c"); bg.addColorStop(1,"#d18f1a");
+    ctx.fillStyle=bg; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,6); ctx.fill();
+    // contact / ground-seat darkening at the very bottom
+    ctx.fillStyle="rgba(0,0,0,0.14)"; ctx.beginPath(); ctx.roundRect(-15,7.4,30,2.4,2); ctx.fill();
+    // top sheen band fading down
+    const sh=ctx.createLinearGradient(0,-9.5,0,-1.5);
+    sh.addColorStop(0,"rgba(255,255,255,0.34)"); sh.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=sh; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,8,6); ctx.fill();
+    // signature checker band (unchanged)
     ctx.fillStyle="#12151f";
     for(let i=0;i<8;i++){ const x=-15+i*4; ctx.fillRect(x, i%2? -9.5:-6.7, 4, 2.8); ctx.fillRect(x, i%2? 6.7:3.9, 4, 2.8); }
-    ctx.fillStyle="#1b2233"; ctx.beginPath(); ctx.roundRect(-6,-6,12,12,4); ctx.fill();
-    ctx.fillStyle="#ffd76a"; ctx.fillRect(-1.5,-2.5,5,5);
+    // specular shine dot near top-left
+    const sp=ctx.createRadialGradient(-9,-6,0,-9,-6,6.5);
+    sp.addColorStop(0,"rgba(255,255,255,0.55)"); sp.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=sp; ctx.beginPath(); ctx.ellipse(-9,-6,6.5,3,0,0,TAU); ctx.fill();
+    // glossy cockpit: dark glass + diagonal reflections
+    ctx.fillStyle="#141a2b"; ctx.beginPath(); ctx.roundRect(-6,-6,12,12,4); ctx.fill();
+    ctx.save(); ctx.beginPath(); ctx.roundRect(-6,-6,12,12,4); ctx.clip();
+    ctx.fillStyle="rgba(150,180,225,0.5)"; ctx.beginPath(); ctx.moveTo(-6,-2); ctx.lineTo(-2,-6); ctx.lineTo(1,-6); ctx.lineTo(-6,1); ctx.closePath(); ctx.fill();
+    ctx.fillStyle="rgba(150,180,225,0.26)"; ctx.beginPath(); ctx.moveTo(-6,4); ctx.lineTo(2,-6); ctx.lineTo(4,-6); ctx.lineTo(-6,6); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    // amber roof light with a lit top edge
+    const rl=ctx.createLinearGradient(0,-2.5,0,2.5); rl.addColorStop(0,"#fff0b0"); rl.addColorStop(1,"#e0a520");
+    ctx.fillStyle=rl; ctx.fillRect(-1.5,-2.5,5,5);
+    ctx.fillStyle="rgba(255,255,255,0.5)"; ctx.fillRect(-1.5,-2.5,5,1);
+    // rim light: bright top+left, dark bottom+right to seat it
+    ctx.lineWidth=1;
+    ctx.strokeStyle="rgba(255,255,255,0.45)";
+    ctx.beginPath(); ctx.moveTo(-10,-9.2); ctx.lineTo(10,-9.2); ctx.moveTo(-16.7,-3); ctx.lineTo(-16.7,3); ctx.stroke();
+    ctx.strokeStyle="rgba(0,0,0,0.28)";
+    ctx.beginPath(); ctx.moveTo(-10,9.2); ctx.lineTo(10,9.2); ctx.moveTo(16.7,-3); ctx.lineTo(16.7,3); ctx.stroke();
   }
   else if(vid==="banana"){
-    ctx.fillStyle="#ffe135"; ctx.beginPath(); ctx.roundRect(-17,-7,34,14,7); ctx.fill();
-    ctx.fillStyle="#e8c92e"; ctx.fillRect(-14,1,28,5.5);
-    ctx.strokeStyle="rgba(120,84,40,0.25)"; ctx.lineWidth=1.5;
-    ctx.beginPath(); ctx.moveTo(-13,-3); ctx.lineTo(13,-3); ctx.stroke();
-    ctx.fillStyle="#6b4a2f";
-    ctx.beginPath(); ctx.arc(-16.5,0,3,0,TAU); ctx.fill();
-    ctx.beginPath(); ctx.arc(16.5,0,2.4,0,TAU); ctx.fill();
-    ctx.fillStyle="#1b2233"; ctx.beginPath(); ctx.roundRect(-5,-4,10,8,3); ctx.fill();
+    // body — lit yellow gradient over the same rounded shape
+    const bg=ctx.createLinearGradient(-17,-7,17,7);
+    bg.addColorStop(0,"#fff2a0"); bg.addColorStop(0.5,"#ffe135"); bg.addColorStop(1,"#d9b41c");
+    ctx.fillStyle=bg; ctx.beginPath(); ctx.roundRect(-17,-7,34,14,7); ctx.fill();
+    // rounded underside shading (belly) — replaces the flat #e8c92e band
+    ctx.save(); ctx.beginPath(); ctx.roundRect(-17,-7,34,14,7); ctx.clip();
+    const belly=ctx.createLinearGradient(0,0,0,7);
+    belly.addColorStop(0,"rgba(150,110,30,0)"); belly.addColorStop(1,"rgba(150,110,30,0.42)");
+    ctx.fillStyle=belly; ctx.fillRect(-17,0,34,7);
+    ctx.restore();
+    // top sheen fading down
+    const sh=ctx.createLinearGradient(0,-7,0,-0.5);
+    sh.addColorStop(0,"rgba(255,255,255,0.4)"); sh.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=sh; ctx.beginPath(); ctx.roundRect(-16,-7,32,6,6); ctx.fill();
+    // ridge seams: original brown seam + a light highlight ridge above it
+    ctx.strokeStyle="rgba(120,84,40,0.28)"; ctx.lineWidth=1.2;
+    ctx.beginPath(); ctx.moveTo(-13,-2.6); ctx.lineTo(13,-2.6); ctx.stroke();
+    ctx.strokeStyle="rgba(255,255,255,0.3)"; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(-12,-4.2); ctx.lineTo(12,-4.2); ctx.stroke();
+    // specular shine near top-left
+    const sp=ctx.createRadialGradient(-8,-4.2,0,-8,-4.2,6);
+    sp.addColorStop(0,"rgba(255,255,255,0.6)"); sp.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=sp; ctx.beginPath(); ctx.ellipse(-8,-4.2,6,2.4,0,0,TAU); ctx.fill();
+    // brown stem (left) & tip (right) — now 3D nubs, lit top-left
+    for(const [nx,ny,nr] of [[-16.5,0,3],[16.5,0,2.4]]){
+      const ng=ctx.createRadialGradient(nx-nr*0.4,ny-nr*0.4,0,nx,ny,nr);
+      ng.addColorStop(0,"#8a6440"); ng.addColorStop(1,"#4f3620");
+      ctx.fillStyle=ng; ctx.beginPath(); ctx.arc(nx,ny,nr,0,TAU); ctx.fill();
+    }
+    // glossy cockpit
+    ctx.fillStyle="#141a2b"; ctx.beginPath(); ctx.roundRect(-5,-4,10,8,3); ctx.fill();
+    ctx.save(); ctx.beginPath(); ctx.roundRect(-5,-4,10,8,3); ctx.clip();
+    ctx.fillStyle="rgba(150,180,225,0.5)"; ctx.beginPath(); ctx.moveTo(-5,-1); ctx.lineTo(-1,-4); ctx.lineTo(1.5,-4); ctx.lineTo(-5,1.5); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    // rim light
+    ctx.lineWidth=1;
+    ctx.strokeStyle="rgba(255,255,255,0.5)";
+    ctx.beginPath(); ctx.moveTo(-9,-6.7); ctx.lineTo(9,-6.7); ctx.stroke();
+    ctx.strokeStyle="rgba(0,0,0,0.25)";
+    ctx.beginPath(); ctx.moveTo(-9,6.7); ctx.lineTo(9,6.7); ctx.stroke();
   }
   else if(vid==="tractor"){
-    ctx.fillStyle="#151824";
-    ctx.beginPath(); ctx.roundRect(-16,-14,11,9,3); ctx.fill();
-    ctx.beginPath(); ctx.roundRect(-16,5,11,9,3); ctx.fill();
-    ctx.beginPath(); ctx.roundRect(8,-9.5,7,5,2); ctx.fill();
-    ctx.beginPath(); ctx.roundRect(8,4.5,7,5,2); ctx.fill();
-    ctx.fillStyle="#ffd93b";
-    ctx.beginPath(); ctx.arc(-10.5,-9.5,2.2,0,TAU); ctx.fill();
-    ctx.beginPath(); ctx.arc(-10.5,9.5,2.2,0,TAU); ctx.fill();
-    ctx.fillStyle="#2f8f3e"; ctx.beginPath(); ctx.roundRect(-13,-7.5,20,15,3); ctx.fill();
-    ctx.fillStyle="#2a7d36"; ctx.beginPath(); ctx.roundRect(3,-5,14,10,3); ctx.fill();
-    ctx.fillStyle="#ffd93b"; ctx.fillRect(3,-1.2,14,2.4);
-    ctx.fillStyle="#1b2233"; ctx.beginPath(); ctx.roundRect(-10,-4.5,9,9,2); ctx.fill();
-    ctx.fillStyle="#8b93ad"; ctx.beginPath(); ctx.arc(5,-6.8,1.7,0,TAU); ctx.fill();
+    // tires — shaded rubber (top lighter) over the same rounded rects
+    for(const [tx,ty,tw,th,tr] of [[-16,-14,11,9,3],[-16,5,11,9,3],[8,-9.5,7,5,2],[8,4.5,7,5,2]]){
+      const tg=ctx.createLinearGradient(0,ty,0,ty+th);
+      tg.addColorStop(0,"#2b2f3d"); tg.addColorStop(1,"#0c0e15");
+      ctx.fillStyle=tg; ctx.beginPath(); ctx.roundRect(tx,ty,tw,th,tr); ctx.fill();
+      ctx.fillStyle="rgba(255,255,255,0.12)"; ctx.beginPath(); ctx.roundRect(tx+1,ty+0.6,tw-2,1.6,tr*0.5); ctx.fill();
+    }
+    // rear hubs — lit metal
+    for(const [hx,hy] of [[-10.5,-9.5],[-10.5,9.5]]){
+      const hg=ctx.createRadialGradient(hx-0.8,hy-0.8,0,hx,hy,2.4);
+      hg.addColorStop(0,"#ffe98a"); hg.addColorStop(1,"#d19b12");
+      ctx.fillStyle=hg; ctx.beginPath(); ctx.arc(hx,hy,2.2,0,TAU); ctx.fill();
+    }
+    // main body — green gradient, top-left lit
+    const bg=ctx.createLinearGradient(-13,-7.5,7,7.5);
+    bg.addColorStop(0,"#54c265"); bg.addColorStop(0.5,"#2f8f3e"); bg.addColorStop(1,"#1c5f28");
+    ctx.fillStyle=bg; ctx.beginPath(); ctx.roundRect(-13,-7.5,20,15,3); ctx.fill();
+    // body top sheen
+    const sh=ctx.createLinearGradient(0,-7.5,0,-1);
+    sh.addColorStop(0,"rgba(255,255,255,0.28)"); sh.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=sh; ctx.beginPath(); ctx.roundRect(-13,-7.5,20,6,3); ctx.fill();
+    // hood — darker green gradient with a lit top
+    const hg2=ctx.createLinearGradient(3,-5,17,5);
+    hg2.addColorStop(0,"#3f9f4d"); hg2.addColorStop(1,"#1e6a2a");
+    ctx.fillStyle=hg2; ctx.beginPath(); ctx.roundRect(3,-5,14,10,3); ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,0.18)"; ctx.beginPath(); ctx.roundRect(3,-5,14,3,3); ctx.fill();
+    // yellow hood stripe with sheen
+    const yg=ctx.createLinearGradient(0,-1.2,0,1.2);
+    yg.addColorStop(0,"#ffe87a"); yg.addColorStop(1,"#e0a814");
+    ctx.fillStyle=yg; ctx.fillRect(3,-1.2,14,2.4);
+    // specular on body
+    const sp=ctx.createRadialGradient(-8,-4.5,0,-8,-4.5,6);
+    sp.addColorStop(0,"rgba(255,255,255,0.5)"); sp.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=sp; ctx.beginPath(); ctx.ellipse(-8,-4.5,6,2.6,0,0,TAU); ctx.fill();
+    // glossy cab window
+    ctx.fillStyle="#141a2b"; ctx.beginPath(); ctx.roundRect(-10,-4.5,9,9,2); ctx.fill();
+    ctx.save(); ctx.beginPath(); ctx.roundRect(-10,-4.5,9,9,2); ctx.clip();
+    ctx.fillStyle="rgba(150,180,225,0.5)"; ctx.beginPath(); ctx.moveTo(-10,-1); ctx.lineTo(-6,-4.5); ctx.lineTo(-3.5,-4.5); ctx.lineTo(-10,2); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    // exhaust knob — metallic
+    const eg=ctx.createRadialGradient(4.3,-7.5,0,5,-6.8,1.9);
+    eg.addColorStop(0,"#c3ccde"); eg.addColorStop(1,"#5a6274");
+    ctx.fillStyle=eg; ctx.beginPath(); ctx.arc(5,-6.8,1.7,0,TAU); ctx.fill();
+    // faint contact darkening along body bottom
+    ctx.fillStyle="rgba(0,0,0,0.15)"; ctx.beginPath(); ctx.roundRect(-11,5.6,16,1.8,1.5); ctx.fill();
+    // rim light: bright top+left, dark bottom+right
+    ctx.lineWidth=1;
+    ctx.strokeStyle="rgba(255,255,255,0.4)";
+    ctx.beginPath(); ctx.moveTo(-10,-7.3); ctx.lineTo(4,-7.3); ctx.moveTo(-12.7,-4); ctx.lineTo(-12.7,4); ctx.stroke();
+    ctx.strokeStyle="rgba(0,0,0,0.28)";
+    ctx.beginPath(); ctx.moveTo(-10,7.3); ctx.lineTo(4,7.3); ctx.stroke();
   }
   else if(vid==="hotdog"){
-    ctx.fillStyle="#e8b06a"; ctx.beginPath(); ctx.roundRect(-16,-9,32,18,9); ctx.fill();
-    ctx.fillStyle="#d89a50"; ctx.fillRect(-13,3,26,4.5);
-    ctx.fillStyle="#c14b32"; ctx.beginPath(); ctx.roundRect(-19,-4,38,8,4); ctx.fill();
+    // bun body — warm top-left-lit gradient (replaces flat #e8b06a fill)
+    const g=ctx.createLinearGradient(-14,-9,14,9);
+    g.addColorStop(0,"#f3d3a2"); g.addColorStop(0.5,"#e8b06a"); g.addColorStop(1,"#b0824a");
+    ctx.fillStyle=g; ctx.beginPath(); ctx.roundRect(-16,-9,32,18,9); ctx.fill();
+    // top sheen band, fades down
+    const sh=ctx.createLinearGradient(0,-9,0,-1);
+    sh.addColorStop(0,"rgba(255,246,225,0.5)"); sh.addColorStop(1,"rgba(255,246,225,0)");
+    ctx.fillStyle=sh; ctx.beginPath(); ctx.roundRect(-14,-8.5,28,8,7); ctx.fill();
+    // lower bun crease shade
+    ctx.fillStyle="#c9924c"; ctx.beginPath(); ctx.roundRect(-13,3.6,26,4.4,3); ctx.fill();
+    // sausage — its own rounded gradient (replaces flat #c14b32)
+    const s=ctx.createLinearGradient(0,-4,0,4);
+    s.addColorStop(0,"#d76a4f"); s.addColorStop(0.5,"#c14b32"); s.addColorStop(1,"#8f3822");
+    ctx.fillStyle=s; ctx.beginPath(); ctx.roundRect(-19,-4,38,8,4); ctx.fill();
+    ctx.fillStyle="rgba(255,200,170,0.35)"; ctx.beginPath(); ctx.roundRect(-17,-3.4,34,2,2); ctx.fill();
+    // mustard zigzag: dark cast shadow, base stroke, bright top edge
+    ctx.lineCap="round";
+    ctx.strokeStyle="rgba(120,80,0,0.35)"; ctx.lineWidth=2.4; ctx.beginPath();
+    for(let i=0;i<=6;i++) ctx.lineTo(-15+i*5,(i%2?-2:2)+0.9); ctx.stroke();
     ctx.strokeStyle="#ffd93b"; ctx.lineWidth=2; ctx.beginPath();
-    for(let i=0;i<=6;i++) ctx.lineTo(-15+i*5, i%2? -2:2);
-    ctx.stroke();
+    for(let i=0;i<=6;i++) ctx.lineTo(-15+i*5, i%2?-2:2); ctx.stroke();
+    ctx.strokeStyle="rgba(255,248,190,0.7)"; ctx.lineWidth=0.8; ctx.beginPath();
+    for(let i=0;i<=6;i++) ctx.lineTo(-15+i*5,(i%2?-2:2)-0.7); ctx.stroke();
+    ctx.lineCap="butt";
+    // specular shine dot, top-left of bun
+    const sp=ctx.createRadialGradient(-8,-5,0,-8,-5,7);
+    sp.addColorStop(0,"rgba(255,255,255,0.55)"); sp.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=sp; ctx.beginPath(); ctx.ellipse(-8,-5,7,4,-0.3,0,TAU); ctx.fill();
+    // rim light (top/left bright) + contact seat (bottom dark)
+    ctx.strokeStyle="rgba(255,255,255,0.4)"; ctx.lineWidth=1; ctx.beginPath(); ctx.roundRect(-15.5,-8.5,31,17,8.5); ctx.stroke();
+    ctx.fillStyle="rgba(0,0,0,0.16)"; ctx.beginPath(); ctx.ellipse(0,8.4,12,2,0,0,TAU); ctx.fill();
   }
   else if(vid==="cart"){
-    ctx.fillStyle="#b8c1d8"; ctx.beginPath(); ctx.roundRect(-13,-9,29,18,3); ctx.fill();
-    ctx.strokeStyle="rgba(20,25,40,0.3)"; ctx.lineWidth=1;
+    // metal basket body — cool top-left-lit gradient (replaces flat #b8c1d8)
+    const g=ctx.createLinearGradient(-13,-9,16,9);
+    g.addColorStop(0,"#e2e6f2"); g.addColorStop(0.5,"#b8c1d8"); g.addColorStop(1,"#828aa6");
+    ctx.fillStyle=g; ctx.beginPath(); ctx.roundRect(-13,-9,29,18,3); ctx.fill();
+    // top sheen
+    const sh=ctx.createLinearGradient(0,-9,0,-2);
+    sh.addColorStop(0,"rgba(255,255,255,0.45)"); sh.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=sh; ctx.beginPath(); ctx.roundRect(-12,-8.5,27,7,2.5); ctx.fill();
+    // wire mesh: dark grooves + light-catch highlight = embossed wires
+    ctx.strokeStyle="rgba(20,25,40,0.28)"; ctx.lineWidth=1;
     for(let x=-9;x<=13;x+=4.5){ ctx.beginPath(); ctx.moveTo(x,-9); ctx.lineTo(x,9); ctx.stroke(); }
     for(const y of [-4,1]){ ctx.beginPath(); ctx.moveTo(-13,y); ctx.lineTo(16,y); ctx.stroke(); }
-    ctx.fillStyle="#8b93ad"; ctx.fillRect(-18,-9,4,18);
-    ctx.fillStyle="#e34a4a"; ctx.fillRect(-18,-3.5,3,7);
+    ctx.strokeStyle="rgba(255,255,255,0.3)"; ctx.lineWidth=0.7;
+    for(let x=-9;x<=13;x+=4.5){ ctx.beginPath(); ctx.moveTo(x-0.8,-9); ctx.lineTo(x-0.8,9); ctx.stroke(); }
+    for(const y of [-4,1]){ ctx.beginPath(); ctx.moveTo(-13,y-0.8); ctx.lineTo(16,y-0.8); ctx.stroke(); }
+    // handle post — brushed-metal gradient (replaces flat #8b93ad)
+    const p=ctx.createLinearGradient(-18,0,-14,0);
+    p.addColorStop(0,"#aab2c8"); p.addColorStop(1,"#6f768e");
+    ctx.fillStyle=p; ctx.fillRect(-18,-9,4,18);
+    ctx.fillStyle="rgba(255,255,255,0.4)"; ctx.fillRect(-18,-9,1,18);
+    // red grip — sheen + shade (replaces flat #e34a4a)
+    const r=ctx.createLinearGradient(-18,-3.5,-15,3.5);
+    r.addColorStop(0,"#ff7a6a"); r.addColorStop(0.5,"#e34a4a"); r.addColorStop(1,"#b02f2f");
+    ctx.fillStyle=r; ctx.beginPath(); ctx.roundRect(-18,-3.5,3,7,1.4); ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,0.5)"; ctx.fillRect(-17.8,-3,0.8,3);
+    // specular shine dot, top-left
+    const sp=ctx.createRadialGradient(-6,-5,0,-6,-5,7);
+    sp.addColorStop(0,"rgba(255,255,255,0.5)"); sp.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=sp; ctx.beginPath(); ctx.ellipse(-6,-5,7,4,-0.3,0,TAU); ctx.fill();
+    // rim light + contact seat
+    ctx.strokeStyle="rgba(255,255,255,0.4)"; ctx.lineWidth=1; ctx.beginPath(); ctx.roundRect(-12.5,-8.5,28,17,2.5); ctx.stroke();
+    ctx.fillStyle="rgba(0,0,0,0.16)"; ctx.beginPath(); ctx.roundRect(-12,7.6,28,1.4,1.4); ctx.fill();
   }
   else if(vid==="toilet"){
-    ctx.fillStyle="#eef1fa"; ctx.beginPath(); ctx.roundRect(-18,-8,11,16,3); ctx.fill();
-    ctx.fillStyle="#d5dbeb"; ctx.fillRect(-18,-8,11,3.5);
-    ctx.fillStyle="#f4f6ff"; ctx.beginPath(); ctx.ellipse(3,0,14,10,0,0,TAU); ctx.fill();
-    ctx.strokeStyle="#c9d0e4"; ctx.lineWidth=2.5;
-    ctx.beginPath(); ctx.ellipse(3,0,10,7,0,0,TAU); ctx.stroke();
-    ctx.fillStyle="#7ec9ff"; ctx.beginPath(); ctx.ellipse(4,0,5,3.5,0,0,TAU); ctx.fill();
+    // tank/cistern — porcelain gradient (replaces flat #eef1fa)
+    const tg=ctx.createLinearGradient(-18,-8,-7,8);
+    tg.addColorStop(0,"#ffffff"); tg.addColorStop(0.55,"#eef1fa"); tg.addColorStop(1,"#c6cddf");
+    ctx.fillStyle=tg; ctx.beginPath(); ctx.roundRect(-18,-8,11,16,3); ctx.fill();
+    // tank lid highlight band (replaces flat #d5dbeb)
+    const lid=ctx.createLinearGradient(0,-8,0,-4);
+    lid.addColorStop(0,"rgba(255,255,255,0.85)"); lid.addColorStop(1,"rgba(213,219,235,0.2)");
+    ctx.fillStyle=lid; ctx.beginPath(); ctx.roundRect(-18,-8,11,3.8,3); ctx.fill();
+    // flush button, with its own tiny highlight
+    ctx.fillStyle="#b7c0d8"; ctx.beginPath(); ctx.ellipse(-12.5,-6,1.7,1.1,0,0,TAU); ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,0.6)"; ctx.beginPath(); ctx.ellipse(-13,-6.4,0.7,0.5,0,0,TAU); ctx.fill();
+    // bowl — radial porcelain, lit from top-left (replaces flat #f4f6ff)
+    const bg=ctx.createRadialGradient(-1,-4,1,3,0,15);
+    bg.addColorStop(0,"#ffffff"); bg.addColorStop(0.6,"#f0f3fb"); bg.addColorStop(1,"#cdd4e6");
+    ctx.fillStyle=bg; ctx.beginPath(); ctx.ellipse(3,0,14,10,0,0,TAU); ctx.fill();
+    // seat rim groove (dark) + upper-edge highlight
+    ctx.strokeStyle="rgba(150,160,190,0.5)"; ctx.lineWidth=2.5; ctx.beginPath(); ctx.ellipse(3,0,10,7,0,0,TAU); ctx.stroke();
+    ctx.strokeStyle="rgba(255,255,255,0.6)"; ctx.lineWidth=1; ctx.beginPath(); ctx.ellipse(3,-0.6,10,6.6,0,Math.PI,TAU); ctx.stroke();
+    // water — glossy blue with depth + bright reflection streak (the gloss element)
+    const wg=ctx.createRadialGradient(3,-1,0,4,0,6);
+    wg.addColorStop(0,"#bfe6ff"); wg.addColorStop(0.5,"#7ec9ff"); wg.addColorStop(1,"#3f8fd6");
+    ctx.fillStyle=wg; ctx.beginPath(); ctx.ellipse(4,0,5,3.5,0,0,TAU); ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,0.55)"; ctx.beginPath(); ctx.ellipse(2.6,-1,1.6,0.9,-0.3,0,TAU); ctx.fill();
+    // specular shine on bowl front-left
+    const sp=ctx.createRadialGradient(-3,-5,0,-3,-5,7);
+    sp.addColorStop(0,"rgba(255,255,255,0.6)"); sp.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=sp; ctx.beginPath(); ctx.ellipse(-3,-5,6,3.5,-0.3,0,TAU); ctx.fill();
+    // rim light (upper arc) + contact seat (lower arc)
+    ctx.strokeStyle="rgba(255,255,255,0.45)"; ctx.lineWidth=1; ctx.beginPath(); ctx.ellipse(3,0,14,10,0,Math.PI*1.05,Math.PI*1.95); ctx.stroke();
+    ctx.strokeStyle="rgba(0,0,0,0.15)"; ctx.lineWidth=1.4; ctx.beginPath(); ctx.ellipse(3,0.4,13.6,9.6,0,0.15,Math.PI-0.15); ctx.stroke();
   }
   else if(vid==="ufo"){
-    ctx.fillStyle="#6d7690"; ctx.beginPath(); ctx.ellipse(0,0,17,13,0,0,TAU); ctx.fill();
-    ctx.fillStyle="#8892ab"; ctx.beginPath(); ctx.ellipse(0,-1,16,11.5,0,0,TAU); ctx.fill();
+    // 🛸 metallic saucer, top-left light
+    // underside rim (hull thickness + contact shade)
+    const rimG = ctx.createLinearGradient(0,-9,0,13);
+    rimG.addColorStop(0,"#838ba0"); rimG.addColorStop(1,"#363b49");
+    ctx.fillStyle=rimG; ctx.beginPath(); ctx.ellipse(0,0,17,13,0,0,TAU); ctx.fill();
+    // main hull
+    const hullG = ctx.createLinearGradient(-14,-11,14,10);
+    hullG.addColorStop(0,"#c4cade"); hullG.addColorStop(0.5,"#8892ab"); hullG.addColorStop(1,"#565d73");
+    ctx.fillStyle=hullG; ctx.beginPath(); ctx.ellipse(0,-1,16,11.5,0,0,TAU); ctx.fill();
+    // top sheen band
+    const ufSh = ctx.createLinearGradient(0,-12,0,-2);
+    ufSh.addColorStop(0,"rgba(255,255,255,0.30)"); ufSh.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=ufSh; ctx.beginPath(); ctx.ellipse(0,-5,12,5,0,0,TAU); ctx.fill();
+    // rim light (double-offset stroke: white up-left, dark down-right)
+    ctx.save(); ctx.strokeStyle="rgba(255,255,255,0.4)"; ctx.lineWidth=1; ctx.translate(-0.5,-0.6); ctx.beginPath(); ctx.ellipse(0,-1,16,11.5,0,0,TAU); ctx.stroke(); ctx.restore();
+    ctx.save(); ctx.strokeStyle="rgba(0,0,0,0.28)"; ctx.lineWidth=1; ctx.translate(0.5,0.7); ctx.beginPath(); ctx.ellipse(0,-1,16,11.5,0,0,TAU); ctx.stroke(); ctx.restore();
+    // rotating running lights: soft glow + hot core
     for(let i=0;i<6;i++){
       const a = game.t*2.5 + i*TAU/6;
+      const lx=Math.cos(a)*12.5, ly=Math.sin(a)*9;
       ctx.fillStyle = ["#ff6a5e","#ffd76a","#9ae64a","#53e0ff","#ff8fe0","#b98cff"][i];
-      ctx.beginPath(); ctx.arc(Math.cos(a)*12.5, Math.sin(a)*9, 1.8, 0, TAU); ctx.fill();
+      ctx.globalAlpha=0.45; ctx.beginPath(); ctx.arc(lx,ly,3.2,0,TAU); ctx.fill();
+      ctx.globalAlpha=1;    ctx.beginPath(); ctx.arc(lx,ly,1.8,0,TAU); ctx.fill();
+      ctx.fillStyle="rgba(255,255,255,0.85)"; ctx.beginPath(); ctx.arc(lx-0.5,ly-0.6,0.7,0,TAU); ctx.fill();
     }
-    ctx.fillStyle="#c3cce0"; ctx.beginPath(); ctx.arc(0,-1,7,0,TAU); ctx.fill();
-    ctx.fillStyle="rgba(255,255,255,0.5)"; ctx.beginPath(); ctx.arc(-2,-3,2.4,0,TAU); ctx.fill();
+    ctx.globalAlpha=1;
+    // glass dome (glossy radial)
+    const domeG = ctx.createRadialGradient(-2.5,-4,0.5,0,-1,7.5);
+    domeG.addColorStop(0,"#eef1f8"); domeG.addColorStop(0.55,"#c3cce0"); domeG.addColorStop(1,"#7f88a0");
+    ctx.fillStyle=domeG; ctx.beginPath(); ctx.arc(0,-1,7,0,TAU); ctx.fill();
+    ctx.strokeStyle="rgba(30,36,52,0.35)"; ctx.lineWidth=0.8; ctx.beginPath(); ctx.arc(0,-1,7,0,TAU); ctx.stroke();
+    // specular shine dot
+    ctx.fillStyle="rgba(255,255,255,0.75)"; ctx.beginPath(); ctx.ellipse(-2.5,-3.5,2.4,1.6,-0.5,0,TAU); ctx.fill();
   }
   else if(vid==="supra"){
-    // the orange legend with the big wing
-    ctx.fillStyle="#ff7a1a"; ctx.beginPath(); ctx.roundRect(-16,-9,33,18,8); ctx.fill();
-    ctx.fillStyle="rgba(255,255,255,0.16)"; ctx.beginPath(); ctx.roundRect(-16,-9,33,7.5,8); ctx.fill();
-    ctx.strokeStyle="#e8ecf4"; ctx.lineWidth=2.4;
-    ctx.beginPath();
-    ctx.moveTo(-12,-8.2); ctx.quadraticCurveTo(2,-4.2,14,-7.6);
-    ctx.moveTo(-12,8.2); ctx.quadraticCurveTo(2,4.2,14,7.6);
+    // the orange legend with the big wing — top-left light
+    // ground contact sliver (behind body)
+    ctx.fillStyle="rgba(0,0,0,0.18)"; ctx.beginPath(); ctx.ellipse(0,9,14,1.6,0,0,TAU); ctx.fill();
+    // body gradient
+    const spBody = ctx.createLinearGradient(-16,-9,15,9);
+    spBody.addColorStop(0,"#ffb066"); spBody.addColorStop(0.5,"#ff7a1a"); spBody.addColorStop(1,"#c9530a");
+    ctx.fillStyle=spBody; ctx.beginPath(); ctx.roundRect(-16,-9,33,18,8); ctx.fill();
+    // top sheen (fades down)
+    const spSh = ctx.createLinearGradient(0,-9,0,-0.5);
+    spSh.addColorStop(0,"rgba(255,255,255,0.34)"); spSh.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=spSh; ctx.beginPath(); ctx.roundRect(-16,-9,33,8,8); ctx.fill();
+    // specular shine
+    ctx.fillStyle="rgba(255,255,255,0.5)"; ctx.beginPath(); ctx.ellipse(-8,-5.5,4.5,1.8,-0.3,0,TAU); ctx.fill();
+    // twin curved lines: dark shadow under, bright over
+    ctx.strokeStyle="rgba(110,44,6,0.45)"; ctx.lineWidth=2.4; ctx.beginPath();
+    ctx.moveTo(-12,-7.4); ctx.quadraticCurveTo(2,-3.4,14,-6.8);
+    ctx.moveTo(-12,9);    ctx.quadraticCurveTo(2,5,14,8.4);
     ctx.stroke();
-    ctx.fillStyle="#1b2233"; ctx.beginPath(); ctx.roundRect(-4,-6,11,12,4); ctx.fill();
-    ctx.fillStyle="#8b93ad";
-    ctx.fillRect(-17,-9,2,3.2); ctx.fillRect(-17,5.8,2,3.2);   // wing struts
-    ctx.fillStyle="#e8ecf4";
-    ctx.fillRect(-20.5,-11.5,4,23);                            // THE wing
+    ctx.strokeStyle="#eef1f8"; ctx.lineWidth=2.2; ctx.beginPath();
+    ctx.moveTo(-12,-8.2); ctx.quadraticCurveTo(2,-4.2,14,-7.6);
+    ctx.moveTo(-12,8.2);  ctx.quadraticCurveTo(2,4.2,14,7.6);
+    ctx.stroke();
+    // cockpit glass
+    const spGlass = ctx.createLinearGradient(-4,-6,7,6);
+    spGlass.addColorStop(0,"#2b3854"); spGlass.addColorStop(1,"#0d1220");
+    ctx.fillStyle=spGlass; ctx.beginPath(); ctx.roundRect(-4,-6,11,12,4); ctx.fill();
+    ctx.fillStyle="rgba(150,192,240,0.34)"; ctx.beginPath();
+    ctx.moveTo(-1.5,-6); ctx.lineTo(2,-6); ctx.lineTo(-3,6); ctx.lineTo(-4,3.5); ctx.closePath(); ctx.fill();
+    // rim light (double-offset stroke)
+    ctx.save(); ctx.strokeStyle="rgba(255,255,255,0.4)"; ctx.lineWidth=1; ctx.translate(-0.5,-0.6); ctx.beginPath(); ctx.roundRect(-16,-9,33,18,8); ctx.stroke(); ctx.restore();
+    ctx.save(); ctx.strokeStyle="rgba(0,0,0,0.3)"; ctx.lineWidth=1; ctx.translate(0.5,0.7); ctx.beginPath(); ctx.roundRect(-16,-9,33,18,8); ctx.stroke(); ctx.restore();
+    // wing struts
+    ctx.fillStyle="#8b93ad"; ctx.fillRect(-17,-9,2,3.2); ctx.fillRect(-17,5.8,2,3.2);
+    ctx.fillStyle="rgba(255,255,255,0.35)"; ctx.fillRect(-17,-9,2,0.9); ctx.fillRect(-17,5.8,2,0.9);
+    // THE wing (on top) — dimensional slab
+    const spWing = ctx.createLinearGradient(0,-11.5,0,11.5);
+    spWing.addColorStop(0,"#f4f6fb"); spWing.addColorStop(0.5,"#d3d8e4"); spWing.addColorStop(1,"#969db0");
+    ctx.fillStyle=spWing; ctx.beginPath(); ctx.roundRect(-20.5,-11.5,4,23,1.2); ctx.fill();
+    ctx.strokeStyle="rgba(255,255,255,0.5)"; ctx.lineWidth=0.8;
+    ctx.beginPath(); ctx.moveTo(-20.2,-11); ctx.lineTo(-16.8,-11); ctx.stroke();
+    ctx.strokeStyle="rgba(0,0,0,0.3)";
+    ctx.beginPath(); ctx.moveTo(-20.2,11); ctx.lineTo(-16.8,11); ctx.stroke();
   }
   else if(vid==="beast"){
-    // matte black muscle, blower through the hood
-    ctx.fillStyle="#151824";
-    ctx.beginPath(); ctx.roundRect(-13,-11.5,10,7,2); ctx.fill();   // fat rear tires
-    ctx.beginPath(); ctx.roundRect(-13,4.5,10,7,2); ctx.fill();
-    ctx.beginPath(); ctx.roundRect(8,-10,7,5.5,2); ctx.fill();
-    ctx.beginPath(); ctx.roundRect(8,4.5,7,5.5,2); ctx.fill();
-    ctx.fillStyle="#23262e"; ctx.beginPath(); ctx.roundRect(-18,-10,36,20,5); ctx.fill();
-    ctx.fillStyle="rgba(255,255,255,0.07)"; ctx.beginPath(); ctx.roundRect(-18,-10,36,8,5); ctx.fill();
-    ctx.fillStyle="#15171d"; ctx.beginPath(); ctx.roundRect(-6,-7,12,14,3); ctx.fill();
-    ctx.fillStyle="#aab4c8"; ctx.beginPath(); ctx.roundRect(7,-3.5,7,7,2); ctx.fill();   // blower
-    ctx.fillStyle="#6d7690"; ctx.fillRect(8.4,-3.5,1.6,7); ctx.fillRect(11.4,-3.5,1.6,7);
-    ctx.fillStyle="#8b93ad"; ctx.fillRect(-20,-6.5,2.4,3.4); ctx.fillRect(-20,3.1,2.4,3.4);  // pipes
+    // matte black muscle, blower through the hood — top-left light
+    // fat tires: rounded rubber, top-lit (rear pair bigger)
+    for(const [tx,ty,tw,th] of [[-13,-11.5,10,7],[-13,4.5,10,7],[8,-10,7,5.5],[8,4.5,7,5.5]]){
+      ctx.fillStyle="#0d0f16"; ctx.beginPath(); ctx.roundRect(tx,ty,tw,th,2); ctx.fill();
+      ctx.fillStyle="rgba(255,255,255,0.12)"; ctx.beginPath(); ctx.roundRect(tx,ty,tw,2.2,2); ctx.fill();
+      ctx.fillStyle="rgba(0,0,0,0.4)"; ctx.beginPath(); ctx.roundRect(tx,ty+th-2,tw,2,2); ctx.fill();
+    }
+    // body gradient (matte, but dimensional)
+    const bsBody = ctx.createLinearGradient(-18,-10,16,10);
+    bsBody.addColorStop(0,"#3b3f4b"); bsBody.addColorStop(0.5,"#23262e"); bsBody.addColorStop(1,"#101218");
+    ctx.fillStyle=bsBody; ctx.beginPath(); ctx.roundRect(-18,-10,36,20,5); ctx.fill();
+    // subtle top sheen (matte)
+    const bsSh = ctx.createLinearGradient(0,-10,0,-1);
+    bsSh.addColorStop(0,"rgba(255,255,255,0.14)"); bsSh.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=bsSh; ctx.beginPath(); ctx.roundRect(-18,-10,36,8,5); ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,0.16)"; ctx.beginPath(); ctx.ellipse(-9,-6,5,1.8,-0.3,0,TAU); ctx.fill();
+    // cockpit glass
+    const bsGlass = ctx.createLinearGradient(-6,-7,6,7);
+    bsGlass.addColorStop(0,"#20242e"); bsGlass.addColorStop(1,"#0a0b10");
+    ctx.fillStyle=bsGlass; ctx.beginPath(); ctx.roundRect(-6,-7,12,14,3); ctx.fill();
+    ctx.fillStyle="rgba(120,150,190,0.22)"; ctx.beginPath();
+    ctx.moveTo(-3.5,-7); ctx.lineTo(0,-7); ctx.lineTo(-5,7); ctx.lineTo(-6,4); ctx.closePath(); ctx.fill();
+    // rim light (double-offset stroke)
+    ctx.save(); ctx.strokeStyle="rgba(255,255,255,0.28)"; ctx.lineWidth=1; ctx.translate(-0.5,-0.6); ctx.beginPath(); ctx.roundRect(-18,-10,36,20,5); ctx.stroke(); ctx.restore();
+    ctx.save(); ctx.strokeStyle="rgba(0,0,0,0.35)"; ctx.lineWidth=1; ctx.translate(0.5,0.7); ctx.beginPath(); ctx.roundRect(-18,-10,36,20,5); ctx.stroke(); ctx.restore();
+    // chrome blower through the hood
+    const bsBlow = ctx.createLinearGradient(0,-3.5,0,3.5);
+    bsBlow.addColorStop(0,"#eef2f8"); bsBlow.addColorStop(0.5,"#aab4c8"); bsBlow.addColorStop(1,"#5e6070");
+    ctx.fillStyle=bsBlow; ctx.beginPath(); ctx.roundRect(7,-3.5,7,7,2); ctx.fill();
+    ctx.fillStyle="#565f74"; ctx.fillRect(8.4,-3.5,1.6,7); ctx.fillRect(11.4,-3.5,1.6,7);   // intake stacks
+    ctx.fillStyle="rgba(255,255,255,0.5)"; ctx.fillRect(7,-3.5,7,1.1);                      // chrome top glint
+    // chrome side pipes
+    for(const py of [-6.5,3.1]){
+      const bsPipe=ctx.createLinearGradient(0,py,0,py+3.4);
+      bsPipe.addColorStop(0,"#d7dce6"); bsPipe.addColorStop(0.5,"#8b93ad"); bsPipe.addColorStop(1,"#494f5e");
+      ctx.fillStyle=bsPipe; ctx.fillRect(-20,py,2.4,3.4);
+    }
   }
   else if(vid==="goat"){
-    drawRocketBody("#ffd76a", "#fff6dd");
-    ctx.font = "10px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    // 🐐 GOAT — golden rocket, dimensional re-shade (keeps drawRocketBody silhouette inline)
+    const g=ctx.createLinearGradient(-14,-9,14,9);
+    g.addColorStop(0,"#fff1c2"); g.addColorStop(0.5,"#ffd76a"); g.addColorStop(1,"#d8a636");
+    ctx.fillStyle=g; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,7); ctx.fill();
+    // top sheen fading down
+    const sh=ctx.createLinearGradient(0,-9.5,0,-1);
+    sh.addColorStop(0,"rgba(255,255,255,0.5)"); sh.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=sh; ctx.beginPath(); ctx.roundRect(-16,-9,32,8,6); ctx.fill();
+    // cream centre stripe with soft shade
+    const st=ctx.createLinearGradient(0,-2.4,0,2.4);
+    st.addColorStop(0,"#fffdf3"); st.addColorStop(1,"#e9d9a8");
+    ctx.fillStyle=st; ctx.fillRect(-17,-2.4,34,4.8);
+    // rear nozzle
+    ctx.fillStyle="#20283c"; ctx.fillRect(-19,-8,4,16);
+    ctx.fillStyle="rgba(255,255,255,0.12)"; ctx.fillRect(-19,-8,4,3);
+    // glossy cockpit + diagonal glass reflection
+    ctx.fillStyle="#161d2c"; ctx.beginPath(); ctx.roundRect(-6,-6.5,12,13,4); ctx.fill();
+    const gl=ctx.createLinearGradient(-5,-6,5,6);
+    gl.addColorStop(0,"rgba(150,205,255,0.55)"); gl.addColorStop(0.5,"rgba(150,205,255,0.06)"); gl.addColorStop(1,"rgba(150,205,255,0)");
+    ctx.fillStyle=gl; ctx.beginPath(); ctx.roundRect(-5.2,-5.8,10.4,11.6,3.4); ctx.fill();
+    ctx.fillStyle="rgba(200,230,255,0.5)"; ctx.beginPath(); ctx.roundRect(3,-5.5,3,11,1.5); ctx.fill();
+    // specular shine dot (top-left)
+    ctx.save(); const sp=ctx.createRadialGradient(-9,-6,0,-9,-6,7);
+    sp.addColorStop(0,"rgba(255,255,255,0.6)"); sp.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=sp; ctx.beginPath(); ctx.ellipse(-9,-6,7,4,-0.3,0,TAU); ctx.fill(); ctx.restore();
+    // rim light (top/left bright) + seat (bottom/right dark)
+    ctx.lineWidth=1; ctx.strokeStyle="rgba(255,255,255,0.4)";
+    ctx.beginPath(); ctx.moveTo(-13,-9); ctx.lineTo(13,-9); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-16.5,-6); ctx.lineTo(-16.5,5); ctx.stroke();
+    ctx.strokeStyle="rgba(0,0,0,0.32)";
+    ctx.beginPath(); ctx.moveTo(-13,9); ctx.lineTo(14,9); ctx.stroke();
+    // ground contact AO sliver
+    ctx.fillStyle="rgba(0,0,0,0.14)"; ctx.beginPath(); ctx.roundRect(-14,8,28,1.6,1.5); ctx.fill();
+    // goat accent
+    ctx.fillStyle="#3a2a10"; ctx.font="10px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
     ctx.fillText("🐐", 11, 0);
   }
   else if(vid==="blaze"){                                    // 🏁 World 1 reward — flame hot rod
-    ctx.fillStyle="#d93b2b"; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,7); ctx.fill();
-    ctx.fillStyle="rgba(255,255,255,0.14)"; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,7.5,7); ctx.fill();
-    ctx.fillStyle="#ff8a1a"; ctx.fillRect(-17,-3.4,30,6.8);                       // orange flame band
-    ctx.fillStyle="#ffd23b"; ctx.fillRect(-17,-1.6,26,3.2);                       // yellow core
-    ctx.fillStyle="#ffd23b"; ctx.beginPath(); ctx.moveTo(13,-3.6); ctx.lineTo(19,0); ctx.lineTo(13,3.6); ctx.closePath(); ctx.fill();  // flame tip
-    ctx.fillStyle="#1b2233"; ctx.beginPath(); ctx.roundRect(-6,-6,12,12,4); ctx.fill();
-    ctx.fillStyle="#8b93ad"; ctx.fillRect(-19,-6,2.4,3.2); ctx.fillRect(-19,2.8,2.4,3.2);   // twin pipes
+    const g=ctx.createLinearGradient(-14,-9,14,9);
+    g.addColorStop(0,"#f4604d"); g.addColorStop(0.5,"#d93b2b"); g.addColorStop(1,"#9a2317");
+    ctx.fillStyle=g; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,7); ctx.fill();
+    // top sheen
+    const sh=ctx.createLinearGradient(0,-9.5,0,-1.5);
+    sh.addColorStop(0,"rgba(255,255,255,0.28)"); sh.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=sh; ctx.beginPath(); ctx.roundRect(-16,-9,32,8,6); ctx.fill();
+    // orange flame band (glowing gradient)
+    const fb=ctx.createLinearGradient(0,-3.4,0,3.4);
+    fb.addColorStop(0,"#ffb04a"); fb.addColorStop(0.5,"#ff8a1a"); fb.addColorStop(1,"#e5680a");
+    ctx.fillStyle=fb; ctx.fillRect(-17,-3.4,30,6.8);
+    // yellow core
+    const yc=ctx.createLinearGradient(0,-1.6,0,1.6);
+    yc.addColorStop(0,"#fff0a0"); yc.addColorStop(1,"#ffcf2e");
+    ctx.fillStyle=yc; ctx.fillRect(-17,-1.6,26,3.2);
+    // flame tip with hot inner core
+    ctx.fillStyle="#ffd23b"; ctx.beginPath(); ctx.moveTo(13,-3.6); ctx.lineTo(19,0); ctx.lineTo(13,3.6); ctx.closePath(); ctx.fill();
+    ctx.fillStyle="rgba(255,244,170,0.85)"; ctx.beginPath(); ctx.moveTo(13,-2.2); ctx.lineTo(17,0); ctx.lineTo(13,2.2); ctx.closePath(); ctx.fill();
+    // glossy cockpit + diagonal reflection
+    ctx.fillStyle="#141a28"; ctx.beginPath(); ctx.roundRect(-6,-6,12,12,4); ctx.fill();
+    const gl=ctx.createLinearGradient(-5,-5.5,5,5.5);
+    gl.addColorStop(0,"rgba(150,205,255,0.5)"); gl.addColorStop(0.5,"rgba(150,205,255,0.05)"); gl.addColorStop(1,"rgba(150,205,255,0)");
+    ctx.fillStyle=gl; ctx.beginPath(); ctx.roundRect(-5.4,-5.4,10.8,10.8,3.4); ctx.fill();
+    // twin pipes with chrome highlight
+    ctx.fillStyle="#9aa3b8"; ctx.fillRect(-19,-6,2.4,3.2); ctx.fillRect(-19,2.8,2.4,3.2);
+    ctx.fillStyle="rgba(255,255,255,0.4)"; ctx.fillRect(-19,-6,2.4,1); ctx.fillRect(-19,2.8,2.4,1);
+    // specular shine dot (top-left)
+    ctx.save(); const sp=ctx.createRadialGradient(-9,-6,0,-9,-6,7);
+    sp.addColorStop(0,"rgba(255,255,255,0.45)"); sp.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=sp; ctx.beginPath(); ctx.ellipse(-9,-6,7,4,-0.3,0,TAU); ctx.fill(); ctx.restore();
+    // rim light + seat
+    ctx.lineWidth=1; ctx.strokeStyle="rgba(255,255,255,0.4)";
+    ctx.beginPath(); ctx.moveTo(-13,-9); ctx.lineTo(13,-9); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-16.5,-6); ctx.lineTo(-16.5,5); ctx.stroke();
+    ctx.strokeStyle="rgba(0,0,0,0.32)";
+    ctx.beginPath(); ctx.moveTo(-13,9); ctx.lineTo(13,9); ctx.stroke();
+    ctx.fillStyle="rgba(0,0,0,0.14)"; ctx.beginPath(); ctx.roundRect(-14,8,28,1.6,1.5); ctx.fill();
   }
   else if(vid==="frost"){                                    // 🧊 World 2 reward — icy racer
-    ctx.fillStyle="#4aa8d8"; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,8); ctx.fill();
-    ctx.fillStyle="rgba(255,255,255,0.35)"; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,7,8); ctx.fill();  // frosty sheen
-    ctx.fillStyle="#dff4ff";
-    ctx.beginPath(); ctx.moveTo(8,-8); ctx.lineTo(12,-3); ctx.lineTo(9,-1); ctx.lineTo(5,-4); ctx.closePath(); ctx.fill();   // ice shard
-    ctx.beginPath(); ctx.moveTo(11,2); ctx.lineTo(15,6); ctx.lineTo(11,8); ctx.lineTo(8,5); ctx.closePath(); ctx.fill();     // ice shard
-    ctx.fillStyle="#eaf7ff"; ctx.beginPath(); ctx.roundRect(-16,3.8,26,3,1.5); ctx.fill();     // frost skirt
-    ctx.fillStyle="#12303f"; ctx.beginPath(); ctx.roundRect(-6,-6,12,12,4); ctx.fill();        // tinted cockpit
-    ctx.fillStyle="#bfe9ff"; ctx.beginPath(); ctx.roundRect(-3,-4.5,3,9,1.5); ctx.fill();      // icy glint
+    const g=ctx.createLinearGradient(-14,-9,14,9);
+    g.addColorStop(0,"#bfe9ff"); g.addColorStop(0.45,"#4aa8d8"); g.addColorStop(1,"#2a6f95");
+    ctx.fillStyle=g; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,8); ctx.fill();
+    // frosty sheen
+    const sh=ctx.createLinearGradient(0,-9.5,0,-1);
+    sh.addColorStop(0,"rgba(255,255,255,0.55)"); sh.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=sh; ctx.beginPath(); ctx.roundRect(-16,-9,32,8,7); ctx.fill();
+    // ice shards with facet shade (drawn before skirt, as original)
+    ctx.fillStyle="#eaf7ff"; ctx.beginPath(); ctx.moveTo(8,-8); ctx.lineTo(12,-3); ctx.lineTo(9,-1); ctx.lineTo(5,-4); ctx.closePath(); ctx.fill();
+    ctx.fillStyle="rgba(120,180,220,0.5)"; ctx.beginPath(); ctx.moveTo(9,-1); ctx.lineTo(12,-3); ctx.lineTo(10.5,-2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle="#eaf7ff"; ctx.beginPath(); ctx.moveTo(11,2); ctx.lineTo(15,6); ctx.lineTo(11,8); ctx.lineTo(8,5); ctx.closePath(); ctx.fill();
+    ctx.fillStyle="rgba(120,180,220,0.5)"; ctx.beginPath(); ctx.moveTo(11,8); ctx.lineTo(15,6); ctx.lineTo(13,7); ctx.closePath(); ctx.fill();
+    // frost skirt (bottom band)
+    const sk=ctx.createLinearGradient(0,3.8,0,6.8);
+    sk.addColorStop(0,"#eaf7ff"); sk.addColorStop(1,"#c2e2f2");
+    ctx.fillStyle=sk; ctx.beginPath(); ctx.roundRect(-16,3.8,26,3,1.5); ctx.fill();
+    // glossy tinted cockpit + diagonal reflection
+    ctx.fillStyle="#0e2735"; ctx.beginPath(); ctx.roundRect(-6,-6,12,12,4); ctx.fill();
+    const gl=ctx.createLinearGradient(-5,-5.5,5,5.5);
+    gl.addColorStop(0,"rgba(190,233,255,0.6)"); gl.addColorStop(0.5,"rgba(190,233,255,0.08)"); gl.addColorStop(1,"rgba(190,233,255,0)");
+    ctx.fillStyle=gl; ctx.beginPath(); ctx.roundRect(-5.4,-5.4,10.8,10.8,3.4); ctx.fill();
+    ctx.fillStyle="#bfe9ff"; ctx.beginPath(); ctx.roundRect(-3,-4.5,3,9,1.5); ctx.fill();     // icy glint
+    // specular shine dot (top-left)
+    ctx.save(); const sp=ctx.createRadialGradient(-9,-6,0,-9,-6,7);
+    sp.addColorStop(0,"rgba(255,255,255,0.6)"); sp.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=sp; ctx.beginPath(); ctx.ellipse(-9,-6,7,4,-0.3,0,TAU); ctx.fill(); ctx.restore();
+    // rim light + seat
+    ctx.lineWidth=1; ctx.strokeStyle="rgba(255,255,255,0.5)";
+    ctx.beginPath(); ctx.moveTo(-13,-9); ctx.lineTo(13,-9); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-16.5,-6); ctx.lineTo(-16.5,5); ctx.stroke();
+    ctx.strokeStyle="rgba(0,0,0,0.26)";
+    ctx.beginPath(); ctx.moveTo(-13,9); ctx.lineTo(13,9); ctx.stroke();
+    ctx.fillStyle="rgba(0,0,0,0.12)"; ctx.beginPath(); ctx.roundRect(-14,8,28,1.6,1.5); ctx.fill();
   }
   else if(vid==="glitch"){                                   // 🌀 World 3 reward — neon glitch racer
-    ctx.save(); ctx.shadowColor="#c56cff"; ctx.shadowBlur=8;
+    ctx.save(); ctx.shadowColor="#c56cff"; ctx.shadowBlur=8;                       // neon glow halo (identity)
     ctx.fillStyle="#2a1c46"; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,7); ctx.fill();
     ctx.restore();
+    let g=ctx.createLinearGradient(-17,-9.5,17,9.5);                              // dimensional body
+    g.addColorStop(0,"#4a3576"); g.addColorStop(0.5,"#2a1c46"); g.addColorStop(1,"#160e28");
+    ctx.fillStyle=g; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,7); ctx.fill();
+    let sh=ctx.createLinearGradient(0,-9.5,0,-1);                                 // top sheen fading down
+    sh.addColorStop(0,"rgba(150,110,220,0.5)"); sh.addColorStop(1,"rgba(150,110,220,0)");
+    ctx.fillStyle=sh; ctx.beginPath(); ctx.roundRect(-16,-9,32,8,6); ctx.fill();
+    let sp=ctx.createRadialGradient(-9,-6,0,-9,-6,7);                             // specular shine dot
+    sp.addColorStop(0,"rgba(255,255,255,0.5)"); sp.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=sp; ctx.beginPath(); ctx.ellipse(-9,-6,7,4,-0.3,0,TAU); ctx.fill();
+    ctx.fillStyle="rgba(0,0,0,0.22)"; ctx.beginPath(); ctx.roundRect(-15,7.6,30,1.8,1); ctx.fill();  // ground seat
     ctx.strokeStyle="#c56cff"; ctx.lineWidth=1.8; ctx.beginPath(); ctx.roundRect(-16,-8.7,32,17.4,6); ctx.stroke();   // neon outline
-    ctx.fillStyle="#c56cff"; ctx.fillRect(-15,-1.4,28,2.8);                       // neon centerline
+    let ne=ctx.createLinearGradient(0,-1.4,0,1.4);                                // neon centerline
+    ne.addColorStop(0,"#e0a0ff"); ne.addColorStop(0.5,"#c56cff"); ne.addColorStop(1,"#8a3fd0");
+    ctx.fillStyle=ne; ctx.fillRect(-15,-1.4,28,2.8);
     ctx.fillStyle="#ff5db1"; ctx.fillRect(-15,-1,20,2);                           // magenta core
+    ctx.fillStyle="rgba(255,190,230,0.7)"; ctx.fillRect(-15,-1,20,0.7);           // core hi-light
     ctx.fillStyle="rgba(126,201,255,0.7)"; ctx.fillRect(-10,-7,5,2); ctx.fillRect(2,5.2,6,2);   // glitch blocks
-    ctx.fillStyle="#0e0a1a"; ctx.beginPath(); ctx.roundRect(-6,-6,12,12,4); ctx.fill();
-    ctx.fillStyle="#c56cff"; ctx.beginPath(); ctx.roundRect(-3,-4.5,3,9,1.5); ctx.fill();       // glowing slit
+    ctx.fillStyle="rgba(200,240,255,0.85)"; ctx.fillRect(-10,-7,5,0.7); ctx.fillRect(2,5.2,6,0.7);  // lit top edge
+    ctx.fillStyle="#0e0a1a"; ctx.beginPath(); ctx.roundRect(-6,-6,12,12,4); ctx.fill();          // glossy cockpit
+    ctx.fillStyle="rgba(140,90,200,0.55)"; ctx.beginPath(); ctx.moveTo(-6,-2); ctx.lineTo(-1,-6); ctx.lineTo(2,-6); ctx.lineTo(-6,1); ctx.closePath(); ctx.fill();  // reflection streak
+    ctx.fillStyle="#c56cff"; ctx.beginPath(); ctx.roundRect(-3,-4.5,3,9,1.5); ctx.fill();        // glowing slit
+    ctx.fillStyle="rgba(230,200,255,0.85)"; ctx.fillRect(-3,-4.5,1.2,9);                          // slit hi-light
+    ctx.lineWidth=1; ctx.strokeStyle="rgba(255,255,255,0.4)";                     // rim light: top+left
+    ctx.beginPath(); ctx.moveTo(-10,-9.5); ctx.lineTo(10,-9.5); ctx.moveTo(-17,-2.5); ctx.lineTo(-17,2.5); ctx.stroke();
+    ctx.strokeStyle="rgba(0,0,0,0.32)";                                           // rim shade: bottom+right
+    ctx.beginPath(); ctx.moveTo(-10,9.5); ctx.lineTo(10,9.5); ctx.moveTo(17,-2.5); ctx.lineTo(17,2.5); ctx.stroke();
   }
   else if(vid==="monster"){                                  // 🏭 World 4 reward — CRUSHER monster truck (ownWheels)
-    ctx.fillStyle="#15171d";
-    ctx.beginPath(); ctx.roundRect(-15,-13,12,9,3); ctx.fill();   // 4 fat tires
-    ctx.beginPath(); ctx.roundRect(-15,4,12,9,3); ctx.fill();
-    ctx.beginPath(); ctx.roundRect(6,-12,10,8,3); ctx.fill();
-    ctx.beginPath(); ctx.roundRect(6,4,10,8,3); ctx.fill();
-    ctx.strokeStyle="#2a2e38"; ctx.lineWidth=1.4;
-    for(const [tx,ty,tw,th] of [[-15,-13,12,9],[-15,4,12,9],[6,-12,10,8],[6,4,10,8]])
+    const tires=[[-15,-13,12,9],[-15,4,12,9],[6,-12,10,8],[6,4,10,8]];
+    for(const [tx,ty,tw,th] of tires){                                            // dimensional rubber
+      let tg=ctx.createRadialGradient(tx+tw*0.35,ty+th*0.3,1,tx+tw*0.5,ty+th*0.5,tw*0.95);
+      tg.addColorStop(0,"#3a3f4c"); tg.addColorStop(0.6,"#1c1f27"); tg.addColorStop(1,"#0c0e13");
+      ctx.fillStyle=tg; ctx.beginPath(); ctx.roundRect(tx,ty,tw,th,3); ctx.fill();
+    }
+    ctx.strokeStyle="rgba(8,10,14,0.8)"; ctx.lineWidth=1.4;                        // tread grooves
+    for(const [tx,ty,tw,th] of tires)
       for(let k=1;k<3;k++){ ctx.beginPath(); ctx.moveTo(tx+tw*k/3,ty); ctx.lineTo(tx+tw*k/3,ty+th); ctx.stroke(); }
-    ctx.fillStyle="#e8a930"; for(const [wx,wy] of [[-9,-8.5],[-9,8.5],[11,-8],[11,8]]){ ctx.beginPath(); ctx.arc(wx,wy,2,0,TAU); ctx.fill(); }
-    ctx.fillStyle="#c96a2a"; ctx.beginPath(); ctx.roundRect(-13,-8,28,16,4); ctx.fill();        // raised orange body
-    ctx.fillStyle="rgba(255,255,255,0.1)"; ctx.beginPath(); ctx.roundRect(-13,-8,28,6,4); ctx.fill();
-    ctx.fillStyle="#8b6a3a"; ctx.fillRect(-13,-1.6,28,3.2);                       // steel band
-    ctx.fillStyle="#1b2233"; ctx.beginPath(); ctx.roundRect(-6,-6,11,12,3); ctx.fill();         // cab window
-    ctx.fillStyle="#aab4c8"; ctx.beginPath(); ctx.roundRect(14,-9,4,18,2); ctx.fill();          // steel scoop / bull-bar
-    ctx.fillStyle="#8b93ad"; ctx.fillRect(15,-7,2,3); ctx.fillRect(15,4,2,3);
+    ctx.strokeStyle="rgba(120,132,155,0.35)"; ctx.lineWidth=1;                     // tread top highlight
+    for(const [tx,ty,tw,th] of tires){ ctx.beginPath(); ctx.moveTo(tx+1.5,ty+1); ctx.lineTo(tx+tw-1.5,ty+1); ctx.stroke(); }
+    ctx.fillStyle="#e8a930"; for(const [wx,wy] of [[-9,-8.5],[-9,8.5],[11,-8],[11,8]]){ ctx.beginPath(); ctx.arc(wx,wy,2,0,TAU); ctx.fill(); }  // hubs
+    ctx.fillStyle="#fff0c0"; for(const [wx,wy] of [[-9,-8.5],[-9,8.5],[11,-8],[11,8]]){ ctx.beginPath(); ctx.arc(wx-0.6,wy-0.6,0.8,0,TAU); ctx.fill(); }  // bolt shine
+    let g=ctx.createLinearGradient(-13,-8,15,8);                                  // raised orange body
+    g.addColorStop(0,"#f0954a"); g.addColorStop(0.5,"#c96a2a"); g.addColorStop(1,"#8f4718");
+    ctx.fillStyle=g; ctx.beginPath(); ctx.roundRect(-13,-8,28,16,4); ctx.fill();
+    let sh=ctx.createLinearGradient(0,-8,0,0);                                    // top sheen
+    sh.addColorStop(0,"rgba(255,235,200,0.5)"); sh.addColorStop(1,"rgba(255,235,200,0)");
+    ctx.fillStyle=sh; ctx.beginPath(); ctx.roundRect(-12,-7.5,26,7,3); ctx.fill();
+    let sp=ctx.createRadialGradient(-8,-5,0,-8,-5,6);                             // specular
+    sp.addColorStop(0,"rgba(255,255,255,0.55)"); sp.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=sp; ctx.beginPath(); ctx.ellipse(-8,-5,6,3.4,-0.3,0,TAU); ctx.fill();
+    let bg=ctx.createLinearGradient(0,-1.6,0,1.6);                                // steel band
+    bg.addColorStop(0,"#b89a68"); bg.addColorStop(0.5,"#8b6a3a"); bg.addColorStop(1,"#5e4826");
+    ctx.fillStyle=bg; ctx.fillRect(-13,-1.6,28,3.2);
+    ctx.fillStyle="#141a26"; ctx.beginPath(); ctx.roundRect(-6,-6,11,12,3); ctx.fill();          // glossy cab window
+    ctx.fillStyle="rgba(120,150,190,0.5)"; ctx.beginPath(); ctx.moveTo(-6,-1); ctx.lineTo(0,-6); ctx.lineTo(3,-6); ctx.lineTo(-6,2); ctx.closePath(); ctx.fill();  // reflection
+    let scg=ctx.createLinearGradient(14,0,18,0);                                  // steel bull-bar scoop
+    scg.addColorStop(0,"#d8e0ee"); scg.addColorStop(1,"#7c8496");
+    ctx.fillStyle=scg; ctx.beginPath(); ctx.roundRect(14,-9,4,18,2); ctx.fill();
+    ctx.fillStyle="#6d7690"; ctx.fillRect(15,-7,2,3); ctx.fillRect(15,4,2,3);
+    ctx.fillStyle="rgba(255,255,255,0.5)"; ctx.fillRect(14,-9,4,0.8);              // scoop top glint
+    ctx.strokeStyle="rgba(255,255,255,0.4)"; ctx.lineWidth=1;                      // rim light: top+left
+    ctx.beginPath(); ctx.moveTo(-9,-8); ctx.lineTo(11,-8); ctx.moveTo(-13,-4); ctx.lineTo(-13,4); ctx.stroke();
+    ctx.strokeStyle="rgba(0,0,0,0.3)";                                            // rim shade: bottom
+    ctx.beginPath(); ctx.moveTo(-9,8); ctx.lineTo(11,8); ctx.stroke();
   }
   else if(vid==="wave"){                                     // 🌊 World 5 reward — cresting-wave racer
-    ctx.fillStyle="#12a6c4"; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,8); ctx.fill();
-    ctx.fillStyle="rgba(255,255,255,0.30)"; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,7,8); ctx.fill();
-    ctx.fillStyle="#8fe9ff";
+    let g=ctx.createLinearGradient(-17,-9.5,17,9.5);                              // dimensional teal body
+    g.addColorStop(0,"#5cd6ea"); g.addColorStop(0.5,"#12a6c4"); g.addColorStop(1,"#08657c");
+    ctx.fillStyle=g; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,8); ctx.fill();
+    let sh=ctx.createLinearGradient(0,-9.5,0,-1);                                 // top sheen
+    sh.addColorStop(0,"rgba(230,252,255,0.55)"); sh.addColorStop(1,"rgba(230,252,255,0)");
+    ctx.fillStyle=sh; ctx.beginPath(); ctx.roundRect(-16,-9,32,7.5,7); ctx.fill();
+    let wg=ctx.createLinearGradient(0,-2,0,8);                                    // foam wave sweep
+    wg.addColorStop(0,"#bff4ff"); wg.addColorStop(1,"#6fd8ee");
+    ctx.fillStyle=wg;
     ctx.beginPath();
     ctx.moveTo(-17,1); ctx.quadraticCurveTo(-8,-4,0,0); ctx.quadraticCurveTo(8,4,17,-1);
     ctx.lineTo(17,5); ctx.quadraticCurveTo(8,9,0,5); ctx.quadraticCurveTo(-8,1,-17,6);
     ctx.closePath(); ctx.fill();
-    ctx.strokeStyle="#eafcff"; ctx.lineWidth=1.6;
+    ctx.strokeStyle="#eafcff"; ctx.lineWidth=1.6;                                 // crest hi-light
     ctx.beginPath(); ctx.moveTo(-17,1); ctx.quadraticCurveTo(-8,-4,0,0); ctx.quadraticCurveTo(8,4,17,-1); ctx.stroke();
-    ctx.fillStyle="#eafcff";
+    ctx.fillStyle="#eafcff";                                                      // foam curl
     ctx.beginPath(); ctx.moveTo(12,-4); ctx.quadraticCurveTo(19,-6,18,0); ctx.quadraticCurveTo(17,3,13,2); ctx.quadraticCurveTo(15,-1,12,-4); ctx.closePath(); ctx.fill();
-    ctx.fillStyle="#bff4ff";
+    ctx.fillStyle="rgba(120,200,225,0.5)";                                        // curl inner shade
+    ctx.beginPath(); ctx.moveTo(13,2); ctx.quadraticCurveTo(15,-1,12,-4); ctx.quadraticCurveTo(15.6,-1,15,1.6); ctx.closePath(); ctx.fill();
+    ctx.fillStyle="#bff4ff";                                                      // droplets
     for(const [dx,dy,s] of [[-11,-6,2],[-3,7,1.6]]){
       ctx.beginPath(); ctx.moveTo(dx,dy-s*2.2);
       ctx.quadraticCurveTo(dx+s,dy-s*0.3,dx+s,dy); ctx.arc(dx,dy,s,0,Math.PI);
       ctx.quadraticCurveTo(dx-s,dy-s*0.3,dx,dy-s*2.2); ctx.closePath(); ctx.fill();
     }
-    ctx.fillStyle="#0b3a44"; ctx.beginPath(); ctx.roundRect(-6,-6,12,12,4); ctx.fill();
-    ctx.fillStyle="#7fe4ff"; ctx.beginPath(); ctx.roundRect(-3,-4.5,3,9,1.5); ctx.fill();
-    ctx.fillStyle="#eafcff"; ctx.beginPath(); ctx.roundRect(-17,4,10,3,1.5); ctx.fill();
-    ctx.fillStyle="#25d4e0"; ctx.fillRect(-19,-6,2.4,3.2); ctx.fillRect(-19,2.8,2.4,3.2);
+    ctx.fillStyle="rgba(255,255,255,0.8)";                                        // droplet speculars
+    for(const [dx,dy,s] of [[-11,-6,2],[-3,7,1.6]]){ ctx.beginPath(); ctx.arc(dx-s*0.3,dy-s*0.3,s*0.35,0,TAU); ctx.fill(); }
+    let sp=ctx.createRadialGradient(-9,-6,0,-9,-6,7);                             // body specular
+    sp.addColorStop(0,"rgba(255,255,255,0.5)"); sp.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=sp; ctx.beginPath(); ctx.ellipse(-9,-6,6.5,3.6,-0.3,0,TAU); ctx.fill();
+    ctx.fillStyle="#08323b"; ctx.beginPath(); ctx.roundRect(-6,-6,12,12,4); ctx.fill();          // glossy cockpit
+    ctx.fillStyle="rgba(130,220,255,0.5)"; ctx.beginPath(); ctx.moveTo(-6,-1); ctx.lineTo(0,-6); ctx.lineTo(3,-6); ctx.lineTo(-6,2); ctx.closePath(); ctx.fill();  // reflection
+    ctx.fillStyle="#7fe4ff"; ctx.beginPath(); ctx.roundRect(-3,-4.5,3,9,1.5); ctx.fill();        // glint
+    ctx.fillStyle="#eafcff"; ctx.beginPath(); ctx.roundRect(-17,4,10,3,1.5); ctx.fill();         // foam skirt
+    ctx.fillStyle="#25d4e0"; ctx.fillRect(-19,-6,2.4,3.2); ctx.fillRect(-19,2.8,2.4,3.2);        // side intakes
+    ctx.strokeStyle="rgba(255,255,255,0.42)"; ctx.lineWidth=1;                     // rim light: top+left
+    ctx.beginPath(); ctx.moveTo(-10,-9.5); ctx.lineTo(10,-9.5); ctx.moveTo(-17,-2.5); ctx.lineTo(-17,2.5); ctx.stroke();
+    ctx.strokeStyle="rgba(0,0,0,0.28)";                                           // rim shade: bottom+right
+    ctx.beginPath(); ctx.moveTo(-10,9.5); ctx.lineTo(10,9.5); ctx.moveTo(17,-2.5); ctx.lineTo(17,2.5); ctx.stroke();
   }
   else { // rocket
     drawRocketBody(CONFIG.carColor, CONFIG.stripe);
   }
 }
 function drawRocketBody(bodyCol, stripeCol){
-  ctx.fillStyle = bodyCol;
-  ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,7); ctx.fill();
-  ctx.fillStyle = "rgba(255,255,255,0.12)";
-  ctx.beginPath(); ctx.roundRect(-17,-9.5,34,8,7); ctx.fill();
-  if(stripeCol){ ctx.fillStyle = stripeCol; ctx.fillRect(-17,-2.4,34,4.8); }
-  ctx.fillStyle = "#1b2233";
+  // rear thruster block (behind body)
+  let bg = ctx.createLinearGradient(-19,-8,-15,8);
+  bg.addColorStop(0,"#2c3651"); bg.addColorStop(1,"#141a29");
+  ctx.fillStyle = bg; ctx.fillRect(-19,-8,4,16);
+
+  // body: base color + top-left light -> bottom-right shade, clipped to silhouette
+  ctx.save();
+  ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,7); ctx.clip();
+  ctx.fillStyle = bodyCol; ctx.fillRect(-18,-10,36,20);
+  let g = ctx.createLinearGradient(-14,-9.5,15,9.5);
+  g.addColorStop(0,"rgba(255,255,255,0.30)");
+  g.addColorStop(0.45,"rgba(255,255,255,0.03)");
+  g.addColorStop(0.60,"rgba(0,0,0,0.05)");
+  g.addColorStop(1,"rgba(0,0,0,0.36)");
+  ctx.fillStyle = g; ctx.fillRect(-18,-10,36,20);
+  // top sheen band fading down
+  let sh = ctx.createLinearGradient(0,-9.5,0,-1);
+  sh.addColorStop(0,"rgba(255,255,255,0.34)");
+  sh.addColorStop(1,"rgba(255,255,255,0)");
+  ctx.fillStyle = sh; ctx.fillRect(-17,-9.5,34,8.5);
+  // racing stripe with gloss (kept accent)
+  if(stripeCol){
+    ctx.fillStyle = stripeCol; ctx.fillRect(-17,-2.4,34,4.8);
+    let stg = ctx.createLinearGradient(0,-2.4,0,2.4);
+    stg.addColorStop(0,"rgba(255,255,255,0.30)");
+    stg.addColorStop(0.5,"rgba(255,255,255,0)");
+    stg.addColorStop(1,"rgba(0,0,0,0.22)");
+    ctx.fillStyle = stg; ctx.fillRect(-17,-2.4,34,4.8);
+  }
+  // specular shine dot (top-left)
+  let sp = ctx.createRadialGradient(-9,-6,0,-9,-6,9);
+  sp.addColorStop(0,"rgba(255,255,255,0.55)");
+  sp.addColorStop(1,"rgba(255,255,255,0)");
+  ctx.fillStyle = sp;
+  ctx.beginPath(); ctx.ellipse(-9,-6,8,4.6,-0.32,0,TAU); ctx.fill();
+  // ground-contact ambient occlusion sliver along bottom edge
+  let ao = ctx.createLinearGradient(0,9.5,0,4.5);
+  ao.addColorStop(0,"rgba(0,0,0,0.30)");
+  ao.addColorStop(1,"rgba(0,0,0,0)");
+  ctx.fillStyle = ao; ctx.fillRect(-17,4.5,34,5);
+  ctx.restore();
+
+  // rim light: bright top-left -> dark bottom-right in a single gradient stroke
+  let rim = ctx.createLinearGradient(-17,-9.5,17,9.5);
+  rim.addColorStop(0,"rgba(255,255,255,0.5)");
+  rim.addColorStop(0.5,"rgba(255,255,255,0.05)");
+  rim.addColorStop(0.55,"rgba(0,0,0,0.05)");
+  rim.addColorStop(1,"rgba(0,0,0,0.4)");
+  ctx.strokeStyle = rim; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.roundRect(-16.4,-8.9,32.8,17.8,6.5); ctx.stroke();
+
+  // glossy cockpit glass: deep base + diagonal reflection streak
+  ctx.fillStyle = "#131a29";
   ctx.beginPath(); ctx.roundRect(-6,-6.5,12,13,4); ctx.fill();
-  ctx.fillStyle = "rgba(160,220,255,0.4)";
-  ctx.beginPath(); ctx.roundRect(3,-5.5,3.4,11,2); ctx.fill();
-  ctx.fillStyle = "#20283c";
-  ctx.fillRect(-19,-8,4,16);
+  let cg = ctx.createLinearGradient(-6,-6.5,6,6.5);
+  cg.addColorStop(0,"rgba(96,150,210,0.5)");
+  cg.addColorStop(0.5,"rgba(28,44,74,0.25)");
+  cg.addColorStop(1,"rgba(4,7,14,0.5)");
+  ctx.fillStyle = cg;
+  ctx.beginPath(); ctx.roundRect(-6,-6.5,12,13,4); ctx.fill();
+  ctx.save();
+  ctx.beginPath(); ctx.roundRect(-6,-6.5,12,13,4); ctx.clip();
+  ctx.fillStyle = "rgba(255,255,255,0.22)";
+  ctx.beginPath();
+  ctx.moveTo(-6,-1.5); ctx.lineTo(-1.5,-6.5); ctx.lineTo(1.5,-6.5); ctx.lineTo(-3,-1.5); ctx.closePath(); ctx.fill();
+  ctx.restore();
+  // bright front glass edge (kept accent)
+  ctx.fillStyle = "rgba(170,222,255,0.42)";
+  ctx.beginPath(); ctx.roundRect(3,-5.5,3,11,2); ctx.fill();
 }
 function drawVehiclePreview(vid, x, y, scale, alpha){
   ctx.save(); ctx.translate(x,y); ctx.scale(scale,scale); ctx.rotate(-Math.PI/2);
