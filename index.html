@@ -1654,8 +1654,11 @@ let store = { unlocked:1, stars:{}, aura:0, coinsBank:0, muted:false, customLeve
   ownedCars:["rocket"], car:"rocket", ownedPets:[], pet:null, carNum:67, shopGift:false,
   curSeries:0, seriesCleared:{}, coopUnlocked:1, coopStars:{},
   // 🎁 mystery crates (v1): permanent upgrades, one-use power-ups, cosmetics — see docs/MYSTERY-CRATES.md
-  upg:{engine:0,grip:0,nitro:0,magnet:0,lucky:0}, powerups:{}, armed:null,
-  cosmetics:[], cosmetic:null, cratesOpened:0, goldenFound:0, goldTaken:{} };
+  upg:{engine:0,grip:0,nitro:0,magnet:0,lucky:0,pads:0,clock:0,boom:0,bumper:0}, powerups:{}, armed:null,
+  cosmetics:[], cosmetic:null, cratesOpened:0, goldenFound:0, goldTaken:{},
+  // 📖 crates v3 collection book — found = lifetime discovery ledger, seenItems = viewed ledger.
+  // Keys namespaced "upg:engine" / "pu:rocket" / "cos:trail_flame" / "cur:pouch". Both default {} → Object.assign-safe.
+  found:{}, seenItems:{} };
 try { const s = localStorage.getItem("turboMaze"); if(s) store = Object.assign(store, JSON.parse(s)); } catch(e){}
 // 🎁 retroactively grant each world's reward car for any world ALREADY beaten (older saves recorded the clear before reward cars existed)
 for(let s=0;s<SERIES.length;s++)
@@ -2411,6 +2414,7 @@ function updateCar(car, ctrl, dt){
   car.sqv += (1-car.sq)*260*dt; car.sqv *= Math.exp(-14*dt); car.sq += car.sqv*dt;
   car.invuln = Math.max(0, car.invuln-dt);
   car.ghostT = Math.max(0, (car.ghostT||0)-dt);   // 👻 ghost phase timer
+  car.magT = Math.max(0, (car.magT||0)-dt);       // 🧲 mega-magnet burst timer (v3)
   const wasAir = car.airT>0;
   car.airT = Math.max(0, (car.airT||0)-dt);
   if(wasAir && car.airT<=0){                                   // 🟠 SPLASHDOWN — hop lands
@@ -2465,6 +2469,11 @@ function collideWalls(car){
       car.vx*=0.72; car.vy*=0.72; car.sq = 0.8;
       AU.bonk(); AU.beep(700,0.1,"square",0.12,200);
       float("SMASH!", crate.x, crate.y-20, "#ff9f45");
+      const mBoom = boosted(car)? upgMul("boom")-1 : 0;             // 🧨 CRATE BOOM (v3): smashed crates drop bonus coins
+      if(mBoom>0){
+        const drops = Math.floor(mBoom) + (Math.random() < mBoom%1 ? 1 : 0);   // (mult-1) expected, GOLD = 2 guaranteed
+        if(drops>0) scatterCoins(crate.x, crate.y, drops);
+      }
       continue;
     }
     const bx=c*CELL, by=r*CELL;
@@ -2544,6 +2553,10 @@ function updateEntities(dt){
       let near = game.crushers.some(k=> Math.abs(k.cc-cc)<1.6 && Math.abs(k.cr-cr2)<1.6);
       if(!near) near = game.goobers.some(gb=> !gb.dead && dist(c.x,c.y,gb.x,gb.y)<115);
       if(near){ game.slowmo = 2.5; firePU("slowmo", c.x, c.y); }
+    } else if(c.pu==="megamag"){                                    // 🧲 MEGA MAGNET (v3): pops near a coin cluster
+      let n=0;
+      for(const cn of game.coins){ if(!cn.got && !cn.nitro && dist(c.x,c.y,cn.x,cn.y)<150 && ++n>=3) break; }
+      if(n>=3){ c.magT = 4; firePU("megamag", c.x, c.y); }          // 3+ coins close by → 4s super-pull
     }
   }
   // VS battle: zap pickups respawn; trap walls slam shut for a moment when a trigger is hit
@@ -2579,12 +2592,14 @@ function updateEntities(dt){
 
   for(const car of game.cars){
   // coins (with a little magnet — 🧲 upgrade widens the pull; 💰 lucky / ✌️ double boost the payout)
-  const magR = boosted(car)? 95*upgMul("magnet") : 95;
+  const magBurst = car===game.car && (car.magT||0)>0;               // 🧲 MEGA MAGNET burst window (v3)
+  const magR = magBurst? 340 : (boosted(car)? 95*upgMul("magnet") : 95);   // flat 340px cap — no creep with the magnet upgrade
+  const pull = magBurst? 10 : 6;                                    // burst pulls harder too
   for(const cn of game.coins){
     if(cn.got) continue;
     if(cn.cool){ cn.cool = Math.max(0, cn.cool-dt); if(cn.cool>0) continue; }
     const d = dist(car.x,car.y,cn.x,cn.y);
-    if(d<magR){ cn.x = lerp(cn.x, car.x, dt*6); cn.y = lerp(cn.y, car.y, dt*6); }
+    if(d<magR){ cn.x = lerp(cn.x, car.x, dt*pull); cn.y = lerp(cn.y, car.y, dt*pull); }
     if(d<34){
       cn.got = true;
       if(cn.nitro){
@@ -2641,9 +2656,11 @@ function updateEntities(dt){
       if(!p.cool && car.airT<=0){
         p.cool = 0.9;
         const sp = Math.hypot(car.vx,car.vy)||1;
-        const kick = 330*(CONFIG.speed||1);
+        const mPad = boosted(car)? upgMul("pads") : 1;              // 🔋 PAD POWER (v3)
+        const kick = 330*(CONFIG.speed||1)*(1+(mPad-1)*0.4);        // speed part damped 40% — never flings him into trouble
         car.vx += car.vx/sp*kick; car.vy += car.vy/sp*kick;
-        car.nitroMeter = Math.min(100, car.nitroMeter+25);
+        car.nitroMeter = Math.min(100, car.nitroMeter+25*mPad);     // the refill is the feel-good part — full strength
+        if(mPad>1.2) for(let i=0;i<6;i++) sparkle(car.x, car.y);
         car.sq = 1.25; AU.nitro(); game.shake = Math.min(6, game.shake+3);
         float("BOOST!", car.x, car.y-40, game.lv.hue);
       }
@@ -2660,7 +2677,7 @@ function updateEntities(dt){
         car.vx = Math.cos(car.heading)*launch;                     // fly the way the car POINTS (readable, kills drift)
         car.vy = Math.sin(car.heading)*launch;
         car.airT = car.airMax = 0.55;                              // airtime knob (Space will reuse/crank this)
-        car.nitroMeter = Math.min(100, car.nitroMeter+15);
+        car.nitroMeter = Math.min(100, car.nitroMeter+15*(boosted(car)? upgMul("pads") : 1));   // 🔋 PAD POWER feeds splash hops (v3)
         car.sq = 1.35;                                             // STRETCH tall on take-off
         AU.nitro(); game.shake = Math.min(6, game.shake+3);
         for(let i=0;i<10;i++) puff(bp.x+rand(-16,16), bp.y+rand(-16,16), "rgba(120,200,255,0.55)");
@@ -2726,7 +2743,9 @@ function updateEntities(dt){
         car.invuln = 1.6; car.spinT = 0.55; car.sq = 0.6;
         game.bonks++; game.shake = 9; AU.goober();
         sticker("👾 "+pick(YELLS.goober), "#ff8fe0");
-        const steal = Math.min(3, car.coins);
+        const guard = boosted(car)? upgMul("bumper") : 1;           // 🦺 GOOBER GUARD (v3): he grabs fewer coins
+        const steal = Math.min(Math.floor(3/guard), car.coins);     // tiers: 2,2,1,1,1 · GOLD 0
+        if(!steal && guard>1) float("🦺 NO COINS TAKEN!", car.x, car.y-40, "#9ae64a");
         car.coins -= steal; store.coinsBank = Math.max(0, store.coinsBank-steal);
         scatterCoins(car.x, car.y, steal);
         const kb = 260; const ka = Math.atan2(car.y-gb.y, car.x-gb.x);
@@ -2891,7 +2910,7 @@ function carBump(a, b){
 }
 function levelClear(){
   const L = game.lv;
-  const timeOk = game.playT <= L.par;
+  const timeOk = game.playT <= parFor(L);
   const allCoins = game.car.coins >= game.coinsAll;
   const stars = 1 + (timeOk?1:0) + (allCoins?1:0);
   const bonus = 50 + stars*25 + (game.rival? 100 : 0);   // +100 for smoking the boss
@@ -2933,7 +2952,10 @@ function levelClear(){
     msg: game.rival? "SMOKED HIM! 🏆" : undefined, unlock };
   game.state = "clear";
   AU.win();
-  confettiBurst(W/2, H*0.35, 130, L.hue);
+  // 🎆 PARTY FINISH cosmetic (v3): rainbow multi-burst instead of the level-hue burst (guards = data-delete safe)
+  const cosW = cosOn() && COSMETICS[store.cosmetic];
+  if(cosW && cosW.kind==="confetti") for(const pc of ["#ff5db1","#ffd76a","#7ef7ff","#9ae64a"]) confettiBurst(W/2, H*0.35, 40, pc);
+  else confettiBurst(W/2, H*0.35, 130, L.hue);
 }
 function coopClear(){
   const L = game.lv;
@@ -3948,9 +3970,17 @@ function drawCar(car){
   ctx.globalAlpha = 1;
   ctx.save();
   ctx.translate(car.x, car.y);
-  // underglow
-  ctx.fillStyle = game.lv.hue; ctx.globalAlpha = 0.3;
-  ctx.beginPath(); ctx.ellipse(0, 0, 24, 17, 0, 0, TAU); ctx.fill();
+  // underglow — 💡 a kind:"glow" cosmetic (v3) recolours it, brighter + pulsing (pure looks, player car only)
+  let glowCol = game.lv.hue, glowA = 0.3, glowR = 1;
+  if(!car.p2 && cosOn() && store.cosmetic){
+    const cg = COSMETICS[store.cosmetic];
+    if(cg && cg.kind==="glow"){
+      glowCol = cg.col==="rainbow"? "hsl("+Math.floor((game.t*120)%360)+",90%,62%)" : cg.col;
+      glowA = 0.5+0.14*Math.sin(game.t*6); glowR = 1.25;
+    }
+  }
+  ctx.fillStyle = glowCol; ctx.globalAlpha = glowA;
+  ctx.beginPath(); ctx.ellipse(0, 0, 24*glowR, 17*glowR, 0, 0, TAU); ctx.fill();
   ctx.globalAlpha = 1;
   const air = (car.airT>0) ? Math.sin((1-car.airT/(car.airMax||0.55))*Math.PI) : 0;   // 🟠 0→1→0 hop parabola
   if(air>0){
@@ -4437,7 +4467,7 @@ function drawHUD(){
   // stopwatch (center-top, small + friendly)
   const tStr = game.playT.toFixed(1)+"s";
   ctx.font = "800 19px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-  const late = game.playT > game.lv.par;
+  const late = game.playT > parFor(game.lv);
   roundedPanel(W/2-56, top, 112, 38, 12);
   ctx.textAlign="center";
   ctx.fillStyle = late ? "#8b93ad" : "#f4f6ff";
@@ -4789,7 +4819,7 @@ function drawSeries(){
       game.importedTrack = null;
       if(b.act==="build") enterBuilder(null);
       else if(b.act==="shop"){ sh.tab="cars"; shopSyncSel(); game.state="shop"; }   // centre the showroom on the equipped car every time it opens
-      else if(b.act==="crates" && CONFIG.cratesEnabled) game.state="crates";
+      else if(b.act==="crates" && CONFIG.cratesEnabled){ bk.open=false; game.state="crates"; }
       else if(b.act==="vs") game.state="vspick";
       else if(b.act==="coop") game.state="cooppick";
       else if(b.act.startsWith("pc:")){ const cl = store.customLevels.find(c=>c.id===+b.act.slice(3)); if(cl) loadCustom(cl, "map"); }
@@ -5555,20 +5585,29 @@ const RARITY = [
   { key:"legendary", name:"LEGENDARY", col:"#ffb742" },
   { key:"secret",    name:"SECRET",    col:"#ff5db1" },
 ];
+// 🥇 v3 PRESTIGE: a 6th GOLD tier for UPGRADES ONLY — deliberately NOT a RARITY entry
+// (no odds arrays, no index coupling per §13.6). A LEGENDARY+ upgrade roll on an
+// already-SECRET stat ascends it to GOLD — turns a maxed kid's dupe-coins moment
+// into the long-haul chase. Canonical gold colour for chips/reveal/collection book:
+const PRESTIGE = { name:"GOLD", col:"#ffe14d" };
 // crate types — odds are % weights for [common, rare, epic, legendary, secret]
 const CRATES = {
   mystery: { name:"MYSTERY CRATE",    emoji:"🎁", price:100, odds:[54,27,12,6,1] },
   mega:    { name:"MEGA MYSTERY BOX", emoji:"🎉", price:200, odds:[ 0,50,30,15,5] },
   golden:  { name:"GOLDEN CRATE",     emoji:"🎁", price:0,   odds:[ 0,50,32,14,4] },   // 🎁 v2: free in-level find (never sold; smashed mid-race — see spawnGolden)
 };
-// permanent car upgrades — kept best-of-each. mult[tier]: tier 0 = none, 1..5 = common..secret.
-// stats that touch difficulty (engine/grip) bump small; feel-good ones (nitro/magnet) bump big.
+// permanent car upgrades — kept best-of-each. mult[tier]: 0 = none, 1..5 = common..secret, 6 = 🥇 GOLD prestige (v3).
+// stats that touch difficulty (engine/grip) bump TINY, feel-good/forgiveness ones bump BIG.
 const CRATE_UPG = {
-  engine: { name:"ENGINE",     emoji:"🔧", mult:[1,1.02,1.04,1.06,1.09,1.12] }, // top speed
-  grip:   { name:"GRIP TIRES", emoji:"🛞", mult:[1,1.03,1.06,1.10,1.15,1.22] }, // turning / ice
-  nitro:  { name:"NITRO TANK", emoji:"⚡", mult:[1,1.10,1.20,1.35,1.55,1.80] }, // nitro recharge
-  magnet: { name:"MAGNET",     emoji:"🧲", mult:[1,1.12,1.25,1.40,1.60,1.90] }, // coin pull radius
-  lucky:  { name:"LUCKY",      emoji:"💰", mult:[1,1.03,1.06,1.10,1.16,1.25] }, // coins earned
+  engine: { name:"ENGINE",       emoji:"🔧", mult:[1,1.02,1.04,1.06,1.09,1.12,1.14] }, // top speed
+  grip:   { name:"GRIP TIRES",   emoji:"🛞", mult:[1,1.03,1.06,1.10,1.15,1.22,1.26] }, // turning / ice
+  nitro:  { name:"NITRO TANK",   emoji:"⚡", mult:[1,1.10,1.20,1.35,1.55,1.80,2.00] }, // nitro recharge
+  magnet: { name:"MAGNET",       emoji:"🧲", mult:[1,1.12,1.25,1.40,1.60,1.90,2.10] }, // coin pull radius
+  lucky:  { name:"LUCKY",        emoji:"💰", mult:[1,1.03,1.06,1.10,1.16,1.25,1.30] }, // coins earned
+  pads:   { name:"PAD POWER",    emoji:"🔋", mult:[1,1.10,1.20,1.35,1.55,1.80,2.00] }, // 🆕 v3: boost/splash pads kick harder + refill more nitro
+  clock:  { name:"STAR CLOCK",   emoji:"⏰", mult:[1,1.04,1.07,1.10,1.14,1.18,1.22] }, // 🆕 v3: extra par grace for the ⏱ star (never harder)
+  boom:   { name:"CRATE BOOM",   emoji:"🧨", mult:[1,1.25,1.50,1.75,2.00,2.50,3.00] }, // 🆕 v3: smashed crates drop bonus coins ((mult-1) expected)
+  bumper: { name:"GOOBER GUARD", emoji:"🦺", mult:[1,1.25,1.45,1.75,2.20,2.90,3.50] }, // 🆕 v3: goobers steal fewer coins (floor(3/mult): 2,2,1,1,1 · GOLD 0)
 };
 const UPG_KEYS = Object.keys(CRATE_UPG);
 // one-use power-ups — arm ONE before a race (store.armed). rarity = the tier they drop in.
@@ -5579,32 +5618,57 @@ const POWERUPS = {
   freeze: { name:"FREEZE",       emoji:"❄️", rarity:2, desc:"Freeze goobers ~4s" },
   ghost:  { name:"GHOST",        emoji:"👻", rarity:2, desc:"Phase through the next hit" },
   slowmo: { name:"SLOW-MO",      emoji:"⏱️", rarity:3, desc:"Slow-mo near a crusher" },
+  party:  { name:"COIN PARTY",   emoji:"🎊", rarity:0, desc:"Bonus coins at GO!" },            // 🆕 v3 start-fire
+  megamag:{ name:"MEGA MAGNET",  emoji:"🧲", rarity:1, desc:"Slurps every coin nearby ~4s" },  // 🆕 v3 reactive
+  saver:  { name:"SPLASH SAVER", emoji:"🛟", rarity:2, desc:"Auto-hop over one fall" },        // 🆕 v3 reactive
+  warp:   { name:"WARP START",   emoji:"🌟", rarity:2, desc:"Zip 3 squares at GO!" },          // 🆕 v3 start-fire
 };
-// pure-looks collectibles (no gameplay effect). kind: trail | shine | topper.
+// pure-looks collectibles (no gameplay effect). kind: trail | shine | topper | glow | confetti.
 const COSMETICS = {
   trail_flame:   { name:"FLAME TRAIL",   emoji:"🔥", rarity:1, kind:"trail",  col:"#ff7a1a" },
   trail_rainbow: { name:"RAINBOW TRAIL", emoji:"🌈", rarity:2, kind:"trail",  col:"rainbow" },
   shine_gold:    { name:"GOLD SHINE",    emoji:"✨", rarity:3, kind:"shine",   col:"#ffd76a" },
   topper_goat:   { name:"GOAT TOPPER",   emoji:"🐐", rarity:4, kind:"topper" },
   topper_crown:  { name:"CROWN TOPPER",  emoji:"👑", rarity:4, kind:"topper" },
+  trail_bubble:  { name:"BUBBLE TRAIL",   emoji:"🫧", rarity:1, kind:"trail",   col:"#8fd8ff" },  // 🆕 v3: zero-code
+  glow_lava:     { name:"LAVA GLOW",      emoji:"🌋", rarity:1, kind:"glow",    col:"#ff6a3a" },  // 🆕 v3: new slot
+  glow_galaxy:   { name:"GALAXY GLOW",    emoji:"🌌", rarity:2, kind:"glow",    col:"rainbow" },  // 🆕 v3: hue-cycling
+  confetti_party:{ name:"PARTY FINISH",   emoji:"🎆", rarity:2, kind:"confetti" },                // 🆕 v3: new slot
+  topper_dino:   { name:"DINO TOPPER",    emoji:"🦖", rarity:3, kind:"topper" },                  // 🆕 v3: zero-code
+  topper_unicorn:{ name:"UNICORN TOPPER", emoji:"🦄", rarity:4, kind:"topper" },                  // 🆕 v3: restocks SECRET
 };
 // coin / aura filler so a common pull still feels like progress
 const CURRENCY = {
   pouch: { name:"COIN POUCH", emoji:"🪙", rarity:0, coins:25 },
   sack:  { name:"COIN SACK",  emoji:"💰", rarity:1, coins:100 },
   auraB: { name:"AURA BONUS", emoji:"💫", rarity:0, aura:15 },
+  chest: { name:"TREASURE CHEST", emoji:"🧰", rarity:2, coins:250 },   // 🆕 v3: epic filler — late-game epic pulls never feel empty
 };
 // 🎁 reconcile a loaded save: drop references to any crate item removed from the data tables above (makes deleting an asset safe)
 if(store.armed && !POWERUPS[store.armed]) store.armed = null;
 if(store.cosmetic && !COSMETICS[store.cosmetic]) store.cosmetic = null;
+// 📖 v3: seed the collection ledger from an existing save — already-owned items count as
+// found AND seen (no undiscovered-silhouette / NEW!-badge spam on upgrade day)
+(function(){ const seed = k=>{ if(!store.found[k]){ store.found[k]=1; store.seenItems[k]=1; } };
+  for(const k of UPG_KEYS) if((store.upg[k]||0)>0) seed("upg:"+k);
+  for(const id in store.powerups) if(POWERUPS[id]) seed("pu:"+id);
+  for(const id of store.cosmetics) if(COSMETICS[id]) seed("cos:"+id);
+})();
 
 // current multiplier for an upgrade stat (1 = nothing owned yet)
 // 🎁 bucket toggles (CONFIG flags) — each folds in the master. See docs/MYSTERY-CRATES.md "Reverting".
 function upgOn(){ return CONFIG.cratesEnabled && CONFIG.cratesUpgrades; }
 function puOn(){  return CONFIG.cratesEnabled && CONFIG.cratesPowerups; }
 function cosOn(){ return CONFIG.cratesEnabled && CONFIG.cratesCosmetics; }
+// 📖 v3 collection-book ledger helpers. liveKey guards stale keys of DELETED assets so a
+// removed data line can never leave a phantom NEW! badge (docs §13.7 pattern).
+function liveKey(k){ const i=k.indexOf(":"), b=k.slice(0,i), id=k.slice(i+1);
+  return b==="upg"? !!CRATE_UPG[id] : b==="pu"? !!POWERUPS[id] : b==="cos"? !!COSMETICS[id] : !!CURRENCY[id]; }
+function isNewItem(k){ return !!(store.found[k] && !store.seenItems[k]); }
+function unseenCount(){ let n=0; for(const k in store.found) if(!store.seenItems[k] && liveKey(k)) n++; return n; }
+function bookSeen(){ let d=false; for(const k in store.found) if(!store.seenItems[k]){ store.seenItems[k]=1; d=true; } if(d) save(); }
 // current multiplier for an upgrade stat (1 = off / nothing owned / stat deleted)
-function upgMul(kind){ const u = CRATE_UPG[kind]; return (upgOn() && u) ? u.mult[store.upg[kind]||0] : 1; }
+function upgMul(kind){ const u = CRATE_UPG[kind]; return (upgOn() && u) ? (u.mult[Math.min(store.upg[kind]||0, u.mult.length-1)] || 1) : 1; }
 // should the human's upgrades/power-ups apply to this car right now?
 // campaign only — VS/KO/co-op stay fair unless CONFIG.powerUpsInVs is on.
 function boosted(car){
@@ -5621,6 +5685,9 @@ function carPerk(car){
   if((game.vs||game.ko||game.coop) && !CONFIG.powerUpsInVs) return false;
   return true;
 }
+// ⏰ STAR CLOCK (v3): par seconds for the ⏱ star, stretched by the clock upgrade.
+// boosted() gates it to the human CAMPAIGN car — co-op par math (coopClear/drawCoopHUD) never moves.
+function parFor(L){ return L.par * (boosted(game.car)? upgMul("clock") : 1); }
 // weighted 0..4 rarity roll from a crate's odds array
 function rollTier(odds){
   let tot=0; for(const o of odds) tot+=o;
@@ -5639,33 +5706,46 @@ function poolForTier(t){
   return pool;
 }
 // hand out one drop, mutate store, and return a card description for the reveal
+// v3: also marks the 📖 found ledger and tags the result with badge:"new"|"dupe"|null (+ gold:true for prestige)
 function grantDrop(drop, t){
   if(drop.type==="pu"){
     const p = POWERUPS[drop.id];
+    const k = "pu:"+drop.id, isNew = !store.found[k]; store.found[k] = 1;          // 📖 v3
     store.powerups[drop.id] = (store.powerups[drop.id]||0)+1;
-    return { icon:p.emoji, name:p.name, sub:p.desc };
+    return { icon:p.emoji, name:p.name, sub:p.desc, badge: isNew? "new" : null };
   }
   if(drop.type==="cos"){
     const c = COSMETICS[drop.id];
+    store.found["cos:"+drop.id] = 1;                                               // 📖 v3 (always new — pool excludes owned)
     store.cosmetics.push(drop.id);
-    return { icon:c.emoji, name:c.name, sub:"New look!" };
+    return { icon:c.emoji, name:c.name, sub:"New look!", badge:"new" };
   }
   if(drop.type==="cur"){
     const c = CURRENCY[drop.id] || drop;   // (|| drop handles the empty-pool floor coins, which have no id)
-    if(c.coins){ store.coinsBank += c.coins; return { icon:c.emoji||"🪙", name:"+"+c.coins+" COINS", sub:c.name||"Lucky find!" }; }
-    store.aura += c.aura; return { icon:c.emoji||"💫", name:"+"+c.aura+" AURA", sub:c.name||"Aura!" };
+    let isNew = false;                                                             // 📖 v3: floor coins (no id) never mark/badge
+    if(drop.id){ const k = "cur:"+drop.id; isNew = !store.found[k]; store.found[k] = 1; }
+    if(c.coins){ store.coinsBank += c.coins; return { icon:c.emoji||"🪙", name:"+"+c.coins+" COINS", sub:c.name||"Lucky find!", badge: isNew? "new" : null }; }
+    store.aura += c.aura; return { icon:c.emoji||"💫", name:"+"+c.aura+" AURA", sub:c.name||"Aura!", badge: isNew? "new" : null };
   }
   // upgrade: random stat at tier t+1; if you already own that tier or better → coins instead
   if(!UPG_KEYS.length){ const c=20*(t+1); store.coinsBank+=c; return { icon:"🪙", name:"+"+c+" COINS", sub:"Lucky find!" }; }
   const stat = UPG_KEYS[(Math.random()*UPG_KEYS.length)|0], newTier = t+1;
   if(!CRATE_UPG[stat]){ const c=20*newTier; store.coinsBank+=c; return { icon:"🪙", name:"+"+c+" COINS", sub:"Lucky find!" }; }
   if((store.upg[stat]||0) >= newTier){
+    // 🥇 PRESTIGE (v3): a LEGENDARY+ roll on a maxed (SECRET) stat promotes it to GOLD (tier 6).
+    // mult.length guard: trimming a mult array back to 6 entries switches prestige off safely (§13.7).
+    if(t>=3 && (store.upg[stat]||0)===RARITY.length && CRATE_UPG[stat].mult.length>RARITY.length+1){
+      store.upg[stat] = RARITY.length+1;
+      const gp = Math.round((CRATE_UPG[stat].mult[RARITY.length+1]-1)*100);
+      return { icon:"🥇", name:CRATE_UPG[stat].name+" GOLD +"+gp+"%", sub:"PRESTIGE! Beyond max!", gold:true };
+    }
     const c = 20*newTier; store.coinsBank += c;
-    return { icon:"🪙", name:"+"+c+" COINS", sub:"(already have "+CRATE_UPG[stat].name+")" };
+    return { icon:"🪙", name:"+"+c+" COINS", sub:"(already have "+CRATE_UPG[stat].name+")", badge:"dupe" };  // 📖 v3
   }
+  const k = "upg:"+stat, isNew = !store.found[k]; store.found[k] = 1;              // 📖 v3
   store.upg[stat] = newTier;
   const pct = Math.round((CRATE_UPG[stat].mult[newTier]-1)*100);
-  return { icon:CRATE_UPG[stat].emoji, name:CRATE_UPG[stat].name+" +"+pct+"%", sub:"Upgrade!" };
+  return { icon:CRATE_UPG[stat].emoji, name:CRATE_UPG[stat].name+" +"+pct+"%", sub:"Upgrade!", badge: isNew? "new" : null };
 }
 // buy + open a crate → kicks off the reveal animation
 function openCrate(key){
@@ -5787,12 +5867,15 @@ function drawGoldReveal(dt){
   ctx.textAlign="left";
   ctx.font="900 15px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle=col; ctx.fillText(RARITY[rv.tier].name+"!", x+64, y+22);
   ctx.font="800 18px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#f4f6ff"; ctx.fillText(rv.res.name, x+64, y+44);
+  if(rv.res.badge==="new"){ const nw2 = ctx.measureText(rv.res.name).width;
+    ctx.fillStyle="#ffd76a"; ctx.font="900 11px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+    ctx.fillText("NEW!", x+64+nw2+10, y+44); }
   ctx.restore();
 }
 
 /* ---- power-up run lifecycle & auto-triggers (see docs/MYSTERY-CRATES.md) ----
    One power-up is armed at a time (store.armed). rocket/double fire at the
-   start of every run; shield/freeze/ghost/slowmo fire reactively and are only
+   start of every run (party/warp too); shield/freeze/ghost/slowmo/saver/megamag fire reactively and are only
    spent when they actually trigger — so an unused one carries to the next race. */
 function consumeArmed(){
   const id = store.armed; if(!id) return;
@@ -5807,24 +5890,54 @@ function firePU(kind, x, y){          // a reactive power-up went off: spend it 
   AU.nitro(); game.shake = Math.min(8, game.shake+3);
   for(let i=0;i<10;i++) puff(x==null?game.car.x:x, y==null?game.car.y:y, "rgba(126,247,255,0.5)");
 }
-// eat the next hit (trap door / goober) with an armed 🛡️ shield or 👻 ghost
+// eat the next hit (trap door / goober) with an armed 🛡️ shield, 👻 ghost or 🛟 saver
 function blockHit(car, x, y){
   if(car!==game.car || !car.pu) return false;
   if(car.pu==="shield"){ car.invuln = Math.max(car.invuln, 1.0); firePU("shield", x, y); return true; }
   if(car.pu==="ghost"){ car.ghostT = 2.0; car.invuln = Math.max(car.invuln, 2.0); firePU("ghost", x, y); return true; }
+  if(car.pu==="saver"){                          // 🛟 SPLASH SAVER (v3): auto-hop clean over the hole/goober — splash-pad contract
+    const SPD = CONFIG.speed||1, sp = Math.hypot(car.vx, car.vy);
+    const launch = clamp(sp + 260*SPD, 420*SPD, 600*SPD);
+    car.vx = Math.cos(car.heading)*launch; car.vy = Math.sin(car.heading)*launch;
+    car.airT = car.airMax = 0.55; car.invuln = Math.max(car.invuln, 1.2); car.sq = 1.35;
+    firePU("saver", x, y); AU.beep(520,0.12,"sine",0.14,260);
+    return true;
+  }
   return false;
 }
 // arm the run's power-up (campaign only unless CONFIG.powerUpsInVs) — call once per run start
 function armRun(){
   const c = game.car; if(!c) return;
-  c.dbl=false; c.shield=false; c.ghostT=0; c.pu=null; c.luckyAcc=0; game.slowmo=0;
+  c.dbl=false; c.shield=false; c.ghostT=0; c.pu=null; c.luckyAcc=0; c.magT=0; game.slowmo=0;
   for(const gb of game.goobers) gb.frozen = 0;
   const allow = puOn() && ((!game.vs && !game.ko && !game.coop) || CONFIG.powerUpsInVs);   // 🎁 power-ups toggle
   const id = store.armed;
   if(!allow || !id || !POWERUPS[id] || !(store.powerups[id]>0)) return;   // !POWERUPS[id] → safe if the id was deleted
   if(id==="rocket"){ c.nitroMeter=100; c.boost=0.3; consumeArmed(); puFloat("🚀 ROCKET START!"); }
   else if(id==="double"){ c.dbl=true; consumeArmed(); puFloat("✌️ DOUBLE COINS!"); }
-  else { c.pu=id; if(id==="shield") c.shield=true; }   // shield/freeze/ghost/slowmo fire during the run
+  else if(id==="party"){                                            // 🎊 v3: scatter 6 bonus coins around the start straight
+    scatterCoins(c.x, c.y, 6); consumeArmed(); puFloat("🎊 COIN PARTY!");
+    for(let i=0;i<10;i++) sparkle(c.x+rand(-20,20), c.y+rand(-20,20));
+  }
+  else if(id==="warp"){                                             // 🌟 v3: hop up to 3 cells along the racing line at GO
+    const F = game.finish;
+    const path = (F && game.startCell)? bfsPathCells(game.startCell, [F.c, F.r]) : [];
+    const bad = (cc,rr)=> isSolid(cc,rr) || game.doors.some(d=>d.c===cc&&d.r===rr) || game.gates.some(g=>g.c===cc&&g.r===rr)
+             || game.trapDoors.some(t=>t.c===cc&&t.r===rr) || game.crumbles.some(m=>m.c===cc&&m.r===rr)
+             || game.crushers.some(k=>{ for(let s=0;s<=k.range;s++) if(k.c+k.dx*s===cc && k.r+k.dy*s===rr) return true; return false; });
+    let stop = 0;
+    for(let i=1; i<path.length-1 && i<=3; i++){ if(bad(path[i][0], path[i][1])) break; stop = i; }   // never skips a door/gate or lands in danger
+    if(stop>0){
+      for(let i=0;i<10;i++) puff(c.x, c.y, "rgba(255,215,106,0.5)");
+      const [wc,wr] = path[stop];
+      c.x=(wc+0.5)*CELL; c.y=(wr+0.5)*CELL; c.vx=c.vy=0; c.invuln=Math.max(c.invuln,0.8);
+      if(path[stop+1]) c.heading = Math.atan2(path[stop+1][1]-wr, path[stop+1][0]-wc);   // face down the track
+      c.trail.length=0; game.cam.x=c.x; game.cam.y=c.y;                                  // no ghost trail / camera lurch
+      consumeArmed(); puFloat("🌟 WARP START!"); AU.nitro();
+      for(let i=0;i<14;i++) sparkle(c.x+rand(-20,20), c.y+rand(-20,20));
+    }                                                               // no safe hop → NOT consumed, carries to the next race (kind)
+  }
+  else { c.pu=id; if(id==="shield") c.shield=true; }   // shield/freeze/ghost/slowmo/saver/megamag fire during the run
 }
 // equipped 🎨 trail cosmetic overrides the car's motion-trail colour (flame = orange, rainbow = cycling hue)
 function cosTrail(car, v){
@@ -5836,6 +5949,8 @@ function cosTrail(car, v){
 }
 
 /* ---------------- CRATES screen (buy · reveal · inventory · arm) ---------------- */
+// 📖 v3 collection book overlay (module-local like `sh` — not persisted)
+const bk = { open:false, t:0 };
 function sectionLabel(txt, x, y){
   ctx.font="800 13px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#8b93ad";
   ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillText(txt, x, y+9);
@@ -5845,8 +5960,20 @@ function crateCard(x, y, w, h, key){
   roundedPanel(x, y, w, h, 14, can? "rgba(255,183,66,0.14)" : "rgba(14,17,26,0.85)");
   ctx.strokeStyle = key==="mega"? "#ff5db1" : "#ffb742"; ctx.lineWidth = 2.5;
   ctx.beginPath(); ctx.roundRect(x+1.5, y+1.5, w-3, h-3, 13); ctx.stroke();
-  ctx.font = "36px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-  ctx.globalAlpha = can? 1 : 0.5; fillTextC(c.emoji, x+w/2, y+32); ctx.globalAlpha = 1;
+  ctx.font = (H<520?"30px":"36px")+" sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.globalAlpha = can? 1 : 0.5; fillTextC(c.emoji, x+w/2, y+(H<520?26:32)); ctx.globalAlpha = 1;
+  // 🎨 chance bar — each rarity's slice of this crate's odds; tiny-but-real slices get a
+  // visible 6px floor (stolen from the widest slice), the SECRET sliver twinkles
+  const SH2 = H<520, ox=x+14, ow=w-28, oy2=y+(SH2?46:54), tot2=c.odds.reduce((a,b)=>a+b,0);
+  const ws2 = c.odds.map(o=> o/tot2*ow);
+  for(let i2=0;i2<ws2.length;i2++) if(c.odds[i2]>0 && ws2[i2]<6){
+    const d2=6-ws2[i2]; ws2[i2]=6; ws2[ws2.indexOf(Math.max(...ws2))]-=d2; }
+  ctx.save(); ctx.beginPath(); ctx.roundRect(ox, oy2, ow, 7, 3.5); ctx.clip();
+  let sx2=ox; c.odds.forEach((o,i2)=>{ if(o<=0) return;
+    ctx.fillStyle=RARITY[i2].col;
+    if(i2===RARITY.length-1) ctx.globalAlpha=0.7+0.3*Math.sin(game.t*4);
+    ctx.fillRect(sx2, oy2, ws2[i2], 7); ctx.globalAlpha=1; sx2+=ws2[i2]; });
+  ctx.restore();
   ctx.font = "800 14px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.fillStyle = can? "#f4f6ff" : "#8b93ad"; ctx.fillText(c.name, x+w/2, y+h-30);
   ctx.fillStyle = "#e8a930"; ctx.beginPath(); ctx.arc(x+w/2-24, y+h-13, 6, 0, TAU); ctx.fill();
@@ -5856,13 +5983,18 @@ function crateCard(x, y, w, h, key){
   hudBtns.push({x, y, w, h, act:"buy:"+key});
 }
 function upgChip(x, y, w, h, k){
-  const u = CRATE_UPG[k], t = store.upg[k]||0;
-  roundedPanel(x, y, w, h, 10, "rgba(14,17,26,0.85)");
+  const u = CRATE_UPG[k]; if(!u) return;
+  const t = Math.min(store.upg[k]||0, u.mult.length-1), gold = t>RARITY.length;   // 🥇 tier 6 = GOLD prestige (v3)
+  roundedPanel(x, y, w, h, 10, gold? "rgba(255,225,77,0.14)" : "rgba(14,17,26,0.85)");
+  if(gold){ ctx.strokeStyle=PRESTIGE.col; ctx.globalAlpha=0.7+0.3*Math.sin(game.t*5); ctx.lineWidth=2;
+    ctx.beginPath(); ctx.roundRect(x+1,y+1,w-2,h-2,9); ctx.stroke(); ctx.globalAlpha=1; }
   ctx.font = "20px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
   ctx.globalAlpha = t? 1 : 0.4; fillTextC(u.emoji, x+w/2, y+19); ctx.globalAlpha = 1;
   ctx.font = "800 12px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-  ctx.fillStyle = t? RARITY[t-1].col : "#5a6178";
-  ctx.fillText(t? "+"+Math.round((u.mult[t]-1)*100)+"%" : "—", x+w/2, y+h-12);
+  ctx.fillStyle = gold? PRESTIGE.col : (t? RARITY[t-1].col : "#5a6178");
+  if(gold) fillTextC("🥇+"+Math.round((u.mult[t]-1)*100)+"%", x+w/2, y+h-12);   // fillTextC: label carries an emoji
+  else ctx.fillText(t? "+"+Math.round((u.mult[t]-1)*100)+"%" : "—", x+w/2, y+h-12);
+  if(isNewItem("upg:"+k)){ ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.arc(x+w-7, y+7, 4, 0, TAU); ctx.fill(); }   // 📖 NEW dot
 }
 function puChip(x, y, w, h, id){
   const p = POWERUPS[id]; if(!p) return;
@@ -5875,6 +6007,7 @@ function puChip(x, y, w, h, id){
   ctx.fillText("x"+n, x+w/2, y+h-21);
   ctx.fillStyle = armed? "#7ef7ff" : "#8b93ad"; ctx.font = "800 10px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.fillText(armed? "ARMED" : "ARM", x+w/2, y+h-9);
+  if(isNewItem("pu:"+id)){ ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.arc(x+w-7, y+7, 4, 0, TAU); ctx.fill(); }   // 📖 NEW dot
   hudBtns.push({x, y, w, h, act:"arm:"+id});
 }
 function cosChip(x, y, w, h, id){
@@ -5886,14 +6019,15 @@ function cosChip(x, y, w, h, id){
   fillTextC(c.emoji, x+w/2, y+20);
   ctx.fillStyle = on? "#ffb742" : "#8b93ad"; ctx.font = "800 10px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.fillText(on? "ON" : "WEAR", x+w/2, y+h-10);
+  if(isNewItem("cos:"+id)){ ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.arc(x+w-7, y+7, 4, 0, TAU); ctx.fill(); }   // 📖 NEW dot
   hudBtns.push({x, y, w, h, act:"wear:"+id});
 }
 function drawReveal(dt){
   const rv = game.reveal; rv.t += dt;
   ctx.fillStyle = "rgba(6,8,14,0.74)"; ctx.fillRect(0,0,W,H);
-  const cx=W/2, cy=H*0.42, col=RARITY[rv.tier].col;
+  const cx=W/2, cy=H*0.42, col=(rv.res&&rv.res.gold)? PRESTIGE.col : RARITY[rv.tier].col;   // 🥇 gold prestige reveal
   if(rv.t < 0.9){
-    const shake = (0.9-rv.t)*11, s = 46 + rv.t*30;
+    const shake = (0.9-rv.t)*11*(1+rv.tier*0.15), s = 46 + rv.t*30;
     ctx.save(); ctx.translate(cx+rand(-shake,shake), cy+rand(-shake,shake));
     ctx.font = s+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
     const fc = CRATES[rv.from]; fillTextC(fc? fc.emoji : "🎁", 0, 0); ctx.restore();
@@ -5901,14 +6035,31 @@ function drawReveal(dt){
       ctx.fillStyle=col; ctx.beginPath(); ctx.arc(cx,cy,s,0,TAU); ctx.fill();
       ctx.globalCompositeOperation="source-over"; ctx.globalAlpha=1; }
   } else {
-    if(!rv.popped){ rv.popped=true; AU.win(); confettiBurst(cx,cy, rv.tier>=3?140:80, col);
+    if(!rv.popped){ rv.popped=true; AU.win(); confettiBurst(cx,cy, ([50,70,90,140,200][rv.tier]||80)+(rv.res.badge==="new"?40:0), col);
+      if(rv.res.badge==="new") AU.beep(1568,0.18,"triangle",0.16);                                    // ✨ first-find chime
+      if(rv.res.gold){ confettiBurst(cx, cy, 130, PRESTIGE.col); AU.beep(1500,0.35,"sawtooth",0.22,750); }   // 🥇 prestige pop
       if(rv.tier>=4) AU.beep(1200,0.3,"sawtooth",0.2,600); }
+    if(rv.tier>=4 && rv.popped && !rv.pop2 && rv.t>1.4){ rv.pop2=true; confettiBurst(cx, cy, 110, "#fff"); AU.win(); }
     ctx.strokeStyle=col; ctx.lineWidth=4; ctx.globalAlpha=0.85;
     ctx.beginPath(); ctx.arc(cx, cy, 62+Math.sin(game.t*6)*3, 0, TAU); ctx.stroke(); ctx.globalAlpha=1;
     ctx.font = "52px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
     fillTextC(rv.res.icon, cx, cy);
+    if(rv.res.badge==="new"){
+      const bw3=112, by3=cy-104+Math.sin(game.t*6)*2;
+      ctx.save(); ctx.shadowColor="#ffd76a"; ctx.shadowBlur=10;
+      ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.roundRect(cx-bw3/2, by3, bw3, 26, 13); ctx.fill(); ctx.restore();
+      ctx.fillStyle="#12151f"; ctx.font="900 15px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+      ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("NEW ITEM!", cx, by3+14);
+    } else if(rv.res.badge==="dupe"){
+      const bw4=158, by4=cy-100;
+      ctx.fillStyle="rgba(60,66,86,0.92)"; ctx.beginPath(); ctx.roundRect(cx-bw4/2, by4, bw4, 22, 11); ctx.fill();
+      ctx.fillStyle="#c9d0e4"; ctx.font="800 12px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+      ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("DUPLICATE → COINS!", cx, by4+11);
+    }
+    ctx.save(); if(rv.tier>=3){ ctx.shadowColor=col; ctx.shadowBlur=12; }
     ctx.font = "900 18px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle=col;
     ctx.fillText(RARITY[rv.tier].name, cx, cy+84);
+    ctx.restore();
     ctx.font = "800 21px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#f4f6ff";
     ctx.fillText(rv.res.name, cx, cy+110);
     ctx.font = "600 14px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#8b93ad";
@@ -5918,16 +6069,27 @@ function drawReveal(dt){
   }
 }
 function cratesAction(a){
-  if(a==="back"){ AU.ui(); game.reveal=null; game.state="series"; return; }
+  if(a==="back"){ AU.ui(); if(bk.open){ bk.open=false; bookSeen(); return; } game.reveal=null; game.state="series"; return; }
+  if(a==="book"){ AU.ui(); bk.open=true; bk.t=0; return; }
+  if(a==="book:close"){ AU.ui(); bk.open=false; bookSeen(); return; }
+  if(a.startsWith("info:")){ AU.key();
+    if(a==="info:?"){ sticker("??? OPEN CRATES TO FIND IT!", "#8b93ad"); return; }
+    const key = a.slice(5);
+    for(const s of bookSections()) for(const it of s.items)
+      if(it.key===key){ sticker(it.info, it.gold? PRESTIGE.col : RARITY[it.rarity].col); return; }
+    return;
+  }
   if(a.startsWith("buy:")){ openCrate(a.slice(4)); return; }   // works for any CRATES key
   if(a.startsWith("arm:")){
     const id = a.slice(4);
+    store.seenItems["pu:"+id]=1;
     store.armed = (store.armed===id)? null : id; save(); AU.key();
     sticker(store.armed && POWERUPS[id]? POWERUPS[id].emoji+" "+POWERUPS[id].name+" ARMED" : "UNARMED", "#7ef7ff");
     return;
   }
   if(a.startsWith("wear:")){
     const id = a.slice(5);
+    store.seenItems["cos:"+id]=1;
     store.cosmetic = (store.cosmetic===id)? null : id; save(); AU.key();
     return;
   }
@@ -5936,6 +6098,7 @@ function drawCrates(dt){
   nightSky();
   hudBtns.length = 0;
   const top = 8+safeT;
+  const SHORT = H < 520;   // 🆕 v3: short landscape phones get a compact stack
   drawIconBtn(PADX, top, 44, "↩️", "back");
   ctx.font = "italic 900 28px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillStyle="#ffb742";
@@ -5946,42 +6109,54 @@ function drawCrates(dt){
   ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.arc(W-PADX-bw2+22, top+21, 8, 0, TAU); ctx.fill();
   ctx.font="900 21px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.fillStyle="#f4f6ff"; ctx.textAlign="left"; ctx.fillText(store.coinsBank, W-PADX-bw2+40, top+23);
+  // 📖 v3 book toggle — left of the coins pill; pink pulse-bubble counts unseen finds
+  const bkX = W-PADX-bw2-52;
+  drawIconBtn(bkX, top, 44, "📖", "book");
+  const nNew = unseenCount();
+  if(nNew && !bk.open){
+    const r = 9+Math.sin(game.t*5);
+    ctx.fillStyle="#ff5db1"; ctx.beginPath(); ctx.arc(bkX+40, top+5, r, 0, TAU); ctx.fill();
+    ctx.fillStyle="#fff"; ctx.font="900 11px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+    ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(nNew>9? "9+" : String(nNew), bkX+40, top+6);
+  }
 
   const gridW = Math.min(420, W-PADX*2), x0 = Math.round((W-gridW)/2);
+  const rowW = Math.min(W-PADX*2, 640), xr = Math.round((W-rowW)/2);   // 🆕 v3: chip rows outgrow the 420px card grid
   let y = top+58;
   // crates to buy — every CRATES entry WITH a price (golden/price:0 is a free in-level find, not sold here)
   const buyable = Object.keys(CRATES).filter(k=> CRATES[k].price>0);
   const cw = (gridW-14)/2;
-  buyable.forEach((k,i)=> crateCard(x0 + (i%2)*(cw+14), y + ((i/2)|0)*(100+14), cw, 100, k));
-  y += Math.max(1, Math.ceil(buyable.length/2))*(100+14) + 2;
+  buyable.forEach((k,i)=> crateCard(x0 + (i%2)*(cw+14), y + ((i/2)|0)*((SHORT?92:100)+14), cw, (SHORT?92:100), k));
+  y += Math.max(1, Math.ceil(buyable.length/2))*((SHORT?92:100)+14) + 2;
   // upgrades (info only)
   if(upgOn()){
-    sectionLabel("UPGRADES", x0, y); y += 20;
-    const uw = (gridW - 4*8)/5;
-    UPG_KEYS.forEach((k,i)=> upgChip(x0 + i*(uw+8), y, uw, 56, k));
-    y += 56+16;
+    sectionLabel("UPGRADES", xr, y); y += 20;
+    const uh = SHORT?48:56, uw = Math.min(84, (rowW-(UPG_KEYS.length-1)*8)/UPG_KEYS.length);   // 🆕 v3: 9 stats, one wide row
+    UPG_KEYS.forEach((k,i)=> upgChip(xr + i*(uw+8), y, uw, uh, k));
+    y += uh + (SHORT?12:16);
   }
   // power-ups — tap to arm ONE
   if(puOn()){
-    sectionLabel("POWER-UPS  ·  tap to arm one", x0, y); y += 20;
+    sectionLabel("POWER-UPS  ·  tap to arm one", xr, y); y += 20;
     const owned = Object.keys(store.powerups).filter(id=>store.powerups[id]>0 && POWERUPS[id]);
     if(!owned.length){
       ctx.font="600 14px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#5a6178"; ctx.textAlign="left";
-      ctx.fillText("Open crates to find power-ups!", x0, y+22);
+      ctx.fillText("Open crates to find power-ups!", xr, y+22);
     } else {
-      const pw = 66;
-      owned.forEach((id,i)=>{ if(x0 + i*(pw+8) + pw <= x0+gridW) puChip(x0 + i*(pw+8), y, pw, 64, id); });
+      const ph2 = SHORT?56:64, pw = Math.max(48, Math.min(66, (rowW-(owned.length-1)*8)/owned.length));
+      owned.forEach((id,i)=>{ if(xr + i*(pw+8) + pw <= xr+rowW) puChip(xr + i*(pw+8), y, pw, ph2, id); });
     }
-    y += 64+16;
+    y += (SHORT?56:64) + (SHORT?12:16);
   }
   // cosmetics — tap to wear (filter to live ids so a deleted cosmetic can't crash)
   const looks = store.cosmetics.filter(id=> COSMETICS[id]);
   if(cosOn() && looks.length){
-    sectionLabel("LOOKS  ·  tap to wear", x0, y); y += 20;
-    const kw = 60;
-    looks.forEach((id,i)=>{ if(x0 + i*(kw+8) + kw <= x0+gridW) cosChip(x0 + i*(kw+8), y, kw, 56, id); });
+    sectionLabel("LOOKS  ·  tap to wear", xr, y); y += 20;
+    const kh = SHORT?48:56, kw = Math.max(44, Math.min(60, (rowW-(looks.length-1)*8)/looks.length));
+    looks.forEach((id,i)=>{ if(xr + i*(kw+8) + kw <= xr+rowW) cosChip(xr + i*(kw+8), y, kw, kh, id); });
   }
 
+  if(bk.open){ hudBtns.length = 0; drawBook(dt); }   // 📖 book owns the tap surface (buy/arm/wear/back unreachable)
   if(game.reveal) drawReveal(dt);
 
   for(const tp of input.taps.splice(0)){
@@ -5989,6 +6164,131 @@ function drawCrates(dt){
     if(game.reveal){ game.reveal = null; continue; }   // any tap dismisses the reveal
     for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){ cratesAction(b.act); break; }
   }
+}
+
+/* ---------------- 📖 v3 COLLECTION BOOK (see docs/MYSTERY-CRATES.md §14) ---------------- */
+// dark silhouette of an emoji, cached per (emoji,size). No ctx.filter (Safari-unsafe);
+// offscreen source-in tint works everywhere iOS runs this game.
+const _silC = new Map();
+function silhouette(emoji, px){
+  const key = emoji+"@"+px; let c = _silC.get(key);
+  if(!c){
+    c = document.createElement("canvas"); c.width = c.height = Math.ceil(px*2*DPR);
+    const g = c.getContext("2d"); g.scale(DPR,DPR);
+    g.font = px+"px sans-serif"; g.textAlign="center"; g.textBaseline="middle";
+    g.fillText(emoji, px, px);
+    g.globalCompositeOperation = "source-in";
+    g.fillStyle = "#20263a"; g.fillRect(0,0,px*2,px*2);
+    _silC.set(key, c);
+  }
+  return c;
+}
+// book contents — built from the LIVE data tables (never the save), so deleted assets vanish
+// for free (§13.7). Honors the bucket toggles like the main rows; TREASURE always shows.
+// 🥇 gold-hardened (v3 R3): upgrade tier clamps to mult.length-1, rarity index clamps to RARITY range.
+function bookSections(){
+  const S = [];
+  if(upgOn()) S.push({ label:"UPGRADES", items: UPG_KEYS.map(k=>{ const u=CRATE_UPG[k];
+    const t=Math.min(store.upg[k]||0, u.mult.length-1), gold=t>RARITY.length; return {
+    key:"upg:"+k, emoji:u.emoji, name:u.name, rarity:Math.min(RARITY.length-1, Math.max(0,t-1)), tier:t, gold,
+    found: t>0 || !!store.found["upg:"+k],
+    info: t>0 ? u.name+(gold?" 🥇GOLD":"")+" +"+Math.round((u.mult[t]-1)*100)+"%" : u.name }; }) });
+  if(puOn()) S.push({ label:"POWER-UPS", items: Object.keys(POWERUPS).map(id=>{ const p=POWERUPS[id]; return {
+    key:"pu:"+id, emoji:p.emoji, name:p.name, rarity:p.rarity,
+    found: !!store.found["pu:"+id] || (store.powerups[id]||0)>0,
+    stock: store.powerups[id]||0, info: p.emoji+" "+p.name+" — "+p.desc }; }) });
+  if(cosOn()) S.push({ label:"LOOKS", items: Object.keys(COSMETICS).map(id=>{ const c=COSMETICS[id]; return {
+    key:"cos:"+id, emoji:c.emoji, name:c.name, rarity:c.rarity,
+    found: !!store.found["cos:"+id] || store.cosmetics.includes(id),
+    worn: store.cosmetic===id, info: c.emoji+" "+c.name }; }) });
+  S.push({ label:"TREASURE", items: Object.keys(CURRENCY).map(id=>{ const c=CURRENCY[id]; return {
+    key:"cur:"+id, emoji:c.emoji, name:c.name, rarity:c.rarity, found: !!store.found["cur:"+id],
+    info: c.emoji+" "+c.name+(c.coins? " +"+c.coins+" COINS" : " +"+c.aura+" AURA") }; }) });
+  return S;
+}
+function drawBook(dt){
+  bk.t = Math.min(1, bk.t + dt/0.22);
+  const e = 1-(1-bk.t)*(1-bk.t);                       // easeOut pop
+  ctx.fillStyle="rgba(6,8,14,0.78)"; ctx.fillRect(0,0,W,H);
+  const bx=PADX+6, by=safeT+12+(1-e)*20, bw=W-2*(PADX+6), bh=H-(safeT+12)-(12+safeB);
+  ctx.save(); ctx.globalAlpha=e;
+  roundedPanel(bx, by, bw, bh, 18, "rgba(15,18,28,0.97)");
+  // header: title left, overall counter center, close right
+  ctx.font="italic 900 22px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.fillStyle="#ffb742"; ctx.textAlign="left"; ctx.textBaseline="middle";
+  ctx.fillText("📖 COLLECTION", bx+18, by+26);
+  const secs = bookSections();
+  let tot=0, got=0; for(const s of secs) for(const it of s.items){ tot++; if(it.found) got++; }
+  ctx.font="900 18px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.fillStyle = got===tot? "#ffd76a" : "#c9d0e4";
+  fillTextC(got+" / "+tot+" FOUND"+(got===tot? "  🏆" : ""), bx+bw/2, by+26);
+  drawIconBtn(bx+bw-52, by+8, 40, "✕", "book:close");
+  // rarity legend — the decoder ring for tile frames AND the buy-card chance bars
+  const lw = (bw-36)/RARITY.length;
+  RARITY.forEach((r,i)=>{ const lx = bx+18 + lw*i;
+    ctx.fillStyle=r.col; ctx.beginPath(); ctx.arc(lx+4, by+52, 3.5, 0, TAU); ctx.fill();
+    ctx.font="800 10px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#8b93ad";
+    ctx.textAlign="left"; ctx.fillText(r.name, lx+11, by+53); });
+  // bucket panels: 4-across when wide (iPad), 2x2 on notch-inset phones
+  const cols = bw>=880? 4 : 2, rows = Math.ceil(secs.length/cols);
+  const gx=bx+12, gy=by+64, gw=bw-24, gh=bh-76;
+  const pw=(gw-(cols-1)*10)/cols, ph=(gh-(rows-1)*10)/rows;
+  secs.forEach((s,i)=> bookPanel(gx+(i%cols)*(pw+10), gy+((i/cols)|0)*(ph+10), pw, ph, s));
+  ctx.restore();
+  // full-screen backdrop LAST so the close btn + tiles win the first-hit loop; any other tap closes
+  hudBtns.push({x:0, y:0, w:W, h:H, act:"book:close"});
+}
+function bookPanel(x, y, w, h, s){
+  roundedPanel(x, y, w, h, 14, "rgba(10,12,19,0.85)");
+  const n = s.items.filter(i=>i.found).length, done = n>=s.items.length;
+  ctx.font="800 13px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.textBaseline="middle";
+  ctx.fillStyle="#8b93ad"; ctx.textAlign="left"; ctx.fillText(s.label, x+10, y+16);
+  ctx.font="900 13px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.fillStyle = done? "#ffd76a" : "#9ae64a"; ctx.textAlign="right";
+  ctx.fillText(n+" / "+s.items.length, x+w-10, y+16);
+  if(done){  // completion shimmer — gold underline (drawn mark, no ✓ glyph: iOS-safe)
+    ctx.globalAlpha = 0.55+0.45*Math.sin(game.t*3);
+    ctx.fillStyle="#ffd76a"; ctx.fillRect(x+10, y+26, w-20, 2); ctx.globalAlpha=1;
+  }
+  // tile grid autosizes so ANY v3 item count fits with no scroll (54px down to 36px)
+  const cnt=s.items.length, gy=y+32, gh=h-40;
+  let sz=56, per, rowsN;
+  do { sz-=2; per=Math.max(1, Math.floor((w-16)/(sz+6))); rowsN=Math.ceil(cnt/per); }
+  while(rowsN*(sz+8)-2 > gh && sz>36);
+  const gridW2=per*(sz+6)-6, ox=x+(w-gridW2)/2;
+  s.items.forEach((it,i)=> bookTile(ox+(i%per)*(sz+6), gy+((i/per)|0)*(sz+8), sz, it));
+}
+function bookTile(x, y, s, it){
+  const col = it.gold? PRESTIGE.col : RARITY[it.rarity].col;   // 🥇 gold tile frame (v3)
+  roundedPanel(x, y, s, s, 9, it.found? (it.gold? "rgba(255,225,77,0.10)" : "rgba(22,26,40,0.95)") : "rgba(8,10,16,0.9)");
+  ctx.strokeStyle = it.found? col : "rgba(90,97,120,0.35)"; ctx.lineWidth = it.found? 2 : 1.5;
+  ctx.beginPath(); ctx.roundRect(x+1, y+1, s-2, s-2, 8); ctx.stroke();   // rarity-colored frame (the hunt hint)
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  if(it.found){
+    ctx.font = Math.round(s*0.5)+"px sans-serif";
+    fillTextC(it.emoji, x+s/2, y+s/2 - (it.tier!=null? 3 : 0));
+    if(it.tier!=null)   // upgrade depth: 5 tier pips (all lit + gold ring at 🥇 tier 6)
+      for(let i=0;i<5;i++){ ctx.fillStyle = i<it.tier? (it.gold? PRESTIGE.col : RARITY[i].col) : "rgba(90,97,120,0.4)";
+        ctx.beginPath(); ctx.arc(x+s/2+(i-2)*7, y+s-8, 2.4, 0, TAU); ctx.fill(); }
+    if(it.stock>0){ ctx.font="800 9px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+      ctx.fillStyle="#f4f6ff"; ctx.textAlign="right"; ctx.fillText("x"+it.stock, x+s-4, y+s-7); }
+    if(it.worn){ ctx.fillStyle="#ffb742"; ctx.beginPath(); ctx.arc(x+6, y+6, 3, 0, TAU); ctx.fill(); }
+    if(isNewItem(it.key)){  // gold NEW! corner tag, gentle bob
+      const tw=27, th=12, tx=x+s-tw+4, ty=y-4+Math.sin(game.t*6);
+      ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.roundRect(tx, ty, tw, th, 6); ctx.fill();
+      ctx.fillStyle="#12151f"; ctx.font="900 8px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+      ctx.textAlign="center"; ctx.fillText("NEW!", tx+tw/2, ty+th/2+0.5);
+    }
+  } else {
+    // mystery silhouette ("I can guess it!") — but top-tier items stay a pure "?" (secrets stay secret)
+    if(it.rarity < RARITY.length-1){
+      const px = Math.round(s*0.42), sc = silhouette(it.emoji, px);
+      ctx.drawImage(sc, x+s/2-px, y+s/2-px, px*2, px*2);
+    }
+    ctx.font="900 "+Math.round(s*0.34)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+    ctx.fillStyle=col; ctx.globalAlpha=0.5; ctx.fillText("?", x+s/2, y+s/2+1); ctx.globalAlpha=1;
+  }
+  hudBtns.push({x, y, w:s, h:s, act: it.found? "info:"+it.key : "info:?"});
 }
 
 /* ---------------- GARAGE SHOWROOM (v4) ----------------
