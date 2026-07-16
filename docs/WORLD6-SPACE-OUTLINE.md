@@ -1,6 +1,7 @@
 # 🌌 WORLD 6 — SPACE (design outline)
 
-> ✅ **DESIGN DONE — FULL BUILD SPEC READY: [`WORLD6-BUILD-SPEC.md`](WORLD6-BUILD-SPEC.md)**
+> 🚀 **SHIPPED (2026-07-16).** Built exactly to [`WORLD6-BUILD-SPEC.md`](WORLD6-BUILD-SPEC.md).
+> ✅ **DESIGN DONE — FULL BUILD SPEC: [`WORLD6-BUILD-SPEC.md`](WORLD6-BUILD-SPEC.md)**
 > (from a 23-agent design workflow). This outline is the vision; the build spec is the
 > implementation-ready source of truth (every edit anchored to an exact code string).
 >

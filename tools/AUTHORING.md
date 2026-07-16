@@ -35,7 +35,11 @@ also checks both starts on one side + gate mandatory + pads/plates reachable; KO
 speed — never the ONLY path) · `P` co-op plate · `Q` co-op gate (opens while a plate is held **or** the
 sequence is solved) · `M`/`N` shifting walls (two anti-phase sets, never both solid) · `z` VS zap
 pickup · `B` VS trap trigger · `w` VS trap wall · `!` KO hazard pit · `o` co-op sequence pad (numbered
-by reading order top→bottom,left→right) · `<` `>` `^` `v` conveyor floors · `O` trap door.
+by reading order top→bottom,left→right) · `<` `>` `^` `v` conveyor floors · `O` trap door ·
+`@` gravity well (**solid** core — the pull is runtime; validator treats it as wall) · `0` black-hole
+wormhole (**pairs: exactly 0 or 2** per level, **XOR with `T`** — never both, they share the portal
+pair) · `V` void (transparent chasm — **wall for ground reachability**, cross only by launch ring;
+campaign-only) · `U` launch ring (passable pad that flings the car airborne along its heading).
 
 ## Level properties
 
@@ -46,8 +50,26 @@ by reading order top→bottom,left→right) · `<` `>` `^` `v` conveyor floors �
 - `crushers:[{c,r,dx,dy,range,period,phase}]` — sliding crushers. Anchor `c,r`; slides `range` cells
   in direction `dx,dy`; `period` seconds per cycle. Not a grid tile → give it a clear lane by hand.
 - `seq:[[c,r],...]` — override the co-op sequence pad order (default is reading order).
+- `asteroids:[{c,r,dx,dy,range,period,phase,size}]` — drifting space rocks (World 6). Anchor `c,r`;
+  drifts `range` cells along `dx,dy`; `period` seconds per cycle; `phase` 0–1 offset; `size` in cells.
+  Runtime prop like crushers — not a grid tile, invisible to the validator, so lane-clear by hand.
 
 `par` = target seconds for the ⭐ speed star (≈ `1.7–2.0 ×` the BFS path length; generous for kids).
+
+## World 6 (space) authoring guardrails
+
+- **Ground-solvable contract:** treating `@` and `V` as walls and using NO ring/hop/warp, a solid
+  road must connect S→F on every level. Rings, wormholes, and slingshots are pure optional
+  shortcuts (the validator hard-fails a void-only bridge).
+- **Ring leaps:** chasm gap **≤ 2 cells**, landing island **≥ 2 cells deep** (absorbs the slightly
+  longer flight of upgraded cars).
+- **Black holes near S/F:** never place a `0` horizon adjacent to S or F — the inner horizon is
+  intentionally inescapable-without-nitro and could warp a kid away from the flag repeatedly. The
+  validator does NOT catch this.
+- **Boss races:** keep the rival's ideal BFS ground line clear of wells (`@`) and rings (`U`) — the
+  rival isn't pulled by wells and ignores rings, so hazards on its line only punish the kid.
+- **Asteroids vs boss corridors:** never seal a boss's sole corridor with an asteroid — stagger
+  `phase` (e.g. 0/0.33/0.66) so a timing gap is always open.
 
 ## Add a world / arena
 

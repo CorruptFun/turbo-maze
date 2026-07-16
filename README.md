@@ -12,7 +12,7 @@ One HTML file, no dependencies. Runs on a tablet or with a keyboard.
 - Watch out for the goober 👾 — he yoinks your coins (steal 'em back).
   Or hit him at **nitro speed** for the 💥 TAKEDOWN: +25 aura and he drops his loot.
 - Finish fast + all coins = ⭐⭐⭐
-- **75 levels across 5 worlds** with ice to drift on 🧊, portals 🌀, smashable
+- **90 levels across 6 worlds** with ice to drift on 🧊, portals 🌀, smashable
   crates 💥, goober gangs, headlights-only night levels 🌙, gate mazes 🚧,
   shifting walls that rearrange the maze mid-run, a whole **factory floor**
   of conveyor belts, sliding crushers and trap doors, and a **water park** 🌊
@@ -26,11 +26,16 @@ The campaign is grouped into **worlds**: **TURBO BASICS** (learn to drift),
 **BRAIN FREEZE** (ice, portals, gate mazes, goober swarms, meaner bosses),
 **MAZE MAYHEM** (shifting walls that rearrange the maze while you drive),
 **METAL MELTDOWN** (the factory floor 🏭 — conveyor belts that shove you around,
-sliding crushers to time your dash past, and trap doors to weave around) and
+sliding crushers to time your dash past, and trap doors to weave around),
 **SPLASH ZONE** (the water park 🌊 — 🟠 splash pads that fling you *over* walls
 and gaps, 🟣 sticky shallows that slow you to a wade (hit nitro to power through),
 and 🧱 foam floats that sink a beat after you touch them, all riding on water
-currents and waterslides — see [docs/SPLASH-ZONE.md](docs/SPLASH-ZONE.md)). The
+currents and waterslides — see [docs/SPLASH-ZONE.md](docs/SPLASH-ZONE.md)) and
+**COSMIC RUSH** (deep space 🌌 — everything gently floats! 🪐 slingshot around
+planets whose gravity bends your racing line, 🕳️ dive into black holes and warp
+out the white hole, 🚀 blast through launch rings over chasms of real starfield,
+and dodge drifting asteroids ☄️. The boss flies a UFO — **beat the world and the
+saucer is yours** 🛸 — see [docs/WORLD6-BUILD-SPEC.md](docs/WORLD6-BUILD-SPEC.md)). The
 title screen opens a **PICK YOUR
 WORLD** hub: tap a world to see its level map, or 🗺️ to come back. Beat every
 level in a world (1 ⭐ each) and the next world unlocks — each one a little

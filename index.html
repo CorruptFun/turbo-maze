@@ -55,6 +55,7 @@ const YELLS = {
   nitro:  ["ZOOM!", "TURBO!!", "FULL SEND!", "WEEEE!"],
   bonk:   ["BONK!", "OOF!", "WHOOPS!"],
   goober: ["YOINKED!", "HEY!!", "GET HIM!"],
+  rock:   ["SPACE ROCK!","BONK!","WHOA!","ASTEROID!"],
   win:    ["GG!", "EZ CLAP!", "GOATED!", "VICTORY ROYALE!", "ABSOLUTE W!"],
   key:    ["GOT KEY!"], door: ["CLICK!"],
 };
@@ -63,6 +64,13 @@ const YELLS = {
 const TAU = Math.PI * 2;
 const CELL = 110;                 // world pixels per maze cell
 const CRUMBLE_GRACE = 0.9;        // 🧱 foam-float fuse: seconds a tile cracks before it drops (~3× a cruise-crossing → forgiving)
+// 🌌 World 6 COSMIC RUSH — force-field constants (gravity wells @ / black-hole wormholes 0)
+const WELL_R      = 2.6*CELL;   // 286px well pull radius
+const WELL_PULL   = 560;        // peak px/s² near core (×SPD; quadratic falloff → effective ~385-430 experienced)
+const BH_R        = 1.7*CELL;   // 187px black-hole suction radius
+const BH_CAP      = 42;         // event-horizon capture radius (px)
+const BH_PULL_MIN = 260;        // suction at rim  (×SPD)
+const BH_PULL_MAX = 1150;       // suction at core (×SPD)
 const SHIFT_CYCLE = 3.8;          // seconds for shifting walls to complete an A→B cycle
 const clamp = (v,a,b)=> v<a?a : v>b?b : v;
 const lerp  = (a,b,t)=> a+(b-a)*t;
@@ -1100,6 +1108,220 @@ const LEVELS = [
     "#..>>>..%%....&&...#",
     "####################"
   ]},
+
+  // ═══════════════ World 6 · COSMIC RUSH 🌌 (levels 75-89) ═══════════════
+  // L75 · MOON WALK
+  { name:"MOON WALK", emoji:"🌙", hue:"#8a7dff", par:30, grid:[
+    "#################",
+    "#SS......c......#",
+    "#SS.............#",
+    "#....######...c.#",
+    "#.c..######.....#",
+    "#....######.....#",
+    "#...c......c..n.#",
+    "#.....######....#",
+    "#..c..######.FF.#",
+    "#............FF.#",
+    "#################"
+  ]},
+  // L76 · STAR HOPPER
+  { name:"STAR HOPPER", emoji:"🚀", hue:"#9fe0ff", par:32, grid:[
+    "##################",
+    "#SS.....VV.....c.#",
+    "#SS....UVV.......#",
+    "#.c....#VV#......#",
+    "#......#VV#..c...#",
+    "#..###########...#",
+    "#..c......c......#",
+    "#...#######......#",
+    "#.c.#######..FF..#",
+    "#..n.........FF..#",
+    "##################"
+  ]},
+  // L77 · FIRST ORBIT
+  { name:"FIRST ORBIT", emoji:"🪐", hue:"#b98cff", par:34, grid:[
+    "##################",
+    "#SS.......c......#",
+    "#SS..............#",
+    "#............c...#",
+    "############..@..#",
+    "############.....#",
+    "#...........c....#",
+    "#..............n.#",
+    "#FF.......c......#",
+    "#FF..............#",
+    "##################"
+  ]},
+  // L78 · DOUBLE MOON
+  { name:"DOUBLE MOON", emoji:"🪐🪐", hue:"#8f7cff", par:38, grid:[
+    "##################",
+    "#S......c........#",
+    "#................#",
+    "#..c...@.....c...#",
+    "#................#",
+    "#....##....##....#",
+    "#................#",
+    "#...c.....@..c...#",
+    "#......n.........#",
+    "#........c.....F.#",
+    "##################"
+  ]},
+  // L79 · SPACE JUNK
+  { name:"SPACE JUNK", emoji:"☄️", hue:"#c9b3ff", par:40, grid:[
+    "##################",
+    "#S...c......c....#",
+    "#................#",
+    "#................#",
+    "#..############..#",
+    "#................#",
+    "#....c......c....#",
+    "#...n............#",
+    "#..............F.#",
+    "##################"
+  ], asteroids:[{"c":6,"r":1,"dx":0,"dy":1,"range":2,"period":3.6,"phase":0,"size":1},{"c":10,"r":1,"dx":0,"dy":1,"range":2,"period":3.6,"phase":0.33,"size":1},{"c":8,"r":5,"dx":0,"dy":1,"range":3,"period":4.2,"phase":0.66,"size":1}]},
+  // L80 · THE WORMHOLE
+  { name:"THE WORMHOLE", emoji:"🌀", hue:"#b98cff", par:42, grid:[
+    "##################",
+    "#S...c...........#",
+    "#................#",
+    "#.......0......c.#",
+    "##############...#",
+    "#..c.............#",
+    "#.........n......#",
+    "#..###############",
+    "#................#",
+    "#.c.........0..F.#",
+    "#................#",
+    "##################"
+  ]},
+  // L81 · CANYON LEAP
+  { name:"CANYON LEAP", emoji:"🚀🪐", hue:"#8b6cff", par:46, grid:[
+    "##################",
+    "#S......UVV..c..F#",
+    "#.####...VV..@...#",
+    "#.#..c...VV......#",
+    "#.#.#####VV.###..#",
+    "#.#.#....VV...#..#",
+    "#.#.#.###VV##.#..#",
+    "#.#.#...#VV.#.#..#",
+    "#.#.##..#....#...#",
+    "#.....n......c...#",
+    "##################"
+  ]},
+  // L82 · COMET CHASE
+  { name:"COMET CHASE", emoji:"🛸", hue:"#6ea8ff", par:50, rival:{mult:2.25, ufo:true}, grid:[
+    "####################",
+    "#..c..@......@..c..#",
+    "#.################.#",
+    "#.##.....##.....##.#",
+    "#....##......##....#",
+    "#S....n........c..F#",
+    "#....##......##....#",
+    "#.##.....##.....##.#",
+    "#.################.#",
+    "#..c.UVV....n...c..#",
+    "####################"
+  ]},
+  // L83 · TWIN PLANETS
+  { name:"TWIN PLANETS", emoji:"🪐", hue:"#9d7bff", par:52, grid:[
+    "##################",
+    "#..c....n....c...#",
+    "#.####......####.#",
+    "#....#..@..#.....#",
+    "#.##.........##..#",
+    "#S..c...c...c...F#",
+    "#.##.........##..#",
+    "#....#..@..#.....#",
+    "#.####......####.#",
+    "#..c....c....c...#",
+    "##################"
+  ]},
+  // L84 · ASTEROID BELT
+  { name:"ASTEROID BELT", emoji:"☄️🪐", hue:"#8f7bff", par:54, grid:[
+    "##################",
+    "#S......c........#",
+    "#................#",
+    "####.########.####",
+    "#......@.......c.#",
+    "#.c.......@......#",
+    "####.########.####",
+    "#................#",
+    "#.......n........#",
+    "#......c.......F.#",
+    "##################"
+  ], asteroids:[{"c":3,"r":2,"dx":1,"dy":0,"range":9,"period":4.4,"phase":0,"size":1},{"c":8,"r":4,"dx":1,"dy":0,"range":6,"period":3.8,"phase":0.33,"size":1},{"c":4,"r":8,"dx":1,"dy":0,"range":9,"period":4,"phase":0.66,"size":1}]},
+  // L85 · METEOR GATE
+  { name:"METEOR GATE", emoji:"☄️🌀", hue:"#53e0ff", par:56, grid:[
+    "###################",
+    "#...c.........c...#",
+    "##.#############.##",
+    "#......c.##.......#",
+    "#S.##.......##...F#",
+    "#.n...##.......c..#",
+    "##.#############.##",
+    "#...0.........0...#",
+    "###################"
+  ], asteroids:[{"c":5,"r":3,"dx":0,"dy":1,"range":2,"period":3.2,"phase":0,"size":1},{"c":8,"r":3,"dx":0,"dy":1,"range":2,"period":3.2,"phase":0.33,"size":1},{"c":11,"r":3,"dx":0,"dy":1,"range":2,"period":3.2,"phase":0.66,"size":1},{"c":14,"r":3,"dx":0,"dy":1,"range":2,"period":3.6,"phase":0.5,"size":1}]},
+  // L86 · DARK SIDE
+  { name:"DARK SIDE", emoji:"🌑", hue:"#6a5acd", par:56, dark:true, grid:[
+    "#################",
+    "#S..............#",
+    "#.............c.#",
+    "##############.##",
+    "#.....c.........#",
+    "#.......@....c..#",
+    "#.....c.........#",
+    "##.##############",
+    "#..........c....#",
+    "#...n..........F#",
+    "#################"
+  ]},
+  // L87 · ZERO-G ZONE
+  { name:"ZERO-G ZONE", emoji:"🌠", hue:"#8f7cff", par:60, grid:[
+    "##################",
+    "#S.....c#VV#c....#",
+    "#..@....UVV.c.@..#",
+    "#.......#VV#.....#",
+    "#...#...#VV#..#..#",
+    "#.n.....UVV.c..n.#",
+    "#..@....#VV#..@..#",
+    "#.......#VV#.....#",
+    "#...#........#...#",
+    "#.c............cF#",
+    "##################"
+  ]},
+  // L88 · GALAXY SPRINT
+  { name:"GALAXY SPRINT", emoji:"🌌", hue:"#6fd8ff", par:66, grid:[
+    "####################",
+    "#S...c.......c.....#",
+    "#......@...........#",
+    "################...#",
+    "#..................#",
+    "#...c.........c....#",
+    "#............#.....#",
+    "#...##0######0######",
+    "#.....#..VV........#",
+    "#...n...UVV.c..c...#",
+    "#........VV.......F#",
+    "#....c.............#",
+    "####################"
+  ], asteroids:[{"c":12,"r":4,"dx":0,"dy":1,"range":2,"period":3.6,"phase":0,"size":1},{"c":9,"r":4,"dx":0,"dy":1,"range":2,"period":3.6,"phase":0.33,"size":1},{"c":6,"r":4,"dx":0,"dy":1,"range":2,"period":3.6,"phase":0.66,"size":1}]},
+  // L89 · SUPERNOVA
+  { name:"SUPERNOVA", emoji:"💥", hue:"#c9b3ff", par:72, rival:{mult:2.4, ufo:true}, grid:[
+    "####################",
+    "#S.......VV........#",
+    "#...@....VV....c...#",
+    "#....c..UVV.c......#",
+    "#.....@..VV........#",
+    "#........VV........#",
+    "#............#..c.0#",
+    "#..##########0######",
+    "#.n................#",
+    "#........c....c..c.#",
+    "#############....F.#",
+    "#############..c...#",
+    "####################"
+  ], asteroids:[{"c":5,"r":8,"dx":1,"dy":0,"range":4,"period":4,"phase":0,"size":1}]},
 ];
 
 /* ----------------------------------------------------------------
@@ -1116,6 +1338,7 @@ const SERIES = [
   { name:"MAZE MAYHEM",  emoji:"🌀", hue:"#c56cff", blurb:"Shifting walls that rearrange the maze — time your run!", count:15, reward:"glitch" },
   { name:"METAL MELTDOWN", emoji:"🏭", hue:"#ff8a3c", blurb:"Conveyor belts, sliding crushers & trap doors — survive the factory!", count:15, reward:"monster" },
   { name:"SPLASH ZONE", emoji:"🌊", hue:"#2fd0e0", blurb:"Splash pads, sticky shallows & sinking foam floats — ride the currents and waterslides!", count:15, reward:"wave" },
+  { name:"COSMIC RUSH", emoji:"🌌", hue:"#7b6cff", blurb:"Slingshot round planets, dive through wormholes, dodge drifting rocks — everything floats out here.", count:15, reward:"ufo" },
   { name:"NEW WORLD",    emoji:"🌋", hue:"#ff6a5e", blurb:"Even wilder. In the workshop!", comingSoon:true },
 ];
 (function computeSeriesStarts(){
@@ -1922,6 +2145,8 @@ function transformLevel(L, key){
   const out = Object.assign({}, L, {grid});
   if(L.crushers) out.crushers = L.crushers.map(k => Object.assign({}, k,     // origin + slide direction reflect
     { c:mapC(k.c), r:mapR(k.r), dx: h? -(k.dx||0) : (k.dx||0), dy: v? -(k.dy||0) : (k.dy||0) }));
+  if(L.asteroids) out.asteroids = L.asteroids.map(a => Object.assign({}, a,  // ☄️ drift origin + direction reflect
+    { c:mapC(a.c), r:mapR(a.r), dx: h? -(a.dx||0):(a.dx||0), dy: v? -(a.dy||0):(a.dy||0) }));
   if(L.hazards)  out.hazards  = L.hazards.map(hz => Object.assign({}, hz,    // sliding-bar patrol waypoints reflect
     { path: hz.path.map(([c,r]) => [mapC(c), mapR(r)]) }));
   if(L.seq)      out.seq      = L.seq.map(([c,r]) => [mapC(c), mapR(r)]);    // co-op sequence-pad order reflects
@@ -1983,24 +2208,29 @@ function startLevel(L, meta){
   game.seqPads = []; game.seqNext = 0; game.seqDone = false;              // co-op: button sequence puzzle
   game.conveyors = []; game.trapDoors = []; game.crushers = [];           // environmental hazards
   game.bounces = []; game.crumbles = [];                                  // 🌊 World 5: splash pads + foam floats
+  game.wells = []; game.voids = []; game.rings = []; game.asteroids = []; // 🌌 World 6: gravity wells / chasms / launch rings / space rocks
+  game.voidCell = [];   // 2D void mask, built per-row alongside game.solid
   game.hasKey=false; game.playT=0; game.bonks=0;
   game.vs = !!(meta && meta.vs);
   game.coop = !!(meta && meta.coop);
   game.ko = !!(meta && meta.ko);
+  game.lowG = !!(game.lv && game.lv.lowG) ||
+              (game.levelIx>=0 && !game.customId && seriesOf(game.levelIx)===5);   // 🌠 W6 world-wide float
   game.coopIx = (meta && meta.coopIx!==undefined)? meta.coopIx : -1;
   const twoP = game.vs || game.coop || game.ko;
   game.count = twoP? 3.999 : 0;
   game.parts=[]; game.floats=[]; game.stickers=[]; game.confetti=[]; game.hintT=0;
   let sx=1, sy=1, fx=1, fy=1, p2x=0, p2y=0, p2c=1, p2r=1;
   for(let r=0;r<game.rows;r++){
-    game.solid[r]=[]; game.slick[r]=[]; game.sticky[r]=[];
+    game.solid[r]=[]; game.slick[r]=[]; game.sticky[r]=[]; game.voidCell[r]=[];
     for(let c=0;c<game.cols;c++){
       const ch = g[r][c]||"#";
-      const wall = ch==="#";
+      const wall = ch==="#" || ch==="@";   // 🪐 planet core collides like a wall — bump, never die
       game.solid[r][c] = wall?1:0;
       game.slick[r][c] = ch==="~"?1:0;
       game.sticky[r][c] = ch==="&"?1:0;                             // 🟣 sticky shallows (inverse of ice)
-      if(!wall) game.road.push([c,r]);
+      game.voidCell[r][c] = ch==="V" ? 1 : 0;                       // 🕳️ open-space chasm mask
+      if(!wall && ch!=="V") game.road.push([c,r]);   // 🕳️ void is not drivable "road" (no coins/overlays in the gap)
       const wx=(c+0.5)*CELL, wy=(r+0.5)*CELL;
       if(ch==="S"){ sx=wx; sy=wy; game.startCell=[c,r]; }
       if(ch==="2" && !p2x){ p2x=wx; p2y=wy; p2c=c; p2r=r; }
@@ -2029,6 +2259,10 @@ function startLevel(L, meta){
       if(ch==="O") game.trapDoors.push({c,r,x:wx,y:wy,ph:Math.random()*TAU}); // trap door — fall through & respawn
       if(ch==="J") game.bounces.push({c,r,x:wx,y:wy,ph:Math.random()*TAU,cool:0});          // 🟠 splash / bounce pad
       if(ch==="%") game.crumbles.push({c,r,x:wx,y:wy,state:"intact",t0:0,ph:Math.random()*TAU}); // 🧱 foam float
+      if(ch==="@") game.wells.push({c,r,x:wx,y:wy,ph:Math.random()*TAU});                 // 🪐 well (core solidified above)
+      if(ch==="0") game.portals.push({c,r,x:wx,y:wy,cool:0,bh:true});                     // 🕳️ black-hole wormhole end
+      if(ch==="V") game.voids.push({c,r,x:wx,y:wy,ph:Math.random()*TAU});                 // 🕳️ chasm
+      if(ch==="U") game.rings.push({c,r,x:wx,y:wy,cool:0,ph:Math.random()*TAU});          // 🚀 launch ring
     }
   }
   game.portals.length = Math.min(2, game.portals.length);   // exactly one pair
@@ -2052,6 +2286,13 @@ function startLevel(L, meta){
   (L.crushers||[]).forEach(cr=> game.crushers.push({
     c:cr.c, r:cr.r, dx:cr.dx||0, dy:cr.dy||0, range:cr.range||3,
     period:cr.period||2.6, phase:cr.phase||0, cc:cr.c, cr:cr.r }));
+  // ☄️ soft drifting asteroids (hand-authored via L.asteroids:[{c,r,dx,dy,range,period,phase,size}])
+  (L.asteroids||[]).forEach(a=> game.asteroids.push({
+    c:a.c, r:a.r, dx:a.dx||0, dy:a.dy||0, range:a.range||3,
+    period:(CONFIG.easyMode? (a.period||3.6)*1.25 : (a.period||3.6)),
+    phase:a.phase||0, size:a.size||1, off:0,
+    x:(a.c+0.5)*CELL, y:(a.r+0.5)*CELL,
+    spin:Math.random()*TAU, spv:(Math.random()<0.5?-1:1)*(0.5+Math.random()*0.6) }));
   if(game.coop){
     game.car.home=false; if(game.car2) game.car2.home=false;
     game.car.spawn = {x:sx, y:sy, h:head};
@@ -2078,11 +2319,14 @@ function startLevel(L, meta){
   if(L.rival){
     const trapAvoid = new Set(game.trapDoors.map(t=>t.c+","+t.r));                          // a good driver routes around the hatches
     for(const cm of game.crumbles) trapAvoid.add(cm.c+","+cm.r);                            // 🧱 rival routes around foam floats too
+    for(const p of game.portals) if(p.bh) trapAvoid.add(p.c+","+p.r);                       // 🕳️ boss routes around black holes (no pull, no warp)
     let path = bfsPathCells(game.startCell, [game.finish.c, game.finish.r], trapAvoid);
     if(path.length<=1) path = bfsPathCells(game.startCell, [game.finish.c, game.finish.r]);  // trap door unavoidable → take the normal path
+    const rivalUfo = !!(L.rival && L.rival.ufo) ||
+      (game.levelIx>=0 && !game.customId && seriesOf(game.levelIx)===5);                    // 🛸 W6 boss drives the saucer
     game.rival = { wp: path.map(([c,r])=>[(c+0.5)*CELL,(r+0.5)*CELL]),
       i:0, x:(game.startCell[0]+0.5)*CELL, y:(game.startCell[1]+0.5)*CELL,
-      a:head, speed:(CONFIG.bossSpeed||95)*((L.rival&&L.rival.mult)||1), delay:1.5, done:false };
+      a:head, speed:(CONFIG.bossSpeed||95)*((L.rival&&L.rival.mult)||1), delay:1.5, done:false, ufo:rivalUfo };
     setTimeout(()=>{ if(game.rival && game.state==="play") sticker("BEAT HIM TO THE FLAG!", "#ff8fe0"); }, 1900);
   }
   prerenderGround(L);
@@ -2118,6 +2362,8 @@ function isSolid(c,r){
 function rivalBlocked(c,r){
   for(const m of game.shiftWalls) if(m.c===c && m.r===r && game.shiftSol[m.grp]>0.5) return true;
   for(const cr of game.crushers)  if(cr.cc===c && cr.cr===r) return true;
+  for(const a of game.asteroids){ const ac=Math.round(a.c+a.dx*a.off), ar=Math.round(a.r+a.dy*a.off);   // ☄️ boss waits out a drifting rock
+    if(ac===c && ar===r) return true; }
   for(const g of game.gates)      if(g.c===c && g.r===r && g.open<0.5) return true;
   return false;
 }
@@ -2137,7 +2383,7 @@ function bfsPathCells(start, goal, avoid){
     if(c===goal[0] && r===goal[1]) break;
     for(const [dc,dr] of [[1,0],[-1,0],[0,1],[0,-1]]){
       const nc=c+dc, nr=r+dr;
-      if(nc<0||nr<0||nc>=C||nr>=R||game.solid[nr][nc]||prev[nr][nc]||(avoid&&avoid.has(nc+","+nr))) continue;
+      if(nc<0||nr<0||nc>=C||nr>=R||game.solid[nr][nc]||(game.voidCell[nr]&&game.voidCell[nr][nc])||prev[nr][nc]||(avoid&&avoid.has(nc+","+nr))) continue;
       prev[nr][nc] = [c,r]; q.push([nc,nr]);
     }
   }
@@ -2164,7 +2410,7 @@ function updateObjective(force){
     for(const [dc,dr] of [[1,0],[-1,0],[0,1],[0,-1]]){
       const nc=c+dc, nr=r+dr;
       if(nc<0||nr<0||nc>=game.cols||nr>=game.rows) continue;
-      if(game.solid[nr][nc]) continue;             // hint path ignores doors/gates
+      if(game.solid[nr][nc] || (game.voidCell[nr]&&game.voidCell[nr][nc])) continue;   // hint path ignores doors/gates, never points into the chasm
       if(dst[nr][nc]!==-1) continue;
       dst[nr][nc]=dst[r][c]+1; q.push([nc,nr]);
     }
@@ -2173,7 +2419,8 @@ function updateObjective(force){
 }
 
 // walls-only distance-to-finish field — orients direction hints (boost/splash pads) down the racing line
-function finishDist(){
+// (overVoid=true lets the field cross 🕳️ V chasms — used to aim the launch-ring trajectory hint ACROSS the gap)
+function finishDist(overVoid){
   if(!game.finish) return null;
   const d = Array.from({length:game.rows},()=>new Array(game.cols).fill(-1));
   const q=[[game.finish.c, game.finish.r]]; d[game.finish.r][game.finish.c]=0;
@@ -2183,7 +2430,7 @@ function finishDist(){
       const nc=c+dc, nr=r+dr;
       if(nc<0||nr<0||nc>=game.cols||nr>=game.rows) continue;
       if(d[nr][nc]!==-1) continue;
-      if(isWallCell(nc,nr)) continue;             // doors/gates treated as passable → gradient always reaches
+      if(isWallCell(nc,nr) || (!overVoid && game.voidCell[nr]&&game.voidCell[nr][nc])) continue;   // doors/gates treated as passable → gradient always reaches (voids never, unless overVoid)
       d[nr][nc]=d[r][c]+1; q.push([nc,nr]);
     }
   }
@@ -2209,6 +2456,9 @@ const WORLD_THEME = [
   // 4 SPLASH ZONE — deep water (aqua)
   { ground:"#1b3641", speck:"rgba(190,240,255,0.05)", glow:"80,210,224", wall:"#08161a", wallTop:"#10242c",
     sky:["#061e26","#0a2f3c"], back:"water", accent:"#5fe0e0" },
+  // 5 COSMIC RUSH — deep space (indigo / violet, star-white accents)
+  { ground:"#1a1630", speck:"rgba(200,190,255,0.05)", glow:"140,120,255", wall:"#070512", wallTop:"#140f28",
+    sky:["#05030f","#0c0820"], back:"void", accent:"#b9a8ff" },
 ];
 function worldTheme(){
   const s = (game.levelIx>=0 && !game.customId) ? seriesOf(game.levelIx) : -1;
@@ -2295,9 +2545,24 @@ function prerenderGround(L){
     }
     x.restore();
   }
+  // 🚀 launch-ring trajectory hint — same "step toward lower finish-distance" rule as the chevrons,
+  // but on a void-crossing field so the hint points ACROSS the chasm the ring is meant to leap
+  if(game.rings.length){
+    const ringDist = finishDist(true);
+    for(const rg of game.rings){
+      let ang, best = Infinity, found = false;
+      for(const [dc,dr,a] of [[1,0,0],[-1,0,Math.PI],[0,1,Math.PI/2],[0,-1,-Math.PI/2]]){
+        const nr=rg.r+dr, nc=rg.c+dc;
+        const v = (ringDist && ringDist[nr]) ? ringDist[nr][nc] : -1;
+        if(v>=0 && v<best){ best=v; ang=a; found=true; }
+      }
+      rg.ang = found ? ang : ((!isWallCell(rg.c+1,rg.r) || !isWallCell(rg.c-1,rg.r)) ? 0 : Math.PI/2);
+    }
+  }
   // walls: dark blocks + hue edge light + night windows
   for(let r=0;r<game.rows;r++) for(let c=0;c<game.cols;c++){
     if(!game.solid[r][c]) continue;
+    if(game.wells.some(v=>v.c===c && v.r===r)) continue;   // 🪐 a planet renders as a sprite over floor, not a brick pillar
     const px=c*CELL, py=r*CELL;
     x.fillStyle = T.wall; x.fillRect(px,py,CELL,CELL);
     x.fillStyle = T.wallTop; x.fillRect(px,py,CELL,10);
@@ -2315,6 +2580,21 @@ function prerenderGround(L){
       const n = 2+seed;
       for(let i=0;i<n;i++) x.fillRect(px+18+((i*37+r*11)%(CELL-44)), py+22+((i*53+c*7)%(CELL-50)), 9, 12);
     }
+  }
+  // 🕳️ void-edge WARNING RAIL — bright lip on every road edge that drops into space
+  for(const [c,r] of game.road){
+    const vz=(cc,rr)=> (game.voidCell[rr] && game.voidCell[rr][cc]);
+    const px=c*CELL, py=r*CELL; x.fillStyle="#9fe0ff"; x.globalAlpha=0.85;
+    if(vz(c,r+1)) x.fillRect(px,py+CELL-5,CELL,5); if(vz(c,r-1)) x.fillRect(px,py,CELL,5);
+    if(vz(c+1,r)) x.fillRect(px+CELL-5,py,5,CELL); if(vz(c-1,r)) x.fillRect(px,py,5,CELL);
+    x.globalAlpha=1;
+  }
+  // 🕳️ punch the chasms TRANSPARENT (the parallax starfield backdrop shows through) + a violet rim glow
+  for(const v of (game.voids||[])){
+    x.clearRect(v.c*CELL, v.r*CELL, CELL, CELL);                 // reveal deep space
+    const rim = x.createRadialGradient(v.x,v.y,CELL*0.30, v.x,v.y,CELL*0.52);
+    rim.addColorStop(0,"rgba(0,0,0,0)"); rim.addColorStop(0.82,"rgba("+T.glow+",0.22)"); rim.addColorStop(1,"rgba("+T.glow+",0)");
+    x.fillStyle=rim; x.fillRect(v.x-CELL*0.6, v.y-CELL*0.6, CELL*1.2, CELL*1.2);
   }
   game.groundCv = g;
 }
@@ -2341,6 +2621,7 @@ function updateCar(car, ctrl, dt){
   const cellC = clamp(Math.floor(car.x/CELL),0,game.cols-1), cellR = clamp(Math.floor(car.y/CELL),0,game.rows-1);
   const onIce = !!(game.slick[cellR] && game.slick[cellR][cellC]);
   const onSticky = !((car.airT||0)>0) && !!(game.sticky[cellR] && game.sticky[cellR][cellC]);   // 🟣 goop drag (inert mid-hop)
+  const lowG = game.lowG;                                            // 🌠 W6: world-wide float (friction-only scalar)
   const _spS = Math.hypot(car.vx,car.vy);
   if(onSticky && !car.wasSticky && _spS>120){                        // 💦 entering the shallows
     car.sq = 0.82;
@@ -2359,7 +2640,7 @@ function updateCar(car, ctrl, dt){
     car.heading += clamp(d, -tRate*dt, tRate*dt);
   }
   const maxSp = (boosting? 660 : 400)*SPD*mSpd*kSpd*(car.airT>0?1.6:1)*(onSticky?(boosting?0.8:0.6):1);   // 🟠 airborne cap ↑ · 🟣 goop cap ↓ (nitro punches through)
-  const accel = (boosting? 1300 : 750)*SPD*mSpd*kAcc*(onIce?0.55: onSticky?0.7 :1);
+  const accel = (boosting? 1300 : 750)*SPD*mSpd*kAcc*(onIce?0.55: onSticky?0.7 : lowG?0.85 :1);   // 🌠 thrusters bite a touch softer in space
   if(hasInput && car.spinT<=0){
     car.vx += Math.cos(car.heading)*accel*dt * Math.hypot(iv.x,iv.y);
     car.vy += Math.sin(car.heading)*accel*dt * Math.hypot(iv.x,iv.y);
@@ -2370,10 +2651,10 @@ function updateCar(car, ctrl, dt){
   let latX = car.vx - fwd*fx, latY = car.vy - fwd*fy;
   const sp = Math.hypot(car.vx,car.vy);
   const turningHard = hasInput && Math.abs(angDiff(car.heading, Math.atan2(iv.y,iv.x))) > 0.55;
-  const grip = (onIce ? 1.1 : onSticky ? 11 : (turningHard && sp>230*SPD) ? 2.4 : 8.5) * mGrip * kGrip;   // 🟣 goop = planted, never spins a kid out
+  const grip = (onIce ? 1.1 : onSticky ? 11 : (turningHard && sp>230*SPD) ? 2.4 : lowG ? 3.4 : 8.5) * mGrip * kGrip;   // 🟣 goop = planted, never spins a kid out · 🌠 low-G floats (still 3× more planted than ice)
   const latK = Math.exp(-grip*dt);
   latX*=latK; latY*=latK;
-  fwd *= (hasInput || car.airT>0) ? Math.exp(-(onSticky?1.6:0.35)*dt) : Math.exp(-(onIce?0.7: onSticky?5.5 :2.2)*dt);   // 🟠 low drag airborne · 🟣 goop bleeds coast speed fast
+  fwd *= (hasInput || car.airT>0) ? Math.exp(-(onSticky?1.6:0.35)*dt) : Math.exp(-(onIce?0.7: onSticky?5.5 : lowG?1.1 :2.2)*dt);   // 🟠 low drag airborne · 🟣 goop bleeds coast speed fast · 🌠 space coasts long
   car.vx = fwd*fx + latX; car.vy = fwd*fy + latY;
   const spd2 = Math.hypot(car.vx,car.vy);
   if(spd2 > maxSp){ car.vx *= maxSp/spd2; car.vy *= maxSp/spd2; }
@@ -2381,7 +2662,7 @@ function updateCar(car, ctrl, dt){
   // drift state
   const slip = spd2>200*SPD ? Math.abs(angDiff(car.heading, Math.atan2(car.vy,car.vx))) : 0;
   const wasDrift = car.drifting;
-  car.drifting = (slip>0.32 && spd2>210*SPD) || (onIce && spd2>140 && slip>0.2);
+  car.drifting = (slip>0.32 && spd2>210*SPD) || (onIce && spd2>140 && slip>0.2) || (lowG && spd2>180*SPD && slip>0.22);
   if(car.drifting){
     car.driftT += dt;
     if(((car.driftT*10)|0) % 4 === 0) spark(car);
@@ -2540,6 +2821,15 @@ function updateEntities(dt){
     cr.cc = cr.c + cr.dx*Math.round(off);
     cr.cr = cr.r + cr.dy*Math.round(off);
   }
+  // ☄️ asteroids: soft rocks drift their lane (crusher math, NO round → smooth; ⏱️ slow-mo aware via game.gt)
+  for(const a of game.asteroids){
+    const off = a.range * (0.5 - 0.5*Math.cos(((game.gt||0)/a.period + a.phase)*TAU));
+    a.off = off;
+    a.x = (a.c + a.dx*off + 0.5)*CELL;
+    a.y = (a.r + a.dy*off + 0.5)*CELL;
+    a.spin += dt * a.spv;
+    if(off>0.15 && off<a.range-0.15 && Math.random()<0.22) puff(a.x, a.y, "rgba(201,179,255,0.35)");
+  }
   // 🎁 reactive player power-ups: ❄️ freeze when a goober threatens · ⏱️ slow-mo near danger
   if(game.car && game.car.pu){
     const c = game.car;
@@ -2582,6 +2872,7 @@ function updateEntities(dt){
   for(const p of game.portals) if(p.cool>0) p.cool -= dt;
   for(const p of game.pads) if(p.cool) p.cool = Math.max(0, p.cool-dt);
   for(const bp of game.bounces) if(bp.cool>0) bp.cool = Math.max(0, bp.cool-dt);   // 🟠 splash-pad cooldowns
+  for(const rg of game.rings) if(rg.cool>0) rg.cool = Math.max(0, rg.cool-dt);     // 🚀 launch-ring cooldown
   for(const cm of game.crumbles){                                                  // 🧱 foam collapse — once/frame, car-count-independent
     if(cm.state==="cracking" && game.gt - cm.t0 >= CRUMBLE_GRACE){
       cm.state="gone";
@@ -2618,16 +2909,26 @@ function updateEntities(dt){
       }
     }
   }
-  // portals: hop to the other end
+  // portals: hop to the other end (🌀 bh:true = black-hole wormhole — wider event-horizon capture + dramatic warp)
   if(game.portals.length===2 && car.portalCool<=0){
     for(let i=0;i<2;i++){
       const p = game.portals[i];
-      if(p.cool<=0 && dist(car.x,car.y,p.x,p.y)<34){
+      const cap = p.bh ? BH_CAP : 34;
+      if(p.cool<=0 && dist(car.x,car.y,p.x,p.y)<cap){
         const o = game.portals[1-i];
-        for(let k=0;k<10;k++) puff(car.x,car.y,"rgba(185,140,255,0.55)");
-        car.x = o.x; car.y = o.y; car.portalCool = 1.1; o.cool = 0.6;
-        for(let k=0;k<10;k++) puff(car.x,car.y,"rgba(185,140,255,0.55)");
-        AU.nitro(); float("WOOSH!", car.x, car.y-30, "#b98cff");
+        if(p.bh){                                             // 🌀 event-horizon → white-hole warp
+          for(let k=0;k<18;k++) sparkle(p.x+rand(-20,20), p.y+rand(-20,20));
+          car.x=o.x; car.y=o.y; car.portalCool=1.1; o.cool=0.6;
+          car.spinT=0.4; car.sq=0.5;
+          for(let k=0;k<20;k++) puff(o.x+rand(-22,22), o.y+rand(-22,22), "rgba(180,150,255,0.6)");
+          AU.nitro(); game.shake=Math.min(7,(game.shake||0)+4);
+          float("WARP!", o.x, o.y-32, "#c9b6ff");
+        } else {                                              // unchanged plain-portal path
+          for(let k=0;k<10;k++) puff(car.x,car.y,"rgba(185,140,255,0.55)");
+          car.x = o.x; car.y = o.y; car.portalCool = 1.1; o.cool = 0.6;
+          for(let k=0;k<10;k++) puff(car.x,car.y,"rgba(185,140,255,0.55)");
+          AU.nitro(); float("WOOSH!", car.x, car.y-30, "#b98cff");
+        }
         break;
       }
     }
@@ -2686,11 +2987,60 @@ function updateEntities(dt){
       }
     }
   }
+  // 🚀 LAUNCH RING: big floaty space-leap across a chasm — reliable ~3.1–3.5 cells every time
+  if(game.rings.length){
+    const rcx=Math.floor(car.x/CELL), rcy=Math.floor(car.y/CELL);
+    for(const rg of game.rings){
+      if(rg.c===rcx && rg.r===rcy && rg.cool<=0 && car.airT<=0){
+        rg.cool=0.5;
+        const SPD=CONFIG.speed||1, sp=Math.hypot(car.vx,car.vy);
+        const launch = clamp(sp + 380*SPD, 560*SPD, 640*SPD);   // upper clamp = airborne maxSp cap → nothing clipped
+        car.vx=Math.cos(car.heading)*launch; car.vy=Math.sin(car.heading)*launch;   // fly the way you POINT (flip-safe)
+        car.airT=car.airMax=0.82;
+        car.nitroMeter=Math.min(100,car.nitroMeter+20); car.sq=1.4;
+        AU.nitro(); AU.beep(320,0.10,"sawtooth",0.10,720); game.shake=Math.min(7,game.shake+4);
+        for(let i=0;i<14;i++) puff(rg.x+rand(-18,18), rg.y+rand(-18,18), "rgba(159,224,255,0.6)");
+        if(car===game.car) float("BLAST OFF!", car.x, car.y-42, "#9fe0ff");
+        break;
+      }
+    }
+  }
   // conveyor floors: shove the car the way the belt points (you can still steer against it)
   if(game.conveyors.length && car.airT<=0){                       // 🟠 no mid-air current shove
     const ccx=Math.floor(car.x/CELL), ccy=Math.floor(car.y/CELL);
     for(const cv2 of game.conveyors){
       if(cv2.c===ccx && cv2.r===ccy){ car.vx += cv2.dx*640*dt; car.vy += cv2.dy*640*dt; break; }
+    }
+  }
+  // 🪐 gravity wells: continuous quadratic pull toward each planet — bend the line, whip the corner. Always escapable.
+  if(game.wells.length){
+    const SPD = CONFIG.speed||1, airK = car.airT>0 ? 0.5 : 1;   // gentle bend on ring-hops, full grip on ground
+    let inWell = false;
+    for(const w of game.wells){
+      const dx=w.x-car.x, dy=w.y-car.y, d=Math.hypot(dx,dy)||1;
+      if(d > WELL_R) continue;
+      inWell = true;
+      const f = 1 - d/WELL_R;
+      const G = WELL_PULL*SPD * f*f * airK;        // QUADRATIC: barely tugs mid-range, firm slingshot near core
+      car.vx += dx/d*G*dt; car.vy += dy/d*G*dt;
+      if(car===game.car && d < WELL_R*0.4 && Math.random()<0.2) sparkle(car.x+rand(-8,8), car.y+rand(-8,8));
+    }
+    if(car.wellIn && !inWell && Math.hypot(car.vx,car.vy)>300){  // 🌠 slingshot exit celebration
+      if(car===game.car) float(pick(["SLINGSHOT!","WHEEE!","ORBIT!"]), car.x, car.y-38, "#b9a8ff");
+      for(let i=0;i<6;i++) sparkle(car.x, car.y);
+    }
+    car.wellIn = inWell;
+  }
+  // 🕳️ black holes: strong grounded suction toward the horizon. A launch-ring hop (airT>0) sails clean over the top.
+  if(car.airT<=0){
+    const SPD = CONFIG.speed||1;
+    for(const p of game.portals){
+      if(!p.bh || p.cool>0) continue;
+      const dx=p.x-car.x, dy=p.y-car.y, d=Math.hypot(dx,dy)||1;
+      if(d > BH_R || d <= BH_CAP) continue;        // inside BH_CAP the teleport block owns it
+      const f = 1 - d/BH_R;
+      const G = (BH_PULL_MIN + (BH_PULL_MAX-BH_PULL_MIN)*f) * SPD;
+      car.vx += dx/d*G*dt; car.vy += dy/d*G*dt;
     }
   }
   // trap doors: drive on one → drop through → respawn (invuln blocks re-trigger)
@@ -2724,6 +3074,18 @@ function updateEntities(dt){
       break;   // one crumble per cell
     }
   }
+  // 🕳️ THE VOID: drift into open space → gentle beam-back (a launched hop with airT>0 sails over)
+  if(game.voids.length && car.invuln<=0 && car.airT<=0){
+    const vcx=Math.floor(car.x/CELL), vcy=Math.floor(car.y/CELL);
+    if(game.voidCell[vcy] && game.voidCell[vcy][vcx] && !blockHit(car, car.x, car.y)){
+      const sp = car.spawn || {x:car.x, y:car.y, h:car.heading};
+      for(let i=0;i<16;i++) puff(car.x+rand(-14,14), car.y+rand(-14,14), "rgba(180,170,255,0.5)");
+      car.x=sp.x; car.y=sp.y; car.heading=sp.h; car.vx=car.vy=0; car.invuln=1.4; car.spinT=0.35; car.sq=0.5;  // respawn contract
+      AU.beep(300,0.14,"sine",0.10,540); AU.beep(760,0.28,"sine",0.12,220);   // soft rising beam-back warble — NOT AU.bonk
+      game.shake=Math.min(5,game.shake+2);
+      sticker("🌌 "+(game.vs||game.coop||game.ko? pName(car.p2?1:0)+" DRIFTED OFF!":"DRIFTED INTO SPACE — BEAMED BACK!"), "#7b6cff");
+    }
+  }
   // goobers: nitro speed takes HIM out — otherwise he yoinks your coins
   for(const gb of game.goobers){
     if(gb.dead || gb.frozen>0 || car.airT>0) continue;          // ❄️ frozen goobers harmless · 🟠 hop sails over
@@ -2755,6 +3117,22 @@ function updateEntities(dt){
           setTimeout(()=>{ if(game.state==="play") sticker("NITRO TAKES HIM OUT! ⚡", "#7ef7ff"); }, 1400);
         }
       }
+    }
+  }
+  // ☄️ asteroids: soft space rocks — bump spins you off with an outward pop, never a dead stop
+  for(const a of game.asteroids){
+    if(car.airT>0) continue;                              // 🚀 ring hop sails over
+    const rr = 30*a.size;
+    if(dist(car.x,car.y,a.x,a.y) < rr && car.invuln<=0 && !blockHit(car,car.x,car.y)){
+      car.invuln = 1.0*a.size; car.spinT = 0.4; car.sq = 0.6;
+      game.shake = Math.min(8, game.shake+6); AU.bonk(); AU.beep(180,0.22,"sawtooth",0.14,70);
+      sticker("☄️ "+pick(YELLS.rock), "#c9b3ff");
+      const ka = Math.atan2(car.y-a.y, car.x-a.x), kb = 300*a.size;
+      car.vx = car.vx*0.4 + Math.cos(ka)*kb;              // keep 40% forward + outward pop = EJECTION, never a dead stop
+      car.vy = car.vy*0.4 + Math.sin(ka)*kb;
+      a.spin += 0.7;
+      for(let i=0;i<10;i++) debris(a.x+rand(-18,18), a.y+rand(-18,18));
+      for(let i=0;i<6;i++)  puff(car.x, car.y, "rgba(201,179,255,0.5)");
     }
   }
   // VS battle pickups + traps + knockout hazards
@@ -2865,6 +3243,14 @@ function updateEntities(dt){
         const spd = rv.speed*band;
         if(d < spd*dt+2){ rv.x=t[0]; rv.y=t[1]; rv.i++; }
         else { rv.x += (t[0]-rv.x)/d*spd*dt; rv.y += (t[1]-rv.y)/d*spd*dt; }
+        // 🪐 wells bend the boss's arc too — bounded ≤60% of a forward step so progress always dominates
+        for(const w of game.wells){
+          const dx=w.x-rv.x, dy=w.y-rv.y, wd=Math.hypot(dx,dy)||1;
+          if(wd > WELL_R) continue;
+          const f=1-wd/WELL_R, pull=Math.min(WELL_PULL*(CONFIG.speed||1)*f*f*dt, rv.speed*dt*0.6);  // ≤60% of a forward step
+          const nx=rv.x+dx/wd*pull, ny=rv.y+dy/wd*pull;
+          if(!isSolid(Math.floor(nx/CELL),Math.floor(ny/CELL))){ rv.x=nx; rv.y=ny; }
+        }
         rv.a += angDiff(rv.a, Math.atan2(t[1]-rv.y, t[0]-rv.x))*Math.min(1,dt*8);
         if(Math.random()<0.15) puff(rv.x-Math.cos(rv.a)*18, rv.y-Math.sin(rv.a)*18, "rgba(176,110,232,0.25)");
         const rc = crateAt(Math.floor(rv.x/CELL), Math.floor(rv.y/CELL));
@@ -3074,6 +3460,30 @@ function drawBackdrop(dt){
       for(let xx=0;xx<=W;xx+=26){ const yv=yy + Math.sin(xx*0.02+t*0.8+a*1.3)*10 + Math.sin(xx*0.05+t)*4; xx===0?ctx.moveTo(xx,yv):ctx.lineTo(xx,yv); } ctx.stroke(); }
     for(let i=0;i<30;i++){ const xx=((i*143.3 - px*0.04)%W+W)%W, yy=H-((i*61.7 + t*(18+(i%5)*7))%(H+20));
       ctx.globalAlpha=0.12+0.18*(((i*3)%10)/10); ctx.strokeStyle="#bff4ff"; ctx.lineWidth=1.4; ctx.beginPath(); ctx.arc(xx, yy, 1.5+(i%4), 0, TAU); ctx.stroke(); }
+  } else if(B==="void"){
+    for(let n=0;n<2;n++){                                       // two slow nebula clouds
+      const nx = (n? W*0.70 : W*0.26) - px*(0.018+n*0.014), ny = n? H*0.66 : H*0.28;
+      const rad = ctx.createRadialGradient(nx,ny,0, nx,ny, H*(0.55+n*0.2));
+      rad.addColorStop(0, n? "rgba(96,120,255,0.10)" : "rgba(150,80,235,0.11)"); rad.addColorStop(1, "rgba(20,10,40,0)");
+      ctx.globalAlpha=1; ctx.fillStyle=rad; ctx.fillRect(0,0,W,H);
+    }
+    const ppx=((W*0.8 - px*0.01)%(W+300)+W+300)%(W+300)-150, ppy=H*0.20;   // one distant planet
+    const pg=ctx.createRadialGradient(ppx-6, ppy-6, 2, ppx, ppy, 26);
+    pg.addColorStop(0,"#8f7cff"); pg.addColorStop(1,"#241a4a");
+    ctx.globalAlpha=0.5; ctx.fillStyle=pg; ctx.beginPath(); ctx.arc(ppx, ppy, 26, 0, TAU); ctx.fill();
+    const LN=[70,42,22], LP=[0.02,0.05,0.10], LZ=[0.6,1.0,1.7];   // 3 star layers far→near
+    for(let L2=0; L2<3; L2++) for(let i=0;i<LN[L2];i++){
+      const seed=i*97.13+L2*311.7, xx=((seed - px*LP[L2])%W+W)%W, yy=(seed*1.73)%H;
+      const tw=0.3+0.7*Math.abs(Math.sin(t*(0.5+L2*0.45)+i*1.3));
+      ctx.globalAlpha=tw*(0.45+L2*0.2);
+      ctx.fillStyle=(i%9===0)? T.accent : (i%3? "#eef2ff" : "#c9d6ff");
+      ctx.beginPath(); ctx.arc(xx,yy, LZ[L2], 0, TAU); ctx.fill();
+    }
+    const ss=(t*(1/7))%1;                                        // ✨ shooting star ~every 7s
+    if(ss<0.07){ const p=ss/0.07, hx=W*0.12+p*W*0.72, hy=H*0.16+p*H*0.30;
+      ctx.globalAlpha=Math.sin(p*Math.PI)*0.85; ctx.strokeStyle="#e6ecff"; ctx.lineWidth=2; ctx.lineCap="round";
+      ctx.beginPath(); ctx.moveTo(hx,hy); ctx.lineTo(hx-30,hy-11); ctx.stroke();
+    }
   } else {
     ctx.fillStyle="#aab4d8";
     for(let i=0;i<50;i++){ const xx=(i*127.3)%W, yy=(i*89.7)%(H*0.8);
@@ -3111,11 +3521,14 @@ function drawWorld(dt){
   }
   game._cam = {cx, cy, z};
   ctx.drawImage(game.groundCv, 0, 0);
+  for(const v of game.voids) drawVoid(v);                // 🕳️ star-motes inside the transparent chasm (over backdrop, under entities)
   ctx.drawImage(game.skidCv, 0, 0);
   for(const cv2 of game.conveyors) drawConveyor(cv2);   // floor-level, under everything
   for(const t of game.trapDoors) drawTrapDoor(t);
+  for(const w of game.wells) drawWell(w);                // 🪐 floor-level, so the pull ring sits UNDER the car
   for(const bp of game.bounces) drawBounce(bp);          // 🟠 splash pads
   for(const cm of game.crumbles) drawCrumble(cm);        // 🧱 foam floats
+  for(const rg of game.rings) drawRing(rg);              // 🚀 launch rings
 
   if(!game.ko) drawFinish();
   for(const d of game.doors) drawDoor(d);
@@ -3127,11 +3540,13 @@ function drawWorld(dt){
   for(const w of game.trapWalls) drawTrapWall(w);
   for(const k of game.koZones) drawKoHazard(k);
   for(const cr of game.crushers) drawCrusher(cr);
+  for(const a of game.asteroids) drawAsteroidLane(a);    // ☄️ dashed drift-lane telegraph…
+  for(const a of game.asteroids) drawAsteroid(a);        // …then the rocks on top
   for(const t of game.traps) drawTrapTrigger(t);
   for(const z of game.zaps) drawZap(z);
   for(const cr of game.crates) drawCrate(cr);
   if(game.gold) drawGold(game.gold);   // 🎁 v2 golden crate (world space, same camera as other entities)
-  game.portals.forEach((p,i)=>drawPortal(p,i));
+  game.portals.forEach((p,i)=> p.bh ? drawBlackHole(p,i) : drawPortal(p,i));
   for(const cn of game.coins) if(!cn.got) drawCoin(cn);
   if(game.key && !game.key.got) drawKey(game.key);
   for(const gb of game.goobers) drawGoober(gb);
@@ -3140,18 +3555,27 @@ function drawWorld(dt){
     const rv = game.rival;
     ctx.save();
     ctx.translate(rv.x, rv.y);
-    ctx.fillStyle = "#b06ee8"; ctx.globalAlpha = 0.3;
-    ctx.beginPath(); ctx.ellipse(0, 0, 24, 17, 0, 0, TAU); ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.rotate(rv.a);
-    stdWheels();
-    ctx.fillStyle = "#b06ee8"; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,7); ctx.fill();
-    ctx.fillStyle = "rgba(255,255,255,0.12)"; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,8,7); ctx.fill();
-    ctx.fillStyle = "#20283c"; ctx.fillRect(-19,-8,4,16);
-    ctx.fillStyle = "#1b2233"; ctx.beginPath(); ctx.roundRect(-7,-7,14,14,4); ctx.fill();
-    ctx.font = "12px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-    fillTextC("👾", 0, 0);
-    ctx.fillStyle = "#fff2c0"; ctx.fillRect(15,-7,3,4); ctx.fillRect(15,3,3,4);
+    if(rv.ufo){                                            // 🛸 W6 boss flies the saucer (pure reskin — same pathing)
+      const bob = 1 + Math.sin(game.t*4)*0.05;
+      ctx.fillStyle = "#9ad8ff"; ctx.globalAlpha = 0.28 + Math.sin(game.t*3)*0.06;
+      ctx.beginPath(); ctx.ellipse(0, 0, 26, 18, 0, 0, TAU); ctx.fill();   // tractor-beam underglow
+      ctx.globalAlpha = 1;
+      ctx.rotate(rv.a); ctx.scale(bob, bob);
+      drawVehicleBody("ufo");
+    } else {
+      ctx.fillStyle = "#b06ee8"; ctx.globalAlpha = 0.3;
+      ctx.beginPath(); ctx.ellipse(0, 0, 24, 17, 0, 0, TAU); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.rotate(rv.a);
+      stdWheels();
+      ctx.fillStyle = "#b06ee8"; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,7); ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.12)"; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,8,7); ctx.fill();
+      ctx.fillStyle = "#20283c"; ctx.fillRect(-19,-8,4,16);
+      ctx.fillStyle = "#1b2233"; ctx.beginPath(); ctx.roundRect(-7,-7,14,14,4); ctx.fill();
+      ctx.font = "12px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+      fillTextC("👾", 0, 0);
+      ctx.fillStyle = "#fff2c0"; ctx.fillRect(15,-7,3,4); ctx.fillRect(15,3,3,4);
+    }
     ctx.restore();
   }
   if(store.pet && game.pet){
@@ -3207,7 +3631,7 @@ const VEHICLES = [
   { id:"hotdog",  name:"GLIZZY GT",  price:25, trail:()=>"#e8543f" },
   { id:"cart",    name:"CART RACER", price:30, trail:()=>"#b8c1d8" },
   { id:"toilet",  name:"SKIBIDI GT", price:35, trail:()=>"#f4f6ff" },
-  { id:"ufo",     name:"THE SAUCER", price:40, trail:()=>"#9ad8ff", ownWheels:true, noLights:true },
+  { id:"ufo",     name:"THE SAUCER", price:0, trail:()=>"#9ad8ff", ownWheels:true, noLights:true, reward:true },   // 🌌 W6 reward ride (was paid — existing owners keep it)
   { id:"supra",   name:"2FAST",      price:45, trail:()=>"#ff9f45" },
   { id:"beast",   name:"THE BEAST",  price:50, trail:()=>"#aab4c8", ownWheels:true },
   // 🎁 free reward rides — one per world, unlocked by beating that series (see SERIES[].reward)
@@ -3240,7 +3664,7 @@ const CAR_STATS = {
   hotdog:  {spd:6, acc:6, hnd:5, bst:6},   // honest all-rounder
   cart:    {spd:4, acc:8, hnd:7, bst:4},   // twitchy: darts & turns, no top end
   toilet:  {spd:6, acc:6, hnd:6, bst:6},   // meme mid, no weakness
-  ufo:     {spd:6, acc:5, hnd:7, bst:8},   // hover: great handling + big nitro
+  ufo:     {spd:7, acc:6, hnd:9, bst:9},   // 🌌 W6 reward: hover king — top handling + huge nitro (A-class)
   supra:   {spd:8, acc:7, hnd:6, bst:6},   // real sports car — top paid
   beast:   {spd:8, acc:6, hnd:6, bst:7},   // bruiser, big speed & boost
   blaze:   {spd:8, acc:8, hnd:6, bst:7},   // 🏁 W1 reward: hot-rod launch monster
@@ -4349,6 +4773,146 @@ function drawPortal(p, i){
   ctx.beginPath(); ctx.arc(0,0,15,0,TAU); ctx.stroke();
   ctx.restore(); ctx.globalAlpha=1;
 }
+/* 🌌 WORLD 6 — COSMIC RUSH hazard draws (all pure time-driven — no particle pushes, pause-safe) */
+function drawWell(w){                                     // 🪐 gravity well: pull-field ring + planet + moons + in-fall dust
+  ctx.save(); ctx.translate(w.x, w.y);
+  // (1) the pull field made VISIBLE — dashed glowing ring at WELL_R, slow-rotating, alpha-pulse
+  const pulse = 0.5+0.5*Math.sin(game.t*1.8+w.ph);
+  ctx.save(); ctx.rotate(game.t*0.35+w.ph);
+  ctx.strokeStyle="#b9a8ff"; ctx.lineWidth=3; ctx.setLineDash([14,18]);
+  ctx.globalAlpha=0.20+0.18*pulse;
+  ctx.beginPath(); ctx.arc(0,0,WELL_R,0,TAU); ctx.stroke();
+  ctx.setLineDash([]); ctx.restore();
+  // (3) faint in-fall dust drifting toward center (deterministic, time-driven)
+  ctx.fillStyle="#c9b3ff";
+  for(let i=0;i<6;i++){
+    const p=(game.t*(0.14+0.04*(i%3)) + i*0.37 + w.ph)%1;
+    const a=w.ph+i*1.047+p*0.6, rr=WELL_R*(1-p*0.82);
+    if(rr<48) continue;
+    ctx.globalAlpha=0.30*p;
+    ctx.beginPath(); ctx.arc(Math.cos(a)*rr, Math.sin(a)*rr, 2.2, 0, TAU); ctx.fill();
+  }
+  // (2) the planet sphere over its solid cell — lit top-left, thin rim-light
+  ctx.globalAlpha=1;
+  const pg=ctx.createRadialGradient(-14,-14,4, 0,0,42);
+  pg.addColorStop(0,"#cbb9ff"); pg.addColorStop(0.45,"#8d74e8"); pg.addColorStop(1,"#2d2158");
+  ctx.fillStyle=pg; ctx.beginPath(); ctx.arc(0,0,42,0,TAU); ctx.fill();
+  ctx.strokeStyle="rgba(255,255,255,0.10)"; ctx.lineWidth=5;                       // soft band for character
+  ctx.beginPath(); ctx.ellipse(0,5,33,11,0.25,0,Math.PI); ctx.stroke();
+  ctx.strokeStyle="rgba(233,224,255,0.55)"; ctx.lineWidth=2;                       // rim-light arc (up-left)
+  ctx.beginPath(); ctx.arc(0,0,41,-2.7,-0.7); ctx.stroke();
+  // 3 orbiting moon-dots
+  for(let i=0;i<3;i++){
+    const a=game.t*2.5+i*2.1+w.ph, mr=52+i*7;
+    ctx.fillStyle = i? "#dfe6ff" : "#ffd76a"; ctx.globalAlpha=0.85;
+    ctx.beginPath(); ctx.arc(Math.cos(a)*mr, Math.sin(a)*mr*0.55, 3.4-i*0.6, 0, TAU); ctx.fill();
+  }
+  ctx.globalAlpha=1; ctx.restore();
+}
+function drawBlackHole(p,i){                              // 🕳️ i0 = dark mouth (arcs fall IN) · i1 = white exit (arcs blow OUT)
+  const white = i===1;
+  ctx.save(); ctx.translate(p.x, p.y);
+  // faint suction ring at BH_R
+  ctx.strokeStyle = white? "#eef2ff" : "#b9a8ff"; ctx.lineWidth=2.5; ctx.setLineDash([8,14]);
+  ctx.globalAlpha = 0.14+0.08*Math.sin(game.t*2.2+i*2);
+  ctx.beginPath(); ctx.arc(0,0,BH_R,0,TAU); ctx.stroke(); ctx.setLineDash([]);
+  ctx.globalAlpha = 1;
+  // core disc
+  const g = ctx.createRadialGradient(0,0,3, 0,0,30);
+  if(white){ g.addColorStop(0,"#ffffff"); g.addColorStop(0.55,"#cfd8ff"); g.addColorStop(1,"rgba(150,140,255,0)"); }
+  else     { g.addColorStop(0,"#05040a"); g.addColorStop(0.62,"#120c26"); g.addColorStop(1,"rgba(24,14,50,0)"); }
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(0,0,30,0,TAU); ctx.fill();
+  // 3 accretion arcs — rotate INWARD on the black end, OUTWARD on the white end
+  ctx.save(); ctx.rotate(game.t*1.6*(white?-1:1));
+  ctx.strokeStyle = white? "#ffffff" : "#b98cff"; ctx.lineCap="round";
+  for(let a=0;a<3;a++){
+    ctx.globalAlpha=0.55-a*0.13; ctx.lineWidth=3.5-a*0.7;
+    ctx.beginPath(); ctx.arc(0,0,14+a*8, a*2.1, a*2.1+3.9); ctx.stroke();
+  }
+  ctx.restore();
+  if(white){                                              // occasional outward twinkle (pure draw — pause-safe)
+    const tw=(game.t*0.9)%1;
+    if(tw<0.4){ const ta=Math.floor(game.t*0.9)*2.4, td=20+tw*34;
+      ctx.globalAlpha=Math.sin(tw/0.4*Math.PI)*0.8; ctx.fillStyle="#eef2ff";
+      ctx.beginPath(); ctx.arc(Math.cos(ta)*td, Math.sin(ta)*td, 2.2, 0, TAU); ctx.fill(); }
+  }
+  ctx.globalAlpha=1; ctx.restore();
+}
+function drawVoid(v){                                     // 🕳️ chasm dressing: drifting star-motes + galaxy swirl — NO disc, the hole is transparent
+  const cx=v.x, cy=v.y, wob=0.5+Math.sin(game.t*2.4+v.ph)*0.5;
+  ctx.save(); ctx.translate(cx,cy); ctx.rotate(game.t*1.5+v.ph);   // swirl (drawTrapDoor's rotating-arc pattern, recolored)
+  ctx.strokeStyle="rgba(120,180,220,"+(0.16+wob*0.20)+")"; ctx.lineWidth=3;
+  for(let a=0;a<3;a++){ ctx.beginPath(); ctx.arc(0,0,CELL*(0.14+a*0.10), a*2.1, a*2.1+3.6); ctx.stroke(); }
+  ctx.restore();
+  // star-motes drifting inside the hole (deterministic per-void)
+  for(let i=0;i<4;i++){
+    const px2 = cx + Math.sin(v.ph*3+i*2.4 + game.t*(0.5+0.14*i))*CELL*0.32;
+    const py2 = cy + Math.cos(v.ph*5+i*1.7 + game.t*(0.4+0.11*i))*CELL*0.32;
+    ctx.globalAlpha = 0.35+0.5*Math.abs(Math.sin(game.t*(0.8+i*0.3)+v.ph+i));
+    ctx.fillStyle = i%2? "#c9d6ff" : "#9fe0ff";
+    ctx.beginPath(); ctx.arc(px2, py2, 1.4+(i%2), 0, TAU); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+function drawRing(rg){                                    // 🚀 launch ring: double torus + sparkle-dashes + trajectory hint
+  const ready = rg.cool<=0, glow = ready? 1 : 1-rg.cool/0.5;      // brightens back as cool→0
+  // faint DOTTED TRAJECTORY toward the landing (corridor-forward, precomputed at level load)
+  const ang = rg.ang||0;
+  ctx.save(); ctx.translate(rg.x, rg.y); ctx.rotate(ang);
+  ctx.fillStyle="#9fe0ff";
+  for(let i=1;i<=6;i++){
+    ctx.globalAlpha=(0.30-(i*0.035))*glow;
+    ctx.beginPath(); ctx.arc(i*CELL*0.55, -Math.sin(i/6*Math.PI)*14, 3, 0, TAU); ctx.fill();
+  }
+  ctx.restore();
+  ctx.save(); ctx.translate(rg.x, rg.y);
+  const pulse = 1+Math.sin(game.t*4+rg.ph)*0.08;
+  ctx.scale(pulse,pulse);
+  const halo = ctx.createRadialGradient(0,0,6, 0,0,40);           // ground halo
+  halo.addColorStop(0,"rgba(123,108,255,"+(0.28*glow)+")"); halo.addColorStop(1,"rgba(123,108,255,0)");
+  ctx.fillStyle=halo; ctx.beginPath(); ctx.arc(0,0,40,0,TAU); ctx.fill();
+  ctx.strokeStyle="#7b6cff"; ctx.lineWidth=5; ctx.globalAlpha=0.55+0.4*glow;      // outer torus
+  ctx.beginPath(); ctx.arc(0,0,28,0,TAU); ctx.stroke();
+  ctx.strokeStyle="#9fe0ff"; ctx.lineWidth=3; ctx.globalAlpha=0.45+0.45*glow;     // inner torus (cyan)
+  ctx.beginPath(); ctx.arc(0,0,18,0,TAU); ctx.stroke();
+  ctx.save(); ctx.rotate(game.t*2.4+rg.ph);                                        // rotating sparkle-dashes
+  ctx.strokeStyle="#eef2ff"; ctx.lineWidth=2; ctx.setLineDash([5,17]); ctx.globalAlpha=0.7*glow;
+  ctx.beginPath(); ctx.arc(0,0,23,0,TAU); ctx.stroke(); ctx.setLineDash([]);
+  ctx.restore();
+  ctx.globalAlpha=1; ctx.restore();
+}
+function drawAsteroidLane(a){                             // ☄️ the anticipation telegraph — dashed drift lane
+  ctx.strokeStyle="rgba(201,179,255,0.12)"; ctx.lineWidth=6; ctx.setLineDash([10,12]); ctx.lineCap="round";
+  ctx.beginPath();
+  ctx.moveTo((a.c+0.5)*CELL, (a.r+0.5)*CELL);
+  ctx.lineTo((a.c+a.dx*a.range+0.5)*CELL, (a.r+a.dy*a.range+0.5)*CELL);
+  ctx.stroke(); ctx.setLineDash([]);
+}
+function drawAsteroid(a){                                 // ☄️ lumpy soft rock — draw radius == collision radius (30*size)
+  const R = 30*a.size;
+  ctx.fillStyle="rgba(8,10,16,0.4)";                                               // deck shadow
+  ctx.beginPath(); ctx.ellipse(a.x+5, a.y+7, R*0.95, R*0.42, 0, 0, TAU); ctx.fill();
+  if(a.size>1){                                                                    // boulder: faint ember glow
+    const eg=ctx.createRadialGradient(a.x,a.y,R*0.4, a.x,a.y,R*1.35);
+    eg.addColorStop(0,"rgba(255,140,60,0.14)"); eg.addColorStop(1,"rgba(255,140,60,0)");
+    ctx.fillStyle=eg; ctx.beginPath(); ctx.arc(a.x,a.y,R*1.35,0,TAU); ctx.fill();
+  }
+  ctx.save(); ctx.translate(a.x, a.y); ctx.rotate(a.spin);
+  ctx.beginPath();                                                                 // lumpy 9-vertex polygon, deterministic wobble
+  for(let i=0;i<9;i++){
+    const th=i/9*TAU, rr=R*(0.8+0.2*Math.sin(a.c*3+i*2.1));
+    i? ctx.lineTo(Math.cos(th)*rr, Math.sin(th)*rr) : ctx.moveTo(Math.cos(th)*rr, Math.sin(th)*rr);
+  }
+  ctx.closePath();
+  ctx.fillStyle="#5a5470"; ctx.fill();
+  ctx.strokeStyle="#3a3440"; ctx.lineWidth=4; ctx.stroke();
+  ctx.fillStyle="#544e5c";                                                         // 3 craters
+  [[-R*0.34,-R*0.18,R*0.20],[R*0.26,R*0.10,R*0.15],[-R*0.05,R*0.36,R*0.12]].forEach(([kx,ky,kr])=>{
+    ctx.beginPath(); ctx.arc(kx,ky,kr,0,TAU); ctx.fill(); });
+  ctx.strokeStyle="rgba(255,255,255,0.5)"; ctx.lineWidth=2.5;                      // star-white rim-light
+  ctx.beginPath(); ctx.arc(0,0,R*0.86,-2.7,-0.9); ctx.stroke();
+  ctx.restore();
+}
 function pName(i){ return (i? (CONFIG.player2Name||"P2") : (CONFIG.playerName||"P1")).slice(0,10); }
 function drawDarkness(){
   if(!game.lv || !game.lv.dark || !game._cam) return;
@@ -4499,9 +5063,9 @@ function drawHUD(){
     const pLeft = (game.flow && game.flow[pr][pc]>=0) ? game.flow[pr][pc] : game.raceTotal;
     const pProg = clamp(1 - pLeft/game.raceTotal, 0, 1);
     const rProg = clamp(rv.i/Math.max(1, rv.wp.length-1), 0, 1);
-    ctx.fillStyle = "#b06ee8";
+    ctx.fillStyle = rv.ufo ? "#9ad8ff" : "#b06ee8";
     ctx.beginPath(); ctx.arc(bx3+14+track*rProg, by3+13, 7, 0, TAU); ctx.fill();
-    ctx.font = "9px sans-serif"; fillTextC("👾", bx3+14+track*rProg, by3+13);
+    ctx.font = "9px sans-serif"; fillTextC(rv.ufo ? "🛸" : "👾", bx3+14+track*rProg, by3+13);
     ctx.fillStyle = vehicleById(store.car).trail();
     ctx.strokeStyle = "#f4f6ff"; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(bx3+14+track*pProg, by3+13, 6.5, 0, TAU); ctx.fill(); ctx.stroke();

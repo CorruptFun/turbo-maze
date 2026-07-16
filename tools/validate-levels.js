@@ -40,10 +40,14 @@ function bfs(rows, starts, passable){
 // J splash pad, % foam float, T/z/B/o/*/c/n are all PASSABLE for reachability (temporary or floor).
 // Only # is a permanent wall. Crushers are a runtime property (not in the grid). Crates x are solid
 // until smashed; foam % is checked separately (it can't be the SOLE bridge — see checkCampaign).
+// World 6 (space): @ gravity well = WALL (route around; the pull is runtime) · 0 black-hole wormhole
+// = passable (pairs like T; suction is runtime) · V void = WALL for ground reachability (campaign-only)
+// · U launch ring = passable pad. Asteroids are a runtime property (L.asteroids), not in the grid.
 const openPass  = ch => ch!=="#";                 // gates/doors treated open
 const shutPass  = ch => ch!=="#" && ch!=="Q";     // co-op gate Q shut
 const noCrate   = ch => ch!=="#" && ch!=="x";     // crate x as a wall (no forced smash)
 const noFoam    = ch => ch!=="#" && ch!=="%";     // 🧱 foam float as already-collapsed (post-collapse reachability)
+const noVoid    = ch => ch!=="#" && ch!=="V";     // 🕳️ void = hole: WALL for ground reachability (no launch-only)
 
 function frame(rows, issues){
   const W = rows[0].length;
@@ -51,21 +55,28 @@ function frame(rows, issues){
   for(let c=0;c<W;c++){ if(rows[0][c]!=="#"||rows[rows.length-1][c]!=="#") issues.push(`top/bottom border hole col ${c}`); }
   rows.forEach((r,y)=>{ if(r[0]!=="#"||r[W-1]!=="#") issues.push(`side border hole row ${y}`); });
   const nT = findAll(rows,"T").length; if(nT!==0 && nT!==2) issues.push(`portals=${nT} (must be 0 or 2)`);
+  const nBH = findAll(rows,"0").length;
+  if(nBH!==0 && nBH!==2) issues.push(`black holes=${nBH} (must be 0 or 2)`);
+  if(nBH && nT) issues.push("don't mix T portals and 0 black holes — they share the portal pair");
 }
 
 // ---- per-mode checks ----
 function checkCampaign(L){                          // LEVELS: single car, race to F
-  const rows=L.grid, iss=[]; frame(rows,iss);
+  const rows = L.grid.map(row=>row.replace(/@/g,'#')), iss=[]; frame(rows,iss);   // 🪐 @ well = wall for every check below
   const S=findIn(rows,"S"), F=findIn(rows,"F"), key=findIn(rows,"k");
   if(!S) iss.push("no S"); if(!F) iss.push("no F");
   if(rows.some(r=>r.includes("D")) && !key) iss.push("door needs a key");
   if(S&&F){
     if(bfs(rows,[S],openPass)[F[1]][F[0]]<0) iss.push("CAN'T REACH THE FLAG");
-    else if(bfs(rows,[S],noFoam)[F[1]][F[0]]<0) iss.push("a foam float (%) is the only S→F bridge — after it collapses a kid respawns stranded; add an alternate ground route");
+    else {                                           // noVoid is INDEPENDENT of noFoam — a void-only-bridge level is foam-clean, so chaining on the foam else-if would skip it
+      if(bfs(rows,[S],noFoam)[F[1]][F[0]]<0) iss.push("a foam float (%) is the only S→F bridge — after it collapses a kid respawns stranded; add an alternate ground route");
+      if(bfs(rows,[S],noVoid)[F[1]][F[0]]<0) iss.push("the void (V) is the only S→F crossing — add a solid ground detour (no launch-only)");
+    }
     if(bfs(rows,[S],noCrate)[F[1]][F[0]]<0) iss.push("⚠ crate on the sole path — fine ONLY if it's a smashable-crate level with runway to build speed");
     if(key && bfs(rows,[S],shutPass)[key[1]][key[0]]<0) iss.push("key is locked behind its own door");
-    const d=bfs(rows,[S],openPass);
-    findAll(rows,"c").concat(findAll(rows,"n")).forEach(([x,y])=>{ if(d[y][x]<0) iss.push(`coin ${x},${y} walled off`); });
+    const d=bfs(rows,[S],openPass), dv=bfs(rows,[S],noVoid);
+    findAll(rows,"c").concat(findAll(rows,"n")).forEach(([x,y])=>{ if(d[y][x]<0) iss.push(`coin ${x},${y} walled off`);
+      else if(dv[y][x]<0) iss.push(`⚠ coin ${x},${y} only reachable by launch — fine as a ring-route bonus`); });
   }
   return iss;
 }
