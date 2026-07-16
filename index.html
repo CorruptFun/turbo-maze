@@ -4807,6 +4807,11 @@ const mapNodes = [];
 function drawMap(){
   nightSky();
   const S = SERIES[store.curSeries] || SERIES[0];
+  // giant faint world-emoji watermark — instant theme + fills big screens
+  ctx.save(); ctx.globalAlpha = 0.06;
+  ctx.font = Math.round(H*0.5)+"px sans-serif"; ctx.textBaseline="middle";
+  fillTextC(S.emoji, W/2, H*0.56);
+  ctx.restore();
   const base = S.start, n = S.count;
   // header: world name (center), back + mute (top-right), aura + coins (top-left)
   ctx.font = "900 italic 34px 'Avenir Next Condensed','Arial Narrow',sans-serif";
@@ -4827,11 +4832,12 @@ function drawMap(){
   // serpentine road with nodes (this world's levels only)
   mapNodes.length = 0;
   const mx = Math.max(PADX+42, W*0.085);                 // keep clear of side notch/island
-  const perRow = Math.min(n, Math.max(7, Math.round((W-mx*2)/104)+1));
+  const cellT = clamp(H*0.24, 104, 230);                 // tall screens → fewer per row → MORE rows + BIGGER nodes (iPad felt sparse)
+  const perRow = Math.min(n, Math.max(5, Math.round((W-mx*2)/cellT)+1));
   const nRows = Math.ceil(n/perRow);
   // fill & center the winding track between header and footer — scales to any screen
   const bandTop = 96+safeT, bandBot = H-42-safeB, bandH = Math.max(140, bandBot-bandTop);
-  const R = clamp(Math.min((W-2*mx)/perRow*0.30, bandH/(nRows*3.0)), 18, 36);
+  const R = clamp(Math.min((W-2*mx)/perRow*0.30, bandH/(nRows*3.0)), 18, 46);
   const rowGap = nRows>1 ? clamp(bandH/nRows, R*2.6, 220) : 0;
   const yTop = nRows>1 ? bandTop + (bandH-(nRows-1)*rowGap)/2 : H*0.5;
   const pts = [];
@@ -5277,11 +5283,12 @@ function drawCoopMap(){
   drawIconBtn(W-PADX-94, 12+safeT, 40, "🗺️", "back");
   coopNodes.length = 0;
   const mx = Math.max(PADX+42, W*0.085);
-  const perRow = Math.min(n, Math.max(7, Math.round((W-mx*2)/104)+1));
+  const cellT = clamp(H*0.24, 104, 230);                 // same adaptive density as the campaign map
+  const perRow = Math.min(n, Math.max(5, Math.round((W-mx*2)/cellT)+1));
   const nRows = Math.ceil(n/perRow);
   // fill & center the winding track — scales to any screen
   const bandTop = 92+safeT, bandBot = H-40-safeB, bandH = Math.max(140, bandBot-bandTop);
-  const R = clamp(Math.min((W-2*mx)/perRow*0.30, bandH/(nRows*3.0)), 18, 36);
+  const R = clamp(Math.min((W-2*mx)/perRow*0.30, bandH/(nRows*3.0)), 18, 46);
   const rowGap = nRows>1 ? clamp(bandH/nRows, R*2.6, 220) : 0;
   const yTop = nRows>1 ? bandTop + (bandH-(nRows-1)*rowGap)/2 : H*0.54;
   const pts = [];
