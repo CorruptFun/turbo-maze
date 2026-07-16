@@ -2188,21 +2188,46 @@ function finishDist(){
 }
 
 /* ---------------- pre-rendered ground + walls ---------------- */
+// 🎨 per-world ATMOSPHERE — ground palette + backdrop, so each world FEELS like its theme
+// (indexed by world = seriesOf(levelIx); falls back to [0] for custom/VS/KO/co-op).
+const WORLD_THEME = [
+  // 0 TURBO BASICS — night racetrack (amber)
+  { ground:"#232a3d", speck:"rgba(255,255,255,0.035)", glow:"255,180,92", wall:"#0b0d15", wallTop:"#161b2b",
+    sky:["#0a0e1a","#12141f"], back:"city", accent:"#ffce7a" },
+  // 1 BRAIN FREEZE — icy (blue)
+  { ground:"#26343f", speck:"rgba(210,240,255,0.05)", glow:"150,205,255", wall:"#0a1119", wallTop:"#152230",
+    sky:["#081420","#0e2434"], back:"snow", accent:"#dff2ff" },
+  // 2 MAZE MAYHEM — neon void (purple)
+  { ground:"#241f36", speck:"rgba(210,180,255,0.05)", glow:"197,108,255", wall:"#0c0918", wallTop:"#1b1430",
+    sky:["#0b0818","#160b28"], back:"grid", accent:"#c56cff" },
+  // 3 METAL MELTDOWN — foundry (orange/steel)
+  { ground:"#2a2620", speck:"rgba(255,220,180,0.045)", glow:"255,140,60", wall:"#100c08", wallTop:"#241a12",
+    sky:["#140d08","#1f130a"], back:"factory", accent:"#ff9040" },
+  // 4 SPLASH ZONE — deep water (aqua)
+  { ground:"#1b3641", speck:"rgba(190,240,255,0.05)", glow:"80,210,224", wall:"#08161a", wallTop:"#10242c",
+    sky:["#061e26","#0a2f3c"], back:"water", accent:"#5fe0e0" },
+];
+function worldTheme(){
+  const s = (game.levelIx>=0 && !game.customId) ? seriesOf(game.levelIx) : -1;
+  return WORLD_THEME[s] || WORLD_THEME[0];
+}
+
 function prerenderGround(L){
   const w = game.cols*CELL, h = game.rows*CELL;
   const g = document.createElement("canvas"); g.width=w; g.height=h;
   const x = g.getContext("2d");
-  // asphalt (road is the LIGHT surface — walls go near-black so the maze pops)
-  x.fillStyle = "#232a3d"; x.fillRect(0,0,w,h);
+  // world-themed ground (road is the LIGHT surface — walls go near-black so the maze pops)
+  const T = worldTheme();
+  x.fillStyle = T.ground; x.fillRect(0,0,w,h);
   for(let i=0;i<w*h/900;i++){
-    x.fillStyle = Math.random()<0.5 ? "rgba(255,255,255,0.035)" : "rgba(0,0,0,0.3)";
+    x.fillStyle = Math.random()<0.5 ? T.speck : "rgba(0,0,0,0.3)";
     x.fillRect(Math.random()*w, Math.random()*h, rand(1,3), rand(1,3));
   }
   // warm lamp pools on road
   for(const [c,r] of game.road){
     if((c*7+r*13)%9===0){
       const gr = x.createRadialGradient((c+0.5)*CELL,(r+0.5)*CELL,8,(c+0.5)*CELL,(r+0.5)*CELL,CELL*0.9);
-      gr.addColorStop(0,"rgba(255,180,92,0.10)"); gr.addColorStop(1,"rgba(255,180,92,0)");
+      gr.addColorStop(0,"rgba("+T.glow+",0.10)"); gr.addColorStop(1,"rgba("+T.glow+",0)");
       x.fillStyle = gr; x.fillRect((c-1)*CELL,(r-1)*CELL,CELL*3,CELL*3);
     }
   }
@@ -2271,8 +2296,8 @@ function prerenderGround(L){
   for(let r=0;r<game.rows;r++) for(let c=0;c<game.cols;c++){
     if(!game.solid[r][c]) continue;
     const px=c*CELL, py=r*CELL;
-    x.fillStyle = "#0b0d15"; x.fillRect(px,py,CELL,CELL);
-    x.fillStyle = "#161b2b"; x.fillRect(px,py,CELL,10);
+    x.fillStyle = T.wall; x.fillRect(px,py,CELL,CELL);
+    x.fillStyle = T.wallTop; x.fillRect(px,py,CELL,10);
     // neon curb light on edges facing road
     x.fillStyle = L.hue; x.globalAlpha = 0.5;
     if(!isWallCell(c,r+1)) x.fillRect(px, py+CELL-4, CELL, 4);
@@ -2984,8 +3009,59 @@ function updateFx(dt){
 }
 
 /* ---------------- drawing ---------------- */
+// 🌌 world-aware atmospheric backdrop (screen-space, behind the maze; parallax off the camera).
+// Shows at the maze edges/fit-views now; will show THROUGH the void in World 6 Space.
+function drawBackdrop(dt){
+  const T = worldTheme(), t = game.t||0, B = T.back;
+  const sky = ctx.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0, T.sky[0]); sky.addColorStop(1, T.sky[1]);
+  ctx.fillStyle = sky; ctx.fillRect(0,0,W,H);
+  const px = (game.cam?game.cam.x:0);
+  ctx.save();
+  if(B==="snow"){
+    for(let a=0;a<2;a++){ ctx.globalAlpha=0.06; ctx.fillStyle=a?"#7effd0":"#8fbcff";
+      ctx.beginPath(); ctx.moveTo(0,0);
+      for(let xx=0;xx<=W;xx+=40) ctx.lineTo(xx, H*0.16+a*26 + Math.sin(xx*0.01+t*0.3+a)*16);
+      ctx.lineTo(W,0); ctx.closePath(); ctx.fill(); }
+    ctx.fillStyle="#eaf6ff";
+    for(let i=0;i<80;i++){ const sxp=((i*127.1 - px*0.05)%W+W)%W, syp=((i*53.7 + t*(24+(i%5)*8))%(H+30))-15;
+      ctx.globalAlpha=0.35+0.45*(((i*7)%10)/10); ctx.beginPath(); ctx.arc(sxp, syp, 0.7+(i%3)*0.55, 0, TAU); ctx.fill(); }
+  } else if(B==="city"){
+    ctx.fillStyle="#cdd6ff";
+    for(let i=0;i<60;i++){ const xx=((i*127.3 - px*0.03)%W+W)%W, yy=(i*71.9)%(H*0.6);
+      ctx.globalAlpha=0.15+0.45*Math.abs(Math.sin(t*0.6+i)); ctx.fillRect(xx, yy, 1.6, 1.6); }
+    const base=H*0.74, o=((-px*0.12)%140+140)%140;
+    for(let b=-1;b<W/70+2;b++){ const bx=b*70-o, bh=44+((b*53)%5)*20;
+      ctx.globalAlpha=1; ctx.fillStyle="#070a12"; ctx.fillRect(bx, base-bh, 58, bh+H);
+      ctx.fillStyle="rgba(255,206,122,0.5)";
+      for(let wy=base-bh+8; wy<base-8; wy+=15) for(let wx=bx+8; wx<bx+50; wx+=13) if((((wx|0)*7+(wy|0))%3)===0) ctx.fillRect(wx,wy,4,6); }
+  } else if(B==="grid"){
+    for(let i=0;i<16;i++){ const s=18+(i%4)*14, xx=((i*151.2 - px*0.05)%W+W)%W, yy=((i*97.4 + t*(6+(i%3)*4))%(H+60))-30;
+      ctx.globalAlpha=(Math.sin(t*3+i*1.7)>0.6)?0.22:0.08; ctx.strokeStyle=T.accent; ctx.lineWidth=2; ctx.strokeRect(xx, yy, s, s); }
+    ctx.globalAlpha=0.07; ctx.strokeStyle=T.accent; ctx.lineWidth=1;
+    for(let gy=0; gy<6; gy++){ const yy=H*0.55 + gy*gy*6; ctx.beginPath(); ctx.moveTo(0,yy); ctx.lineTo(W,yy); ctx.stroke(); }
+  } else if(B==="factory"){
+    const gl=ctx.createLinearGradient(0,H,0,H*0.6); gl.addColorStop(0,"rgba(255,110,30,0.18)"); gl.addColorStop(1,"rgba(255,110,30,0)");
+    ctx.globalAlpha=1; ctx.fillStyle=gl; ctx.fillRect(0,H*0.6,W,H*0.4);
+    for(let i=0;i<44;i++){ const xx=((i*113.7 - px*0.04)%W+W)%W, yy=H-((i*41.3 + t*(30+(i%6)*10))%(H+20));
+      ctx.globalAlpha=0.25+0.5*Math.abs(Math.sin(t*2+i)); ctx.fillStyle=(i%4)?"#ff9040":"#ffd23b";
+      ctx.beginPath(); ctx.arc(xx, yy, 1+(i%3)*0.7, 0, TAU); ctx.fill(); }
+  } else if(B==="water"){
+    ctx.strokeStyle="#9ff0ff"; ctx.lineWidth=2;
+    for(let a=0;a<4;a++){ ctx.globalAlpha=0.05+0.02*a; ctx.beginPath(); const yy=H*0.2+a*H*0.2;
+      for(let xx=0;xx<=W;xx+=26){ const yv=yy + Math.sin(xx*0.02+t*0.8+a*1.3)*10 + Math.sin(xx*0.05+t)*4; xx===0?ctx.moveTo(xx,yv):ctx.lineTo(xx,yv); } ctx.stroke(); }
+    for(let i=0;i<30;i++){ const xx=((i*143.3 - px*0.04)%W+W)%W, yy=H-((i*61.7 + t*(18+(i%5)*7))%(H+20));
+      ctx.globalAlpha=0.12+0.18*(((i*3)%10)/10); ctx.strokeStyle="#bff4ff"; ctx.lineWidth=1.4; ctx.beginPath(); ctx.arc(xx, yy, 1.5+(i%4), 0, TAU); ctx.stroke(); }
+  } else {
+    ctx.fillStyle="#aab4d8";
+    for(let i=0;i<50;i++){ const xx=(i*127.3)%W, yy=(i*89.7)%(H*0.8);
+      ctx.globalAlpha=0.12+0.35*Math.abs(Math.sin(t*0.7+i)); ctx.fillRect(xx, yy, 1.5, 1.5); }
+  }
+  ctx.globalAlpha=1; ctx.restore();
+}
 function drawWorld(dt){
   const car = game.car;
+  drawBackdrop(dt);
   const wW = game.cols*CELL, wH = game.rows*CELL;
   const sx = (Math.random()*2-1)*game.shake, sy = (Math.random()*2-1)*game.shake;
   let cx, cy, z = 1;
@@ -5573,6 +5649,30 @@ function shopSpec(stage, sel, isCars){
     return;
   }
   const s = carStat(sel.id), pi = carPI(s), cl = carClass(pi), col = CLASS_COL[cl];
+  // compact fallback for a very short stage (short-landscape phones): PI + class + a one-line stat readout
+  if(ph < 116){
+    ctx.textAlign="left"; ctx.textBaseline="middle";
+    ctx.font="700 8px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#8b93ad";
+    ctx.fillText("PERFORMANCE", px+14, py+13);
+    ctx.font="900 italic 22px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#ffd76a";
+    ctx.fillText(String(Math.round(sh.pi)), px+14, py+33);
+    const cw2=34, chh2=20, chx2=px+pw-cw2-12, chy2=py+11;
+    ctx.save(); if(cl==="S"){ ctx.shadowColor=col; ctx.shadowBlur=6; }
+    ctx.fillStyle=col; ctx.beginPath(); ctx.roundRect(chx2, chy2, cw2, chh2, 5); ctx.fill(); ctx.restore();
+    ctx.fillStyle="#12151f"; ctx.textAlign="center"; ctx.font="900 14px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+    ctx.fillText(cl, chx2+cw2/2, chy2+chh2/2+1);
+    const sy = py+ph-15, cellW = (pw-20)/4;
+    STAT_KEYS.forEach((k,i)=>{
+      const bx = px+10+cellW*i, meta = STAT_META[k];
+      ctx.fillStyle=meta.hue; ctx.beginPath(); ctx.arc(bx+6, sy, 3.2, 0, TAU); ctx.fill();
+      ctx.textAlign="left"; ctx.textBaseline="middle";
+      ctx.font="800 9px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#8b93ad";
+      ctx.fillText(meta.short, bx+13, sy-5);
+      ctx.font="900 14px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#f4f6ff";
+      ctx.fillText(String(Math.round(sh.bars[k])), bx+13, sy+6);
+    });
+    return;
+  }
   // PI + class header
   ctx.textAlign="left"; ctx.textBaseline="middle";
   ctx.font="700 9px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#8b93ad";
