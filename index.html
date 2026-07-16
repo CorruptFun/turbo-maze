@@ -3584,8 +3584,7 @@ function drawWorld(dt){
       const bob = Math.abs(Math.sin(game.t*7))*4;
       ctx.fillStyle = "rgba(0,0,0,0.3)";
       ctx.beginPath(); ctx.ellipse(game.pet.x, game.pet.y+10, 9, 3.5, 0, 0, TAU); ctx.fill();
-      ctx.font = "22px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-      fillTextC(p.emoji, game.pet.x, game.pet.y-4-bob);
+      drawPetGuy(p, game.pet.x, game.pet.y-4-bob, 22);
     }
   }
   if(game.car2) drawCar(game.car2);
@@ -3647,7 +3646,42 @@ const PETS = [
   { id:"dog",   name:"BUDDY", price:10, emoji:"🐶" },
   { id:"ghost", name:"BOO",   price:15, emoji:"👻" },
   { id:"dino",  name:"REXY",  price:20, emoji:"🦖" },
+  // 🇮🇹🧠 the BRAINROT PALS — original goofballs in the meme spirit (house rule: the vibe, not borrowed IP)
+  { id:"fragolina", name:"FRAGOLINA",         price:35,  emoji:"🐘", hat:"🍓" },              // the strawberry elephant
+  { id:"sharko",    name:"CAPPUCCINO SHARKO", price:50,  emoji:"🦈", hat:"☕" },
+  { id:"crocco",    name:"CROCCO PIZZAIOLO",  price:65,  emoji:"🐊", hat:"🍕" },
+  { id:"gatto",     name:"GATTO SPAGHETTI",   price:80,  emoji:"🐱", hat:"🍝" },
+  { id:"dolfino",   name:"DOLFINO TRUMPETTO", price:100, emoji:"🐬", hat:"🎺" },
+  { id:"diamante",  name:"DIAMANTE 67",       price:500, emoji:"💎", num:"67", fx:"diamond" }, // the flex — wears the racing number
 ];
+// 🇮🇹 composed pet renderer: body emoji + optional hat + number decal + sparkle fx.
+// Single-emoji pets (duck/dog/ghost/dino) take the exact old path — zero change for them.
+function drawPetGuy(p, x, y, s){
+  ctx.font = s+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  fillTextC(p.emoji, x, y);
+  if(p.hat){ ctx.font = (s*0.52)+"px sans-serif"; fillTextC(p.hat, x + s*0.14, y - s*0.44); }
+  if(p.num){
+    ctx.font = "900 "+Math.max(9, s*0.34)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+    ctx.lineWidth = Math.max(2, s*0.06); ctx.strokeStyle = "rgba(10,14,30,0.9)"; ctx.fillStyle = "#eafcff";
+    fillTextC(p.num, x, y + s*0.08, true);
+  }
+  if(p.fx==="diamond"){                                   // time-driven twinkles (pause-safe, no particles)
+    for(let i=0;i<3;i++){
+      const tw = Math.sin(game.t*3 + i*2.1), a = Math.max(0, tw);
+      if(a<=0.05) continue;
+      const ang = i*2.1 + 0.7, d = s*0.55;
+      const sx = x + Math.cos(ang)*d, sy = y + Math.sin(ang)*d*0.7 - s*0.08;
+      ctx.save(); ctx.globalAlpha = a*0.9; ctx.fillStyle = "#dff6ff";
+      ctx.translate(sx, sy); ctx.rotate(tw*0.6);
+      const r2 = s*0.10*(0.6+a*0.6);
+      ctx.beginPath(); ctx.moveTo(0,-r2); ctx.quadraticCurveTo(r2*0.18,-r2*0.18,r2,0);
+      ctx.quadraticCurveTo(r2*0.18,r2*0.18,0,r2); ctx.quadraticCurveTo(-r2*0.18,r2*0.18,-r2,0);
+      ctx.quadraticCurveTo(-r2*0.18,-r2*0.18,0,-r2); ctx.fill();
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+  }
+}
 const vehicleById = id => VEHICLES.find(v=>v.id===id) || VEHICLES[0];
 
 /* ---------------- vehicle stats (the showroom "spec sheet") ----------------
@@ -5495,8 +5529,7 @@ function drawMap(){
   if(roomy && store.pet){
     const p = PETS.find(p=>p.id===store.pet);
     if(p){
-      ctx.font="18px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-      fillTextC(p.emoji, carX+34, carY-Math.abs(Math.sin(game.t*4))*4);
+      drawPetGuy(p, carX+34, carY-Math.abs(Math.sin(game.t*4))*4, 18);
     }
   }
   if(roomy && CONFIG.playerName){
@@ -6982,8 +7015,7 @@ function shopHero(r, sel, locked, isCars){
     ctx.restore();
     if(locked){ ctx.font="40px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.globalAlpha=0.92; fillTextC("🔒", cx, carCy); ctx.globalAlpha=1; }
   } else {
-    ctx.font=(r.h*0.4)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-    fillTextC(sel.emoji, cx, carCy);
+    drawPetGuy(sel, cx, carCy, r.h*0.4);                  // composed pets shine big on the turntable
   }
   // name plate (top of stage)
   ctx.font="900 italic "+(r.w<300?20:24)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
