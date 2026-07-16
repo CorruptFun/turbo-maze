@@ -1,8 +1,21 @@
-# 🌌 WORLD 6 — SPACE (design outline, draft)
+# 🌌 WORLD 6 — SPACE (design outline)
 
-> Status: **outline / pre-decisions.** Captures the vision + options; we firm it up once
-> Dad picks a direction, then a design workflow → build (same flow as World 5).
-> The roadmap throughline: World 5's splash-pad **airborne state (`car.airT`) is reused here**.
+> ✅ **DESIGN DONE — FULL BUILD SPEC READY: [`WORLD6-BUILD-SPEC.md`](WORLD6-BUILD-SPEC.md)**
+> (from a 23-agent design workflow). This outline is the vision; the build spec is the
+> implementation-ready source of truth (every edit anchored to an exact code string).
+>
+> **Finalized tiles:** `@` gravity well (solid core + pull field) · `0` black-hole wormhole
+> (reuses the portal pair) · `V` void/chasm (transparent, wall-for-reachability) · `U` launch
+> ring (reuses `car.airT`). Asteroids = a runtime `L.asteroids[]` level prop (no glyph).
+> Low-G = a per-world physics scalar. UFO → reward car (A-class), UFO boss rival.
+>
+> **To build (fresh session, full context):** read `WORLD6-BUILD-SPEC.md` and execute §2→§3→
+> §6/§7→author §4→run §8, following the exact World-5 flow (engine inline, levels via a
+> workflow, then an adversarial-review workflow). The build is atomic — `SERIES` entry +
+> 15 levels + UFO reward must land together.
+>
+> The roadmap throughline held: World 5's splash-pad **airborne state (`car.airT`) is reused**
+> for the launch rings.
 
 ---
 
