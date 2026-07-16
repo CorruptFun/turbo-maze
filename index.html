@@ -1151,14 +1151,14 @@ const VS_ARENAS = [
 "#...#..c..#...#",
 "#.#..*.F.*..#.#",
 "#...#..c..#...#",
-"#...##.#.##.22#",
+"#...##.#.##...#",
 "#.....c.....22#",
 "###############",
 ]},
 { name:"COIN PIT", emoji:"🪙", hue:"#9ae64a", grid:[
 "###############",
-"#SS.c......c..#",
-"#SS..##.##..22#",
+"#SS.c......c22#",
+"#SS..##.##....#",
 "#..c.#...#.c..#",
 "#.##...c...##.#",
 "#..c.#...#.c..#",
@@ -1173,7 +1173,7 @@ const VS_ARENAS = [
 "#.c.#~c~c~#.c.#",
 "#...~~*F*~~...#",
 "#.c.#~c~c~#.c.#",
-"#...#~~~~~#.22#",
+"#...#~~~~~#...#",
 "#....~~~~~..22#",
 "###############",
 ]},
@@ -1186,51 +1186,51 @@ const VS_ARENAS = [
 "#..*.c.F.c.*..#",
 "#...c..c..c...#",
 "#.c.*.....*...#",
-"#....c.c..22..#",
+"#....c.c....22#",
 "###############",
 ]},
 { name:"ZAP ALLEY", emoji:"⚡", hue:"#7ef7ff", grid:[
 "###############",
-"#SS...z.....c.#",
+"#SS..z......c.#",
 "#SS.###.###.#.#",
-"#...#.c.#.z.#.#",
-"#.#.#.#.#.#.#F#",
-"#.#.c.#.#.#.#.#",
-"#z#.###.###.#.#",
-"#...c...z..22.#",
+"#......z.....c#",
+"#.#..#F#..#.#.#",
+"#c.....z...22.#",
+"#.#.###.###.#.#",
+"#.c......z....#",
 "###############",
 ]},
 { name:"TRAP HOUSE", emoji:"🧱", hue:"#ff5a5a", grid:[
 "###############",
 "#SS....B......#",
 "#SS.#.#w#.#.#.#",
-"#...#..w..#..F#",
-"#.B.#.ww..#..##",
-"#...#..w..#...#",
-"#.#.#.#w#.#.#.#",
-"#....c.B...22.#",
+"#......w......#",
+"#.B..#Fww.#.B.#",
+"#......w...22.#",
+"#.#.#..w..#.#.#",
+"#....c........#",
 "###############",
 ]},
 { name:"DEMOLITION", emoji:"💥", hue:"#ffb742", grid:[
 "###############",
 "#SS.*.z.*..c..#",
-"#SS...c.c.....#",
+"#SS...c.c.22..#",
 "#..*.......*..#",
-"#.c.c..F..c.c.#",
+"#.c.c#F#..c.c.#",
 "#..*.......*..#",
 "#z...c.c...z..#",
-"#..c.*.z.*.22.#",
+"#..c.*.z.*....#",
 "###############",
 ]},
 { name:"OVERDRIVE", emoji:"🏆", hue:"#c56cff", grid:[
 "###############",
 "#SS..z.B..~~..#",
 "#SS.#.#w#.#.#.#",
-"#..~.#.w..#c.F#",
-"#.#.#.*.#.#.###",
-"#.c.#.z.#.#...#",
+"#..~...w......#",
+"#.#.##F*##..#.#",
+"#.c....z....c.#",
 "#B#.###w###.#.#",
-"#..c.~..B..22.#",
+"#..c.~..B22...#",
 "###############",
 ]},
 /* ---- World 4 factory arenas: conveyors shove · crusher in the ring · trap doors ---- */
@@ -1250,9 +1250,9 @@ const VS_ARENAS = [
 "#SS...O.>>>>..#",
 "#SS...........#",
 "#...>>>>.O....#",
-"#..O..F.......#",
+"#..O..F.....22#",
 "#....<<<<.O...#",
-"#...........2.#",
+"#.............#",
 "#.O....<<<....#",
 "###############"
 ], crushers:[{c:7,r:4,dx:0,dy:1,range:2,period:2.8,phase:0}]},
@@ -3128,7 +3128,7 @@ function drawWorld(dt){
     ctx.fillStyle = "#20283c"; ctx.fillRect(-19,-8,4,16);
     ctx.fillStyle = "#1b2233"; ctx.beginPath(); ctx.roundRect(-7,-7,14,14,4); ctx.fill();
     ctx.font = "12px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-    ctx.fillText("👾", 0, 0);
+    fillTextC("👾", 0, 0);
     ctx.fillStyle = "#fff2c0"; ctx.fillRect(15,-7,3,4); ctx.fillRect(15,3,3,4);
     ctx.restore();
   }
@@ -3139,7 +3139,7 @@ function drawWorld(dt){
       ctx.fillStyle = "rgba(0,0,0,0.3)";
       ctx.beginPath(); ctx.ellipse(game.pet.x, game.pet.y+10, 9, 3.5, 0, 0, TAU); ctx.fill();
       ctx.font = "22px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-      ctx.fillText(p.emoji, game.pet.x, game.pet.y-4-bob);
+      fillTextC(p.emoji, game.pet.x, game.pet.y-4-bob);
     }
   }
   if(game.car2) drawCar(game.car2);
@@ -3168,8 +3168,8 @@ function drawWorld(dt){
     ctx.globalAlpha = 1-f.t;
     ctx.font = "800 20px 'Avenir Next Condensed','Arial Narrow',sans-serif";
     ctx.textAlign="center";
-    ctx.lineWidth=4; ctx.strokeStyle="rgba(10,12,20,0.85)"; ctx.strokeText(f.txt, f.x, f.y);
-    ctx.fillStyle = f.col; ctx.fillText(f.txt, f.x, f.y);
+    ctx.lineWidth=4; ctx.strokeStyle="rgba(10,12,20,0.85)"; ctx.fillStyle = f.col;
+    fillTextC(f.txt, f.x, f.y, true);
   }
   ctx.globalAlpha = 1;
   ctx.restore();
@@ -3665,7 +3665,7 @@ function drawVehicleBody(vid){
     ctx.fillStyle="rgba(0,0,0,0.14)"; ctx.beginPath(); ctx.roundRect(-14,8,28,1.6,1.5); ctx.fill();
     // goat accent
     ctx.fillStyle="#3a2a10"; ctx.font="10px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-    ctx.fillText("🐐", 11, 0);
+    fillTextC("🐐", 11, 0);
   }
   else if(vid==="blaze"){                                    // 🏁 World 1 reward — flame hot rod
     const g=ctx.createLinearGradient(-14,-9,14,9);
@@ -3997,7 +3997,7 @@ function drawCar(car){
     if(cos && cos.kind==="shine" && Math.random()<0.4) sparkle(car.x+rand(-14,14), car.y+rand(-12,12));
     if(cos && cos.kind==="topper"){
       ctx.font = "18px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-      ctx.fillText(cos.emoji, car.x, car.y - 20 + Math.sin(game.t*3)*2);
+      fillTextC(cos.emoji, car.x, car.y - 20 + Math.sin(game.t*3)*2);
     }
   }
 }
@@ -4009,7 +4009,7 @@ function drawCoin(cn){
   if(cn.nitro){
     ctx.font = "26px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
     ctx.scale(0.6+s*0.4, 1);
-    ctx.fillText("⚡", 0, 0);
+    fillTextC("⚡", 0, 0);
   } else {
     ctx.scale(0.35+s*0.65, 1);
     ctx.fillStyle = "#e8a930"; ctx.beginPath(); ctx.arc(0,0,11,0,TAU); ctx.fill();
@@ -4024,7 +4024,7 @@ function drawKey(k){
   ctx.save(); ctx.translate(k.x, k.y+bob);
   ctx.font = "30px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
   ctx.rotate(Math.sin(game.t*2)*0.2);
-  ctx.fillText("🗝️", 0, 0);
+  fillTextC("🗝️", 0, 0);
   ctx.restore();
   const pr = 20+Math.sin(game.t*4)*4;
   ctx.strokeStyle = "rgba(255,215,106,0.5)"; ctx.lineWidth = 2.5;
@@ -4040,7 +4040,7 @@ function drawDoor(d){
   ctx.strokeRect(px+8, py+CELL-h+8, CELL-16, Math.max(0,h-16));
   if(d.anim<0.1){
     ctx.font = "26px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-    ctx.fillText("🔒", px+CELL/2, py+CELL/2);
+    fillTextC("🔒", px+CELL/2, py+CELL/2);
   }
 }
 function drawGate(g){
@@ -4096,7 +4096,7 @@ function drawZap(z){
   ctx.fillStyle = "#0e2a30"; ctx.strokeStyle = "#7ef7ff"; ctx.lineWidth = 3;
   ctx.beginPath(); ctx.arc(0,0,22,0,TAU); ctx.fill(); ctx.stroke();
   ctx.font = "24px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-  ctx.fillText("⚡", 0, 1);
+  fillTextC("⚡", 0, 1);
   ctx.restore();
 }
 function drawTrapTrigger(t){
@@ -4111,7 +4111,7 @@ function drawTrapTrigger(t){
   ctx.beginPath(); ctx.arc(0,0,13,0,TAU); ctx.fill();
   ctx.globalAlpha = 1;
   ctx.fillStyle = "#2a0e0e"; ctx.font = "16px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-  ctx.fillText("🧱", 0, 1);
+  fillTextC("🧱", 0, 1);
   ctx.restore();
 }
 function drawTrapWall(w){
@@ -4288,7 +4288,7 @@ function drawGoober(gb){
   ctx.translate(gb.x + (scared? rand(-2,2):0), gb.y + (scared? rand(-2,2):0));
   if(scared){
     ctx.font = "16px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-    ctx.fillText("❗", 10, -30);
+    fillTextC("❗", 10, -30);
   }
   ctx.fillStyle = "rgba(0,0,0,0.3)";
   ctx.beginPath(); ctx.ellipse(0, 14, 16-bounce*0.4, 5, 0, 0, TAU); ctx.fill();
@@ -4296,7 +4296,7 @@ function drawGoober(gb){
   const sq = 1+Math.sin(gb.ph)*0.12;
   ctx.scale(2-sq, sq);
   ctx.font = "34px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-  ctx.fillText("👾", 0, 0);
+  fillTextC("👾", 0, 0);
   ctx.restore();
 }
 function drawCrate(cr){
@@ -4362,7 +4362,7 @@ function drawFinish(){
   ctx.beginPath(); ctx.arc(f.x, f.y, pr*0.7, 0, TAU); ctx.stroke();
   ctx.globalAlpha = 1;
   ctx.font = "34px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-  ctx.fillText("🏁", f.x, f.y-Math.abs(Math.sin(game.t*2.8))*6);
+  fillTextC("🏁", f.x, f.y-Math.abs(Math.sin(game.t*2.8))*6);
 }
 function drawHintArrow(){
   if(game.hintT < 1.6 && game.playT > 4) return;   // show at level start + when stuck
@@ -4422,7 +4422,7 @@ function drawHUD(){
   if(game.hasKey){
     roundedPanel(pad+124, top+52, 44, 40, 12);
     ctx.font = "20px sans-serif"; ctx.textAlign="center";
-    ctx.fillText("🗝️", pad+146, top+73);
+    fillTextC("🗝️", pad+146, top+73);
   }
   // 🎁 armed power-up badge — shows what's ready this run (ghost blinks while phasing)
   const puId = game.car.pu || (game.car.dbl ? "double" : null);
@@ -4431,7 +4431,7 @@ function drawHUD(){
     roundedPanel(pad, by, 44, 40, 12);
     ctx.globalAlpha = game.car.ghostT>0 ? 0.5+0.4*Math.sin(game.t*12) : 1;
     ctx.font = "20px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-    ctx.fillText(POWERUPS[puId].emoji, pad+22, by+20);
+    fillTextC(POWERUPS[puId].emoji, pad+22, by+20);
     ctx.globalAlpha = 1;
   }
   // stopwatch (center-top, small + friendly)
@@ -4441,16 +4441,16 @@ function drawHUD(){
   roundedPanel(W/2-56, top, 112, 38, 12);
   ctx.textAlign="center";
   ctx.fillStyle = late ? "#8b93ad" : "#f4f6ff";
-  ctx.fillText("⏱ " + tStr, W/2, top+20);
+  fillTextC("⏱ " + tStr, W/2, top+20);
   // level tag (right) — narrow phones just get emoji + number
   ctx.font = "800 18px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   const tag = W<760 ? game.lv.emoji+" "+(game.levelIx>=0? (game.levelIx+1) : game.lv.name)
             : game.levelIx>=0 ? game.lv.emoji+" "+(game.levelIx+1)+" · "+game.lv.name
                               : game.lv.emoji+" "+game.lv.name;
-  const tw = ctx.measureText(tag).width+30;
+  const tw = ctx.measureText(tag).width + emojiPad(tag) + 30;
   roundedPanel(W-pad-tw-96, top, tw, 38, 12);
   ctx.fillStyle = game.lv.hue;
-  ctx.fillText(tag, W-pad-tw/2-96, top+20);
+  fillTextC(tag, W-pad-tw/2-96, top+20);
   // pause + mute buttons (right, big touch targets)
   drawIconBtn(W-pad-88, top, 40, store.muted?"🔇":"🔊", "mute");
   drawIconBtn(W-pad-42, top, 40, "⏸️", "pause");
@@ -4463,7 +4463,7 @@ function drawHUD(){
     ctx.beginPath(); ctx.moveTo(bx3+14, by3+13); ctx.lineTo(bx3+bw3-26, by3+13); ctx.stroke();
     ctx.font = "13px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
     ctx.fillStyle = "#f4f6ff";
-    ctx.fillText("🏁", bx3+bw3-15, by3+13);
+    fillTextC("🏁", bx3+bw3-15, by3+13);
     const track = bw3-44;
     const pc = clamp(Math.floor(car.x/CELL),0,game.cols-1), pr = clamp(Math.floor(car.y/CELL),0,game.rows-1);
     const pLeft = (game.flow && game.flow[pr][pc]>=0) ? game.flow[pr][pc] : game.raceTotal;
@@ -4471,7 +4471,7 @@ function drawHUD(){
     const rProg = clamp(rv.i/Math.max(1, rv.wp.length-1), 0, 1);
     ctx.fillStyle = "#b06ee8";
     ctx.beginPath(); ctx.arc(bx3+14+track*rProg, by3+13, 7, 0, TAU); ctx.fill();
-    ctx.font = "9px sans-serif"; ctx.fillText("👾", bx3+14+track*rProg, by3+13);
+    ctx.font = "9px sans-serif"; fillTextC("👾", bx3+14+track*rProg, by3+13);
     ctx.fillStyle = vehicleById(store.car).trail();
     ctx.strokeStyle = "#f4f6ff"; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(bx3+14+track*pProg, by3+13, 6.5, 0, TAU); ctx.fill(); ctx.stroke();
@@ -4487,7 +4487,7 @@ function drawHUD(){
     ctx.beginPath(); ctx.roundRect(nx+5, ny-9, (nw-10)*nf, 20, 10); ctx.fill();
   }
   ctx.fillStyle = "#0e111a"; ctx.font = "900 15px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.textAlign="center";
-  ctx.fillText("⚡ NITRO", nx+nw/2, ny+1);
+  fillTextC("⚡ NITRO", nx+nw/2, ny+1);
   // touch controls
   if(input.hasTouch){
     if(input.joy){
@@ -4505,7 +4505,7 @@ function drawHUD(){
     ctx.fillStyle = "#7ef7ff";
     ctx.beginPath(); ctx.arc(bx, by, 46, 0, TAU); ctx.fill();
     ctx.fillStyle = "#0e111a"; ctx.font="900 17px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.textAlign="center";
-    ctx.fillText("⚡", bx, by-9); ctx.fillText("NITRO", bx, by+11);
+    fillTextC("⚡", bx, by-9); ctx.fillText("NITRO", bx, by+11);
     ctx.globalAlpha = 1;
   } else if(game.playT < 6){
     ctx.globalAlpha = clamp(6-game.playT,0,1)*0.7;
@@ -4534,7 +4534,7 @@ function drawVsHUD(pad, top){
   roundedPanel(W/2-56, top, 112, 38, 12);
   ctx.font = "800 19px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.textAlign="center"; ctx.fillStyle = "#f4f6ff";
-  ctx.fillText("⏱ " + game.playT.toFixed(1)+"s", W/2, top+20);
+  fillTextC("⏱ " + game.playT.toFixed(1)+"s", W/2, top+20);
   // countdown
   if(game.count>0){
     const n = Math.ceil(game.count);
@@ -4570,11 +4570,23 @@ function drawVsHUD(pad, top){
   }
 }
 const hudBtns = [];
+// ✍️ center-safe text: iOS WebKit mis-positions CENTER-aligned canvas strings that
+// contain emoji (the glyph run splits between the text font and Apple Color Emoji and
+// the centering math breaks → glyphs paint right of the bubble). Measure once, paint
+// LEFT-anchored from the true center — left-anchored runs can't shift, only overflow.
+function emojiPad(txt){ let n=0; for(const ch of String(txt)) if(ch.codePointAt(0)>0x2100) n++; return n*10; }  // iOS paints emoji wider than metric
+function fillTextC(txt, x, y, stroked){
+  const w = ctx.measureText(txt).width;
+  const pa = ctx.textAlign; ctx.textAlign = "left";
+  if(stroked) ctx.strokeText(txt, x-w/2, y);
+  ctx.fillText(txt, x-w/2, y);
+  ctx.textAlign = pa;
+}
 function drawIconBtn(x,y,s,icon,act){
   roundedPanel(x,y,s,s,12);
-  ctx.font = (s*0.5)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.font = (s*0.5)+"px sans-serif"; ctx.textBaseline="middle";
   ctx.fillStyle = "#f4f6ff";
-  ctx.fillText(icon, x+s/2, y+s/2+1);
+  fillTextC(icon, x+s/2, y+s/2+1);
   hudBtns.push({x,y,w:s,h:s,act});
 }
 
@@ -4585,23 +4597,23 @@ function drawStickers(){
   const inT = clamp(s.t/0.14, 0, 1), outT = clamp((s.t-0.85)/0.25, 0, 1);
   const scale = easeOut(inT)*(1-outT*outT*0.5);
   ctx.save();
-  ctx.translate(W/2, H*0.24);
+  const stY = (game.state==="crates"||game.state==="shop") ? H*0.86 : H*0.24;   // shop/crates: toast LOW so it never covers the buy cards
+  ctx.translate(W/2, stY);
   ctx.rotate(-0.04);
   ctx.scale(scale, scale);
   ctx.globalAlpha = 1-outT;
   ctx.font = "900 46px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-  const tw = ctx.measureText(s.txt).width;
+  const tw = ctx.measureText(s.txt).width + emojiPad(s.txt);   // pill covers iOS's wider emoji paint
   // sticker card: white with hard offset shadow (toy energy)
   ctx.fillStyle = "rgba(12,14,22,0.9)";
   ctx.beginPath(); ctx.roundRect(-tw/2-22+6, -34+6, tw+44, 68, 16); ctx.fill();
   ctx.fillStyle = "#f7f8ff";
   ctx.beginPath(); ctx.roundRect(-tw/2-22, -34, tw+44, 68, 16); ctx.fill();
   ctx.fillStyle = s.col==="#ffffff" ? "#12151f" : s.col;
-  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.textBaseline="middle";
   // dark text if the color is light-on-white unreadable → outline trick
   ctx.lineWidth = 5; ctx.strokeStyle = "rgba(12,14,22,0.85)";
-  ctx.strokeText(s.txt, 0, 2);
-  ctx.fillText(s.txt, 0, 2);
+  fillTextC(s.txt, 0, 2, true);                                // center-safe: never paints outside the pill
   ctx.restore();
   ctx.globalAlpha = 1;
 }
@@ -4720,7 +4732,7 @@ function drawSeries(){
     ctx.textAlign="center"; ctx.textBaseline="middle";
     ctx.globalAlpha = open? 1 : 0.55;
     ctx.font = Math.round(chh*0.30)+"px sans-serif"; ctx.fillStyle = "#f4f6ff";
-    ctx.fillText(S.comingSoon? "🚧" : (open? S.emoji : "🔒"), x+cw/2, y+chh*0.30);
+    fillTextC(S.comingSoon? "🚧" : (open? S.emoji : "🔒"), x+cw/2, y+chh*0.30);
     ctx.font = "900 18px 'Avenir Next Condensed','Arial Narrow',sans-serif";
     ctx.fillStyle = open? S.hue : "#8b93ad";
     ctx.fillText(S.name, x+cw/2, y+chh*0.58);
@@ -4730,7 +4742,7 @@ function drawSeries(){
     else if(!open){ status="🔒 LOCKED"; scol="#8b93ad"; }
     else if(done){ status="COMPLETE ✓"; scol="#9ae64a"; }
     else { status = seriesBeatCount(s)+" / "+S.count+"   ▶ PLAY"; scol="#ffd76a"; }
-    ctx.fillStyle = scol; ctx.fillText(status, x+cw/2, y+chh*0.80);
+    ctx.fillStyle = scol; fillTextC(status, x+cw/2, y+chh*0.80);
     ctx.globalAlpha = 1;
     hudBtns.push({x, y, w:cw, h:chh, act:"s:"+s});
   }
@@ -4745,7 +4757,7 @@ function drawSeries(){
   ];
   let gfont = 24, gpad = 34, gGap = 8;
   const measureG = ()=>{ ctx.font = "900 "+gfont+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-    return gbtns.map(b=> Math.ceil(ctx.measureText(b.label).width) + gpad); };
+    return gbtns.map(b=> Math.ceil(ctx.measureText(b.label).width + emojiPad(b.label)) + gpad); };
   let gws = measureG();
   const availG = W - 2*PADX;
   let gtot = gws.reduce((a,b)=>a+b,0) + gGap*(gbtns.length-1);
@@ -4757,10 +4769,10 @@ function drawSeries(){
     const st = store.stars["c:"+cl.id]||0;
     roundedPanel(gcx, gy+2, 48, 46, 12, "rgba(20,24,36,0.92)");
     ctx.font = "17px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillStyle="#f4f6ff";
-    ctx.fillText(EMOJIS[cl.emojiIx||0], gcx+24, gy+17);
+    fillTextC(EMOJIS[cl.emojiIx||0], gcx+24, gy+17);
     ctx.font = "800 11px 'Avenir Next Condensed',sans-serif";
     ctx.fillStyle = st? "#ffd76a" : "#8b93ad";
-    ctx.fillText(st? "⭐".repeat(st) : cl.name.replace("TRACK","T"), gcx+24, gy+37);
+    fillTextC(st? "⭐".repeat(st) : cl.name.replace("TRACK","T"), gcx+24, gy+37);
     if(game.importedTrack===cl){
       ctx.strokeStyle="#ffd76a"; ctx.lineWidth=3+Math.sin(game.t*5)*1.5;
       ctx.beginPath(); ctx.roundRect(gcx-3, gy-1, 54, 52, 14); ctx.stroke();
@@ -4799,7 +4811,7 @@ function drawMap(){
   // header: world name (center), back + mute (top-right), aura + coins (top-left)
   ctx.font = "900 italic 34px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.textAlign="center"; ctx.textBaseline="alphabetic"; ctx.fillStyle=S.hue;
-  ctx.fillText(S.emoji+" "+S.name, W/2, 46+safeT);
+  fillTextC(S.emoji+" "+S.name, W/2, 46+safeT);
   ctx.textBaseline="middle";
   roundedPanel(PADX, 12+safeT, 150, 40, 12);
   ctx.font = "800 19px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.textAlign="left";
@@ -4853,16 +4865,16 @@ function drawMap(){
       ctx.fillStyle = "#12151f";
       ctx.fillText(""+(i+1), x, y-R*0.18);
       ctx.font = Math.round(R*0.42)+"px sans-serif";
-      ctx.fillText(LEVELS[gi].emoji, x, y+R*0.42);
+      fillTextC(LEVELS[gi].emoji, x, y+R*0.42);
     } else {
       ctx.font = Math.round(R*0.62)+"px sans-serif";
-      ctx.fillText("🔒", x, y+1);
+      fillTextC("🔒", x, y+1);
     }
     // stars under node
     ctx.font = "11px sans-serif";
     for(let sIx=0;sIx<3;sIx++){
       ctx.globalAlpha = sIx<stars? 1 : 0.22;
-      ctx.fillText("⭐", x+(sIx-1)*13, y+R+11);
+      fillTextC("⭐", x+(sIx-1)*13, y+R+11);
     }
     ctx.globalAlpha = 1;
     if(unlocked) mapNodes.push({x,y,r:R+9,ix:gi});
@@ -4884,7 +4896,7 @@ function drawMap(){
     const p = PETS.find(p=>p.id===store.pet);
     if(p){
       ctx.font="18px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-      ctx.fillText(p.emoji, carX+34, carY-Math.abs(Math.sin(game.t*4))*4);
+      fillTextC(p.emoji, carX+34, carY-Math.abs(Math.sin(game.t*4))*4);
     }
   }
   if(roomy && CONFIG.playerName){
@@ -4893,7 +4905,7 @@ function drawMap(){
     ctx.fillText(CONFIG.playerName.toUpperCase(), carX, carY-37);
   }
   ctx.font = "600 16px 'Avenir Next',sans-serif"; ctx.fillStyle="#8b93ad"; ctx.textAlign="center";
-  ctx.fillText(input.hasTouch? "tap a level!  ·  🗺️ = worlds" : "press ENTER for level "+(curLocal+1)+"  ·  🗺️ = worlds", W/2, H-24-safeB);
+  fillTextC(input.hasTouch? "tap a level!  ·  🗺️ = worlds" : "press ENTER for level "+(curLocal+1)+"  ·  🗺️ = worlds", W/2, H-24-safeB);
   // input
   for(const tp of input.taps.splice(0)){
     if(tp.screen){ AU.ui(); loadLevel(curGlobal); return; }
@@ -5116,7 +5128,7 @@ function drawGlyph(ch, x, y, size){
   }
   ctx.font = (size*0.62)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
   ctx.fillStyle = "#f4f6ff";
-  ctx.fillText(TOOL_ICON[ch]||ch, x, y+1);
+  fillTextC(TOOL_ICON[ch]||ch, x, y+1);
 }
 function drawBuild(dt){
   nightSky();
@@ -5161,7 +5173,7 @@ function drawBuild(dt){
       const cur = cl.id===bl.editingId;
       roundedPanel(cx2, chipsY, 44, 42, 10, cur? "rgba(255,183,66,0.9)":"rgba(14,17,26,0.82)");
       ctx.font="15px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillStyle="#f4f6ff";
-      ctx.fillText(EMOJIS[cl.emojiIx||0], cx2+22, chipsY+14);
+      fillTextC(EMOJIS[cl.emojiIx||0], cx2+22, chipsY+14);
       ctx.font="800 11px 'Avenir Next Condensed',sans-serif"; ctx.fillStyle = cur? "#12151f":"#8b93ad";
       ctx.fillText("T"+cl.id, cx2+22, chipsY+32);
       hudBtns.push({x:cx2,y:chipsY,w:44,h:42,act:"edit:"+cl.id});
@@ -5224,7 +5236,7 @@ function drawCoopHUD(pad, top){
   roundedPanel(W/2-70, top, 140, 40, 12);
   ctx.font = "800 18px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.textAlign="center";
   ctx.fillStyle = late? "#ff8f8f" : "#f4f6ff";
-  ctx.fillText("⏱ "+game.playT.toFixed(1)+"s", W/2-24, top+20);
+  fillTextC("⏱ "+game.playT.toFixed(1)+"s", W/2-24, top+20);
   const coins = game.car.coins + (game.car2? game.car2.coins:0);
   ctx.fillStyle = "#ffd76a"; ctx.fillText("● "+coins+"/"+game.coinsAll, W/2+40, top+20);
   // per-player "made it" badges
@@ -5257,7 +5269,7 @@ function drawCoopMap(){
   const n = COOP_LEVELS.length;
   ctx.font = "900 italic 32px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.textAlign="center"; ctx.textBaseline="alphabetic"; ctx.fillStyle="#7ef7ff";
-  ctx.fillText("🤝 CO-OP", W/2, 40+safeT);
+  fillTextC("🤝 CO-OP", W/2, 40+safeT);
   ctx.font="600 14px 'Avenir Next',sans-serif"; ctx.fillStyle="#8b93ad"; ctx.textBaseline="middle";
   ctx.fillText((input.hasTouch? pName(0)+" = left thumb · "+pName(1)+" = right thumb"
                               : pName(0)+" = ARROWS · "+pName(1)+" = WASD")+" · both cars reach the flag!", W/2, 62+safeT);
@@ -5295,15 +5307,15 @@ function drawCoopMap(){
     if(unlocked){
       ctx.fillStyle="#0b2a30"; ctx.font="900 "+Math.round(R*0.62)+"px 'Avenir Next Condensed',sans-serif";
       ctx.fillText(""+(i+1), x, y-R*0.18);
-      ctx.font=Math.round(R*0.42)+"px sans-serif"; ctx.fillText(COOP_LEVELS[i].emoji, x, y+R*0.42);
-    } else { ctx.font=Math.round(R*0.62)+"px sans-serif"; ctx.fillText("🔒", x, y+1); }
+      ctx.font=Math.round(R*0.42)+"px sans-serif"; fillTextC(COOP_LEVELS[i].emoji, x, y+R*0.42);
+    } else { ctx.font=Math.round(R*0.62)+"px sans-serif"; fillTextC("🔒", x, y+1); }
     ctx.font="11px sans-serif";
-    for(let s=0;s<3;s++){ ctx.globalAlpha=s<stars?1:0.22; ctx.fillText("⭐", x+(s-1)*13, y+R+11); }
+    for(let s=0;s<3;s++){ ctx.globalAlpha=s<stars?1:0.22; fillTextC("⭐", x+(s-1)*13, y+R+11); }
     ctx.globalAlpha=1;
     if(unlocked) coopNodes.push({x,y,r:R+9,ix:i});
   }
   ctx.font="600 15px 'Avenir Next',sans-serif"; ctx.fillStyle="#8b93ad"; ctx.textAlign="center";
-  ctx.fillText(input.hasTouch? "tap a level!  ·  🗺️ = worlds" : "press ENTER  ·  🗺️ = worlds", W/2, H-24-safeB);
+  fillTextC(input.hasTouch? "tap a level!  ·  🗺️ = worlds" : "press ENTER  ·  🗺️ = worlds", W/2, H-24-safeB);
   for(const tp of input.taps.splice(0)){
     const curG = Math.min(unlockedN-1, n-1);
     if(tp.screen){ AU.ui(); startCoop(curG); return; }
@@ -5375,10 +5387,10 @@ function drawKoEnd(dt){
   ctx.font = "italic 900 60px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.textAlign="center"; ctx.textBaseline="middle";
   const msg = pName(r.p1win?0:1).toUpperCase()+" WINS! 🏆";
-  ctx.fillStyle="rgba(12,14,22,0.9)"; ctx.fillText(msg,5,5);
-  ctx.fillStyle=winCol; ctx.fillText(msg,0,0); ctx.restore(); ctx.globalAlpha=1;
+  ctx.fillStyle="rgba(12,14,22,0.9)"; fillTextC(msg,5,5);
+  ctx.fillStyle=winCol; fillTextC(msg,0,0); ctx.restore(); ctx.globalAlpha=1;
   ctx.font = "800 22px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.textAlign="center";
-  ctx.fillStyle="#ff5a6a"; ctx.fillText("LAST ONE STANDING 💥", W/2, H*0.44);
+  ctx.fillStyle="#ff5a6a"; fillTextC("LAST ONE STANDING 💥", W/2, H*0.44);
   const ks = store.koScore||[0,0];
   ctx.font = "800 17px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#8b93ad";
   ctx.fillText("KNOCKOUTS  "+pName(0)+" "+ks[0]+" — "+ks[1]+" "+pName(1), W/2, H*0.44+38);
@@ -5413,13 +5425,13 @@ function drawVsPick(){
     const x=tX0+idx*(tW+tGap), on=(isKo===ko);
     roundedPanel(x,tY,tW,tH,10, on?(isKo?"#ff5a6a":"#ff8fe0"):"rgba(30,34,48,0.85)");
     ctx.fillStyle= on?"#12151f":"#8b93ad"; ctx.font="900 15px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-    ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(lbl, x+tW/2, tY+tH/2+1);
+    ctx.textAlign="center"; ctx.textBaseline="middle"; fillTextC(lbl, x+tW/2, tY+tH/2+1);
     hudBtns.push({x,y:tY,w:tW,h:tH,act:isKo?"mode:ko":"mode:race"});
   });
   ctx.font = "600 14px 'Avenir Next',sans-serif"; ctx.fillStyle="#8b93ad"; ctx.textAlign="center";
   ctx.fillText(input.hasTouch ? pName(0)+" = left thumb · "+pName(1)+" = right thumb"
                               : pName(0)+" = ARROWS · "+pName(1)+" = WASD", W/2, top+92);
-  ctx.fillText(ko ? "3 lives each · ram (or ⚡zap then ram) your rival into a 🕳️ pit · last one standing wins!"
+  fillTextC(ko ? "3 lives each · ram (or ⚡zap then ram) your rival into a 🕳️ pit · last one standing wins!"
                   : "first to the flag · 💥 ram to swipe a coin · ⚡ grab a zap · 🧱 spring the trap!", W/2, top+112);
   // arena cards — wrapping grid
   const N = arenas.length, availW = W-2*PADX;
@@ -5433,7 +5445,7 @@ function drawVsPick(){
     const x = PADX + col*(cw+12), y = gridTop + row*(chh+10);
     roundedPanel(x, y, cw, chh, 14);
     ctx.font = Math.round(chh*0.34)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillStyle="#f4f6ff";
-    ctx.fillText(a.emoji, x+cw/2, y+chh*0.36);
+    fillTextC(a.emoji, x+cw/2, y+chh*0.36);
     ctx.font = "900 15px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle = a.hue;
     ctx.fillText(a.name, x+cw/2, y+chh-15);
     hudBtns.push({x, y, w:cw, h:chh, act:"a:"+i});
@@ -5447,7 +5459,7 @@ function drawVsPick(){
     for(const cl of store.customLevels){
       roundedPanel(cx3, gridBot+20, 48, 46, 12, "rgba(20,24,36,0.92)");
       ctx.font="17px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillStyle="#f4f6ff";
-      ctx.fillText(EMOJIS[cl.emojiIx||0], cx3+24, gridBot+35);
+      fillTextC(EMOJIS[cl.emojiIx||0], cx3+24, gridBot+35);
       ctx.font="800 11px 'Avenir Next Condensed',sans-serif"; ctx.fillStyle="#8b93ad";
       ctx.fillText("T"+cl.id, cx3+24, gridBot+55);
       hudBtns.push({x:cx3, y:gridBot+20, w:48, h:46, act:"ct:"+cl.id});
@@ -5483,8 +5495,8 @@ function drawVsEnd(dt){
   ctx.font = "italic 900 60px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.textAlign="center"; ctx.textBaseline="middle";
   const msg = pName(r.p1win?0:1).toUpperCase()+" WINS! 🏁";
-  ctx.fillStyle="rgba(12,14,22,0.9)"; ctx.fillText(msg, 5, 5);
-  ctx.fillStyle=winCol; ctx.fillText(msg, 0, 0);
+  ctx.fillStyle="rgba(12,14,22,0.9)"; fillTextC(msg, 5, 5);
+  ctx.fillStyle=winCol; fillTextC(msg, 0, 0);
   ctx.restore();
   ctx.globalAlpha = 1;
   const c1=game.car, c2=game.car2;
@@ -5493,9 +5505,9 @@ function drawVsEnd(dt){
   ctx.font = "800 22px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.textAlign="center"; ctx.textBaseline="middle";
   ctx.fillStyle = "#ffd76a";
-  ctx.fillText("● COINS   "+pName(0)+" "+c1.coins+" — "+c2.coins+" "+pName(1)+(coinKing>=0? "   👑 "+pName(coinKing):""), W/2, H*0.44);
+  fillTextC("● COINS   "+pName(0)+" "+c1.coins+" — "+c2.coins+" "+pName(1)+(coinKing>=0? "   👑 "+pName(coinKing):""), W/2, H*0.44);
   ctx.fillStyle = "#9ae64a";
-  ctx.fillText("✦ AURA   "+pName(0)+" "+Math.round(c1.aura)+" — "+Math.round(c2.aura)+" "+pName(1)+(auraKing>=0? "   👑 "+pName(auraKing):""), W/2, H*0.44+38);
+  fillTextC("✦ AURA   "+pName(0)+" "+Math.round(c1.aura)+" — "+Math.round(c2.aura)+" "+pName(1)+(auraKing>=0? "   👑 "+pName(auraKing):""), W/2, H*0.44+38);
   const vsScore = store.vsScore||[0,0];
   ctx.font = "800 17px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.fillStyle="#8b93ad";
@@ -5748,7 +5760,7 @@ function drawGold(g){
   ctx.fillStyle = "#e8a930"; ctx.beginPath(); ctx.roundRect(px+8, py+8+oy, CELL-16, CELL-16, 6); ctx.fill();
   ctx.fillStyle = "rgba(255,255,255,0.22)"; ctx.fillRect(px+8, py+8+oy, CELL-16, 9);
   ctx.strokeStyle = "#ffd76a"; ctx.lineWidth = 5; ctx.strokeRect(px+15, py+15+oy, CELL-30, CELL-30);
-  ctx.font = "34px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("🎁", g.x, g.y+oy);
+  ctx.font = "34px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; fillTextC("🎁", g.x, g.y+oy);
   for(let i=0;i<3;i++){ const a=game.t*2.4+i*TAU/3;
     ctx.fillStyle="#fff4cc"; ctx.beginPath();
     ctx.arc(g.x+Math.cos(a)*(30+pulse*6), g.y+oy+Math.sin(a)*(30+pulse*6), 2.4, 0, TAU); ctx.fill();
@@ -5764,7 +5776,7 @@ function drawGoldReveal(dt){
   ctx.save(); ctx.globalAlpha=a;
   roundedPanel(x, y, w, h, 14, "rgba(12,15,24,0.92)");
   ctx.strokeStyle=col; ctx.lineWidth=2.5; ctx.beginPath(); ctx.roundRect(x+1.5, y+1.5, w-3, h-3, 13); ctx.stroke();
-  ctx.font="34px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(rv.res.icon, x+34, y+h/2);
+  ctx.font="34px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; fillTextC(rv.res.icon, x+34, y+h/2);
   ctx.textAlign="left";
   ctx.font="900 15px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle=col; ctx.fillText(RARITY[rv.tier].name+"!", x+64, y+22);
   ctx.font="800 18px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#f4f6ff"; ctx.fillText(rv.res.name, x+64, y+44);
@@ -5827,7 +5839,7 @@ function crateCard(x, y, w, h, key){
   ctx.strokeStyle = key==="mega"? "#ff5db1" : "#ffb742"; ctx.lineWidth = 2.5;
   ctx.beginPath(); ctx.roundRect(x+1.5, y+1.5, w-3, h-3, 13); ctx.stroke();
   ctx.font = "36px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-  ctx.globalAlpha = can? 1 : 0.5; ctx.fillText(c.emoji, x+w/2, y+32); ctx.globalAlpha = 1;
+  ctx.globalAlpha = can? 1 : 0.5; fillTextC(c.emoji, x+w/2, y+32); ctx.globalAlpha = 1;
   ctx.font = "800 14px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.fillStyle = can? "#f4f6ff" : "#8b93ad"; ctx.fillText(c.name, x+w/2, y+h-30);
   ctx.fillStyle = "#e8a930"; ctx.beginPath(); ctx.arc(x+w/2-24, y+h-13, 6, 0, TAU); ctx.fill();
@@ -5840,7 +5852,7 @@ function upgChip(x, y, w, h, k){
   const u = CRATE_UPG[k], t = store.upg[k]||0;
   roundedPanel(x, y, w, h, 10, "rgba(14,17,26,0.85)");
   ctx.font = "20px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-  ctx.globalAlpha = t? 1 : 0.4; ctx.fillText(u.emoji, x+w/2, y+19); ctx.globalAlpha = 1;
+  ctx.globalAlpha = t? 1 : 0.4; fillTextC(u.emoji, x+w/2, y+19); ctx.globalAlpha = 1;
   ctx.font = "800 12px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.fillStyle = t? RARITY[t-1].col : "#5a6178";
   ctx.fillText(t? "+"+Math.round((u.mult[t]-1)*100)+"%" : "—", x+w/2, y+h-12);
@@ -5851,7 +5863,7 @@ function puChip(x, y, w, h, id){
   roundedPanel(x, y, w, h, 10, armed? "rgba(126,247,255,0.18)" : "rgba(14,17,26,0.85)");
   if(armed){ ctx.strokeStyle="#7ef7ff"; ctx.lineWidth=2.5; ctx.beginPath(); ctx.roundRect(x+1.5,y+1.5,w-3,h-3,9); ctx.stroke(); }
   ctx.font = "24px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-  ctx.fillText(p.emoji, x+w/2, y+21);
+  fillTextC(p.emoji, x+w/2, y+21);
   ctx.font = "800 11px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#f4f6ff";
   ctx.fillText("x"+n, x+w/2, y+h-21);
   ctx.fillStyle = armed? "#7ef7ff" : "#8b93ad"; ctx.font = "800 10px 'Avenir Next Condensed','Arial Narrow',sans-serif";
@@ -5864,7 +5876,7 @@ function cosChip(x, y, w, h, id){
   roundedPanel(x, y, w, h, 10, on? "rgba(255,183,66,0.18)" : "rgba(14,17,26,0.85)");
   if(on){ ctx.strokeStyle="#ffb742"; ctx.lineWidth=2.5; ctx.beginPath(); ctx.roundRect(x+1.5,y+1.5,w-3,h-3,9); ctx.stroke(); }
   ctx.font = "22px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-  ctx.fillText(c.emoji, x+w/2, y+20);
+  fillTextC(c.emoji, x+w/2, y+20);
   ctx.fillStyle = on? "#ffb742" : "#8b93ad"; ctx.font = "800 10px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.fillText(on? "ON" : "WEAR", x+w/2, y+h-10);
   hudBtns.push({x, y, w, h, act:"wear:"+id});
@@ -5877,7 +5889,7 @@ function drawReveal(dt){
     const shake = (0.9-rv.t)*11, s = 46 + rv.t*30;
     ctx.save(); ctx.translate(cx+rand(-shake,shake), cy+rand(-shake,shake));
     ctx.font = s+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-    const fc = CRATES[rv.from]; ctx.fillText(fc? fc.emoji : "🎁", 0, 0); ctx.restore();
+    const fc = CRATES[rv.from]; fillTextC(fc? fc.emoji : "🎁", 0, 0); ctx.restore();
     if(rv.t>0.5){ ctx.globalAlpha=(rv.t-0.5)/0.4; ctx.globalCompositeOperation="lighter";
       ctx.fillStyle=col; ctx.beginPath(); ctx.arc(cx,cy,s,0,TAU); ctx.fill();
       ctx.globalCompositeOperation="source-over"; ctx.globalAlpha=1; }
@@ -5887,7 +5899,7 @@ function drawReveal(dt){
     ctx.strokeStyle=col; ctx.lineWidth=4; ctx.globalAlpha=0.85;
     ctx.beginPath(); ctx.arc(cx, cy, 62+Math.sin(game.t*6)*3, 0, TAU); ctx.stroke(); ctx.globalAlpha=1;
     ctx.font = "52px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-    ctx.fillText(rv.res.icon, cx, cy);
+    fillTextC(rv.res.icon, cx, cy);
     ctx.font = "900 18px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle=col;
     ctx.fillText(RARITY[rv.tier].name, cx, cy+84);
     ctx.font = "800 21px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#f4f6ff";
@@ -6058,7 +6070,7 @@ function shopTab(x,y,w,h,label,act,active){
   if(active){ ctx.strokeStyle="#ffb742"; ctx.lineWidth=2; ctx.beginPath(); ctx.roundRect(x+1,y+1,w-2,h-2,h/2); ctx.stroke(); }
   ctx.font="900 14px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.fillStyle = active? "#ffb742" : "#8b93ad"; ctx.textAlign="center"; ctx.textBaseline="middle";
-  ctx.fillText(label, x+w/2, y+h/2+1);
+  fillTextC(label, x+w/2, y+h/2+1);
   hudBtns.push({x,y,w,h,act});
 }
 // hero car on a lit, slowly-spinning turntable
@@ -6097,10 +6109,10 @@ function shopHero(r, sel, locked, isCars){
     ctx.save(); ctx.translate(cx, carCy+bob); ctx.rotate(sway);
     drawVehiclePreview(sel.id, 0, 0, scale, locked? 0.22 : 1);
     ctx.restore();
-    if(locked){ ctx.font="40px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.globalAlpha=0.92; ctx.fillText("🔒", cx, carCy); ctx.globalAlpha=1; }
+    if(locked){ ctx.font="40px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.globalAlpha=0.92; fillTextC("🔒", cx, carCy); ctx.globalAlpha=1; }
   } else {
     ctx.font=(r.h*0.4)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-    ctx.fillText(sel.emoji, cx, carCy);
+    fillTextC(sel.emoji, cx, carCy);
   }
   // name plate (top of stage)
   ctx.font="900 italic "+(r.w<300?20:24)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
@@ -6208,12 +6220,12 @@ function shopStrip(r, roster, isCars){
     if(isCars){
       if(lk){ ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.globalAlpha=(0.5+prox*0.5)*0.9;
         ctx.font=(tileH*0.3)+"px sans-serif"; const si=SERIES.findIndex(s=>s.reward===o.id);
-        ctx.fillText(si>=0? SERIES[si].emoji : "👑", cx, iconCy-tileH*0.08);
-        ctx.font=(tileH*0.22)+"px sans-serif"; ctx.fillText("🔒", cx, iconCy+tileH*0.26); ctx.globalAlpha=1; }
+        fillTextC(si>=0? SERIES[si].emoji : "👑", cx, iconCy-tileH*0.08);
+        ctx.font=(tileH*0.22)+"px sans-serif"; fillTextC("🔒", cx, iconCy+tileH*0.26); ctx.globalAlpha=1; }
       else drawVehiclePreview(o.id, cx, iconCy, clamp(tileH*0.52/42, 0.8, 3.0), 0.55+prox*0.45);
     } else {
       ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.globalAlpha=0.5+prox*0.5;
-      ctx.font=(tileH*0.46)+"px sans-serif"; ctx.fillText(o.emoji, cx, iconCy); ctx.globalAlpha=1;
+      ctx.font=(tileH*0.46)+"px sans-serif"; fillTextC(o.emoji, cx, iconCy); ctx.globalAlpha=1;
     }
     if(equipped){ ctx.fillStyle="#9ae64a"; ctx.beginPath(); ctx.arc(cx+tileW/2-9, iconCy-tileH/2+9, 4, 0, TAU); ctx.fill(); }
     hudBtns.push({x:cx-step/2, y:r.y, w:step, h:r.h, act:"sel:"+i});
@@ -6239,9 +6251,9 @@ function shopBuy(r, btn){
   ctx.fillStyle=btn.bg; ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 14); ctx.fill();
   if(pending){ ctx.strokeStyle="#9ae64a"; ctx.lineWidth=3+Math.sin(game.t*8)*1.5; ctx.beginPath(); ctx.roundRect(r.x+1.5, r.y+1.5, r.w-3, r.h-3, 13); ctx.stroke(); }
   let fs = 24; ctx.font="900 "+fs+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-  while(ctx.measureText(btn.label).width > r.w-26 && fs>12){ fs--; ctx.font="900 "+fs+"px 'Avenir Next Condensed','Arial Narrow',sans-serif"; }
+  while(ctx.measureText(btn.label).width + emojiPad(btn.label) > r.w-26 && fs>12){ fs--; ctx.font="900 "+fs+"px 'Avenir Next Condensed','Arial Narrow',sans-serif"; }
   ctx.fillStyle=btn.fg; ctx.textAlign="center"; ctx.textBaseline="middle";
-  ctx.fillText(btn.label, r.x+r.w/2, r.y+r.h/2+1);
+  fillTextC(btn.label, r.x+r.w/2, r.y+r.h/2+1);
   hudBtns.push({x:r.x, y:r.y, w:r.w, h:r.h, act:btn.act});
 }
 function drawShop(dt){
@@ -6373,7 +6385,7 @@ function drawClear(dt){
     const pop = on? easeOut(clamp((cd.t-(0.5+i*0.4))/0.25,0,1)) : 1;
     ctx.font = Math.round((on? 62*pop : 54)*ssz)+"px sans-serif";
     ctx.globalAlpha = (on?1:0.18)*inT;
-    ctx.fillText("⭐", (i-1)*78*ssz, compact? -30 : -38);
+    fillTextC("⭐", (i-1)*78*ssz, compact? -30 : -38);
   }
   ctx.globalAlpha = inT;
   // stats chips
@@ -6388,7 +6400,7 @@ function drawClear(dt){
     const y = chipStart+i*chipStep;
     roundedPanel(-panW*0.32, y-16, panW*0.64, compact?32:36, 12, "rgba(20,24,36,0.92)");
     ctx.fillStyle = ch[1]; ctx.textAlign="center";
-    ctx.fillText(ch[0], 0, y+1);
+    fillTextC(ch[0], 0, y+1);
   });
   ctx.restore();
   // buttons — always below the chips, always on screen
@@ -6435,8 +6447,8 @@ function drawBigBtn(x,y,w,h,label,act,bg,fg,fontPx){
   ctx.beginPath(); ctx.roundRect(x,y,w,h,16); ctx.fill();
   ctx.fillStyle = fg;
   ctx.font = "900 "+(fontPx||25)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-  ctx.textAlign="center"; ctx.textBaseline="middle";
-  ctx.fillText(label, x+w/2, y+h/2+1);
+  ctx.textBaseline="middle";
+  fillTextC(label, x+w/2, y+h/2+1);          // center-safe (emoji labels shift on iOS with textAlign=center)
   hudBtns.push({x,y,w,h,act});
 }
 // smooth winding "racetrack" path through the level nodes (rounded corners)
@@ -6461,8 +6473,8 @@ function drawCooked(dt){
   ctx.rotate(-0.03);
   ctx.font = "italic 900 60px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.textAlign="center"; ctx.textBaseline="middle";
-  ctx.fillStyle = "rgba(12,14,22,0.9)"; ctx.fillText("HE BEAT YOU! 💀", 5, 5);
-  ctx.fillStyle = "#ff8fe0"; ctx.fillText("HE BEAT YOU! 💀", 0, 0);
+  ctx.fillStyle = "rgba(12,14,22,0.9)"; fillTextC("HE BEAT YOU! 💀", 5, 5);
+  ctx.fillStyle = "#ff8fe0"; fillTextC("HE BEAT YOU! 💀", 0, 0);
   ctx.font = "800 20px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.fillStyle = "#8b93ad";
   ctx.fillText("the goober is doing donuts on the finish line", 0, 54);
@@ -6581,7 +6593,7 @@ function tick(now){
     ctx.fillStyle = "rgba(8,10,16,0.88)"; ctx.fillRect(0,0,W,H);
     ctx.save(); ctx.translate(W/2, H*0.42); ctx.rotate(-Math.PI/2 + Math.sin(game.t*2.2)*0.25);
     ctx.font = "72px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-    ctx.fillText("📱", 0, 0); ctx.restore();
+    fillTextC("📱", 0, 0); ctx.restore();
     ctx.font = "900 30px 'Avenir Next Condensed','Arial Narrow',sans-serif";
     ctx.fillStyle = "#f4f6ff"; ctx.textAlign="center"; ctx.textBaseline="middle";
     ctx.fillText("TURN IT SIDEWAYS!", W/2, H*0.42+86);
