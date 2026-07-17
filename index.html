@@ -3027,8 +3027,9 @@ function startLevel(L, meta){
   spawnGolden();                               // 🎁 v2: maybe drop one free golden crate on the racing line
   // 🚩 auto-checkpoint: on LONG campaign mazes (path > 24 cells), crossing the halfway mark
   // quietly moves your respawn point — giant mazes stay challenging, never punishing.
-  game.ckptField = null; game.ckptDone = false; game.ckptHalf = 0;
-  if(!twoP && game.finish){
+  game.ckptField = null; game.ckptHalf = 0;
+  game.tpz = 0; game.tpcx = game.tpcy = undefined;      // 🎥 two-player camera smoothing state
+  if(!(game.vs||game.ko) && game.finish){               // campaign AND co-op mazes get checkpoints
     const fd = finishDist();
     if(fd){ const d0 = fd[game.startCell[1]][game.startCell[0]];
       if(d0 > 24){ game.ckptField = fd; game.ckptHalf = d0*0.5; } }
@@ -3789,14 +3790,14 @@ function updateEntities(dt){
     }
   }
   // 🚩 auto-checkpoint: reached the halfway mark on solid, safe ground → respawn moves here
-  if(car===game.car && game.ckptField && !game.ckptDone && car.airT<=0 && car.invuln<=0){
+  if(game.ckptField && !car._ckpt && (car===game.car || game.coop) && car.airT<=0 && car.invuln<=0){
     const kc=Math.floor(car.x/CELL), kr=Math.floor(car.y/CELL);
     const kd=(game.ckptField[kr]||[])[kc];
     if(kd>=0 && kd<=game.ckptHalf && !isSolid(kc,kr)
        && !(game.voidCell[kr]&&game.voidCell[kr][kc])
        && !game.trapDoors.some(t=>t.c===kc&&t.r===kr)
        && !game.crumbles.some(m=>m.c===kc&&m.r===kr)){
-      game.ckptDone = true;
+      car._ckpt = true;                                  // per-car: in co-op each player earns their own
       car.spawn = { x:(kc+0.5)*CELL, y:(kr+0.5)*CELL, h:car.heading };
       sticker("🚩 CHECKPOINT!", "#9ae64a");
       for(let i=0;i<10;i++) sparkle(car.x, car.y);
@@ -4215,9 +4216,25 @@ function drawWorld(dt){
   const sx = (Math.random()*2-1)*game.shake, sy = (Math.random()*2-1)*game.shake;
   let cx, cy, z = 1;
   if(game.vs || game.coop || game.ko){
-    // whole maze on screen — no scrolling in two-player modes
-    z = Math.min(W/(wW+30), H/(wH+30));
-    cx = wW/2; cy = wH/2;
+    const fitZ = Math.min(W/(wW+30), H/(wH+30));
+    if(fitZ >= 0.5 || !game.car2){
+      // classic: whole maze on screen (all original-sized arenas keep exactly this)
+      z = fitZ; cx = wW/2; cy = wH/2;
+    } else {
+      // 🎥 big shared maps: bounding-box camera — frame BOTH cars, never zoomed out past fit-all
+      const c1=game.car, c2=game.car2, pad=CELL*2.4;
+      const needW = Math.abs(c1.x-c2.x)+pad*2, needH = Math.abs(c1.y-c2.y)+pad*2;
+      const tgtZ = clamp(Math.min(W/needW, H/needH), fitZ, 0.8);
+      game.tpz = game.tpz ? lerp(game.tpz, tgtZ, 1-Math.exp(-2.5*dt)) : tgtZ;
+      z = game.tpz;
+      cx = (c1.x+c2.x)/2; cy = (c1.y+c2.y)/2;
+      const vw=W/z, vh=H/z;
+      cx = (wW>vw)? clamp(cx, vw/2-15, wW-vw/2+15) : wW/2;
+      cy = (wH>vh)? clamp(cy, vh/2-15, wH-vh/2+15) : wH/2;
+      game.tpcx = game.tpcx===undefined ? cx : lerp(game.tpcx, cx, 1-Math.exp(-4*dt));
+      game.tpcy = game.tpcy===undefined ? cy : lerp(game.tpcy, cy, 1-Math.exp(-4*dt));
+      cx = game.tpcx; cy = game.tpcy;
+    }
     ctx.save();
     ctx.translate(W/2+sx, H/2+sy);
     ctx.scale(z,z);
@@ -5795,10 +5812,11 @@ function drawHUD(){
   const tw = ctx.measureText(tag).width + emojiPad(tag) + 30;
   roundedPanel(W-pad-tw-96, top, tw, 38, 12);
   ctx.fillStyle = game.lv.hue;
-  fillTextC(tag, W-pad-tw/2-96, top+20);
-  // pause + mute buttons (right, big touch targets)
-  drawIconBtn(W-pad-88, top, 40, store.muted?"🔇":"🔊", "mute");
-  drawIconBtn(W-pad-42, top, 40, "⏸️", "pause");
+  const nS = navS();
+  fillTextC(tag, W-pad-tw/2-(nS*2+18), top+20);
+  // pause + mute buttons (right, big obvious touch targets)
+  drawIconBtn(W-pad-nS*2-8, top, nS, store.muted?"🔇":"🔊", "mute");
+  drawIconBtn(W-pad-nS, top, nS, "⏸️", "pause");
   // boss race progress bar
   if(game.rival){
     const rv = game.rival;
@@ -5872,9 +5890,10 @@ function drawVsHUD(pad, top){
     ctx.fillText(pName(i)+" ● "+car.coins+" ✦ "+Math.round(car.aura), x+28, top+23);
   };
   chip(pad, 0, game.car);
-  chip(W-pad-88-8-cw3, 1, game.car2);
-  drawIconBtn(W-pad-88, top, 40, store.muted?"🔇":"🔊", "mute");
-  drawIconBtn(W-pad-42, top, 40, "⏸️", "pause");
+  const nS = navS();
+  chip(W-pad-(nS*2+16)-cw3, 1, game.car2);
+  drawIconBtn(W-pad-nS*2-8, top, nS, store.muted?"🔇":"🔊", "mute");
+  drawIconBtn(W-pad-nS, top, nS, "⏸️", "pause");
   // stopwatch (center)
   roundedPanel(W/2-56, top, 112, 38, 12);
   ctx.font = "800 19px 'Avenir Next Condensed','Arial Narrow',sans-serif";
@@ -5927,6 +5946,8 @@ function fillTextC(txt, x, y, stroked){
   ctx.fillText(txt, x-w/2, y);
   ctx.textAlign = pa;
 }
+// 📏 navigation buttons scale with the screen (iPad ≈ 53px, phones floor at 44px — Apple's minimum touch target)
+function navS(){ return clamp(Math.round(Math.min(W,H)*0.065), 44, 60); }
 function drawIconBtn(x,y,s,icon,act){
   roundedPanel(x,y,s,s,12);
   ctx.font = (s*0.5)+"px sans-serif"; ctx.textBaseline="middle";
@@ -6050,8 +6071,10 @@ function drawSeries(){
   ctx.fillStyle = "#ffd76a"; ctx.fillText("✦", PADX+14, 33+safeT);
   ctx.fillStyle = "#f4f6ff"; ctx.fillText("AURA "+Math.round(store.aura), PADX+32, 33+safeT);
   drawIconBtn(W-PADX-42, 12+safeT, 40, store.muted?"🔇":"🔊", "mute");
-  // world cards — wrapping grid centered in the band between header and garage row
-  const garageY = H-104-safeB;
+  // world cards — wrapping grid centered in the band between header and the mode dashboard
+  const dashH = clamp(Math.round(H*0.16), H<520? 64 : 84, 128);   // 🧭 dashboard tile height
+  const dashChips = store.customLevels.length ? 56 : 0;           // custom-track chip row (only when tracks exist)
+  const garageY = H - dashH - dashChips - 10 - safeB;
   const N = SERIES.length;
   const cw = Math.min(300, Math.max(140, (W-2*PADX-48)/Math.min(N,4)));
   const perRow = Math.max(1, Math.min(N, Math.floor((W-2*PADX+16)/(cw+16))));
@@ -6091,40 +6114,55 @@ function drawSeries(){
     ctx.globalAlpha = 1;
     hudBtns.push({x, y, w:cw, h:chh, act:"s:"+s});
   }
-  // garage row: BUILD / SHOP / VS / CO-OP — responsive (measure labels, size to fit any screen)
+  // 🧭 MODE DASHBOARD — the five modes are first-class TILES, same card language as the worlds
+  // (was a row of small pills; dad's ask: "make the main tiles the buttons — the initial navigation dashboard")
   const gy = garageY;
-  const gbtns = [
-    {label:"🔨 BUILD", act:"build",  bg:"#ffb742"},
-    {label:"🛒 SHOP",  act:"shop",   bg:"#7ef7ff"},
-    ...(CONFIG.cratesEnabled ? [{label:"🎁 CRATES",act:"crates", bg:"#ffd76a"}] : []),   // 🎁 hidden when master off
-    {label:"⚔️ VS",    act:"vs",     bg:"#ff8fe0"},
-    {label:"🤝 CO-OP", act:"coop",   bg:"#9ae6ff"},
-  ];
-  let gfont = 24, gpad = 34, gGap = 8;
-  const measureG = ()=>{ ctx.font = "900 "+gfont+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-    return gbtns.map(b=> Math.ceil(ctx.measureText(b.label).width + emojiPad(b.label)) + gpad); };
-  let gws = measureG();
-  const availG = W - 2*PADX;
-  let gtot = gws.reduce((a,b)=>a+b,0) + gGap*(gbtns.length-1);
-  while(gtot > availG && gfont > 14){ gfont--; gpad = Math.max(20, gpad-2); gws = measureG(); gtot = gws.reduce((a,b)=>a+b,0) + gGap*(gbtns.length-1); }
-  let gxb = PADX;
-  gbtns.forEach((b,i)=>{ drawBigBtn(gxb, gy, gws[i], 48, b.label, b.act, b.bg, "#12151f", gfont); gxb += gws[i]+gGap; });
-  let gcx = gxb + gGap;
-  for(const cl of store.customLevels){
-    const st = store.stars["c:"+cl.id]||0;
-    roundedPanel(gcx, gy+2, 48, 46, 12, "rgba(20,24,36,0.92)");
-    ctx.font = "17px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillStyle="#f4f6ff";
-    fillTextC(EMOJIS[cl.emojiIx||0], gcx+24, gy+17);
-    ctx.font = "800 11px 'Avenir Next Condensed',sans-serif";
-    ctx.fillStyle = st? "#ffd76a" : "#8b93ad";
-    fillTextC(st? "⭐".repeat(st) : cl.name.replace("TRACK","T"), gcx+24, gy+37);
-    if(game.importedTrack===cl){
-      ctx.strokeStyle="#ffd76a"; ctx.lineWidth=3+Math.sin(game.t*5)*1.5;
-      ctx.beginPath(); ctx.roundRect(gcx-3, gy-1, 54, 52, 14); ctx.stroke();
+  // custom-track chips: compact row ABOVE the dashboard (only when tracks exist)
+  if(dashChips){
+    let gcx = PADX;
+    for(const cl of store.customLevels){
+      const st = store.stars["c:"+cl.id]||0;
+      roundedPanel(gcx, gy+4, 48, 46, 12, "rgba(20,24,36,0.92)");
+      ctx.font = "17px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillStyle="#f4f6ff";
+      fillTextC(EMOJIS[cl.emojiIx||0], gcx+24, gy+19);
+      ctx.font = "800 11px 'Avenir Next Condensed',sans-serif";
+      ctx.fillStyle = st? "#ffd76a" : "#8b93ad";
+      fillTextC(st? "⭐".repeat(st) : cl.name.replace("TRACK","T"), gcx+24, gy+39);
+      if(game.importedTrack===cl){
+        ctx.strokeStyle="#ffd76a"; ctx.lineWidth=3+Math.sin(game.t*5)*1.5;
+        ctx.beginPath(); ctx.roundRect(gcx-3, gy+1, 54, 52, 14); ctx.stroke();
+      }
+      hudBtns.push({x:gcx,y:gy+4,w:48,h:46,act:"pc:"+cl.id});
+      gcx += 54;
+      if(gcx > W-PADX-54) break;
     }
-    hudBtns.push({x:gcx,y:gy+2,w:48,h:46,act:"pc:"+cl.id});
-    gcx += 54;
-    if(gcx > W-60) break;
+  }
+  const newN = CONFIG.cratesEnabled ? Object.keys(store.found||{}).filter(k=>!(store.seenItems||{})[k]).length : 0;
+  const tiles = [
+    {label:"BUILD",  emoji:"🔨", act:"build",  col:"#ffb742", sub:(store.customLevels.length||0)+"/10 TRACKS"},
+    {label:"SHOP",   emoji:"🛒", act:"shop",   col:"#7ef7ff", sub:"🪙 "+store.coinsBank},
+    ...(CONFIG.cratesEnabled ? [{label:"CRATES", emoji:"🎁", act:"crates", col:"#ffd76a",
+        sub: newN? "● "+newN+" NEW!" : (store.cratesOpened||0)+" OPENED", hot: newN>0 }] : []),
+    {label:"VS",     emoji:"⚔️", act:"vs",     col:"#ff8fe0", sub:(store.vsScore||[0,0]).join(" – ")},
+    {label:"CO-OP",  emoji:"🤝", act:"coop",   col:"#9ae6ff", sub:Object.values(store.coopStars||{}).filter(Boolean).length+"/"+COOP_LEVELS.length},
+  ];
+  const tGap = 10, tW = Math.floor((W-2*PADX-tGap*(tiles.length-1))/tiles.length), ty = gy + dashChips;
+  let tx = PADX;
+  for(const T of tiles){
+    roundedPanel(tx, ty, tW, dashH, 16, "rgba(20,24,38,0.94)");
+    ctx.strokeStyle = T.col; ctx.globalAlpha = T.hot? (0.7+Math.sin(game.t*5)*0.3) : 0.5; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.roundRect(tx+1.5, ty+1.5, tW-3, dashH-3, 15); ctx.stroke(); ctx.globalAlpha = 1;
+    ctx.textBaseline = "middle";
+    ctx.font = Math.round(dashH*0.34)+"px sans-serif";
+    fillTextC(T.emoji, tx+tW/2, ty+dashH*0.30);
+    ctx.font = "900 "+clamp(Math.round(dashH*0.20),13,22)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+    ctx.fillStyle = T.col;
+    fillTextC(T.label, tx+tW/2, ty+dashH*0.62);
+    ctx.font = "800 "+clamp(Math.round(dashH*0.13),10,13)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+    ctx.fillStyle = T.hot? "#ff8fe0" : "#8b93ad";
+    fillTextC(T.sub, tx+tW/2, ty+dashH*0.84);
+    hudBtns.push({x:tx, y:ty, w:tW, h:dashH, act:T.act});
+    tx += tW + tGap;
   }
   // input
   for(const tp of input.taps.splice(0)){
@@ -6598,8 +6636,9 @@ function drawCoopHUD(pad, top){
   };
   badge(pad, 0, game.car);
   if(game.car2) badge(W-pad-132, 1, game.car2);
-  drawIconBtn(W-pad-42, top+48, 40, "🗺️", "map");
-  hudBtns.push({x:W-pad-42, y:top+48, w:40, h:40, act:"map"});
+  const nS = navS();   // big obvious exit row under the P2 badge (was a tiny 40px icon nobody could find)
+  drawIconBtn(W-pad-nS, top+48, nS, "⏸️", "pause");
+  drawIconBtn(W-pad-nS*2-8, top+48, nS, "🗺️", "map");
   // both players' touch joysticks
   if(input.hasTouch){
     for(const j of [input.joy, input.joy2]){
@@ -6715,7 +6754,9 @@ function drawKoHUD(pad, top){
   ctx.font = "800 16px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.fillStyle="#ffd76a"; ctx.textAlign="center";
   ctx.fillText("KNOCKOUT  "+pName(0)+" "+ks[0]+" — "+ks[1]+" "+pName(1), W/2, top+16);
-  drawIconBtn(W-pad-42, top+52, 40, "↩️", "map");
+  const nSk = navS();
+  drawIconBtn(W-pad-nSk, top+52, nSk, "⏸️", "pause");
+  drawIconBtn(W-pad-nSk*2-8, top+52, nSk, "↩️", "map");
   hudBtns.push({x:W-pad-42, y:top+52, w:40, h:40, act:"map"});
   if(input.hasTouch){
     for(const j of [input.joy, input.joy2]){ if(!j) continue;
@@ -8184,10 +8225,14 @@ function tick(now){
       ctx.fillStyle = "rgba(8,10,16,0.6)"; ctx.fillRect(0,0,W,H);
       ctx.font = "900 italic 54px 'Avenir Next Condensed','Arial Narrow',sans-serif";
       ctx.fillStyle="#f4f6ff"; ctx.textAlign="center"; ctx.textBaseline="middle";
-      ctx.fillText("PAUSED", W/2, H*0.42);
+      ctx.fillText("PAUSED", W/2, H*0.28);
       hudBtns.length = 0;
-      drawBigBtn(W/2-170, H*0.55, 160, 58, "▶ GO", "resume", "#9ae64a", "#12151f");
-      drawBigBtn(W/2+10, H*0.55, 160, 58, game.fromBuilder? "🔨 GARAGE":"🗺 MAP", "map", "rgba(60,66,86,0.95)", "#f4f6ff");
+      // 🧭 a real pause MENU — big stacked buttons, incl. the way home (was just GO + MAP)
+      const pw = Math.min(400, W*0.72), ph2 = clamp(Math.round(H*0.105), 54, 68), pgap = 14;
+      let py2 = H*0.38;
+      drawBigBtn(W/2-pw/2, py2, pw, ph2, "▶ KEEP RACING", "resume", "#9ae64a", "#12151f"); py2 += ph2+pgap;
+      drawBigBtn(W/2-pw/2, py2, pw, ph2, game.fromBuilder? "🔨 BACK TO GARAGE" : game.coop? "🤝 CO-OP MAP" : (game.vs||game.ko)? "⚔️ ARENA PICK" : "🗺 LEVEL MAP", "map", "rgba(60,66,86,0.95)", "#f4f6ff"); py2 += ph2+pgap;
+      drawBigBtn(W/2-pw/2, py2, pw, ph2, "🏠 MAIN MENU", "home", "#ffd76a", "#12151f");
     }
     // HUD button taps
     for(const tp of input.taps.splice(0)){
@@ -8198,6 +8243,7 @@ function tick(now){
         if(b.act==="pause") togglePause();
         if(b.act==="resume") paused=false;
         if(b.act==="map"){ paused=false; game.state = game.fromBuilder? "build" : game.coop? "cooppick" : (game.vs||game.ko)? "vspick" : "map"; }
+        if(b.act==="home"){ paused=false; game.state = "series"; }   // 🏠 straight to the main dashboard
       }
     }
   }
