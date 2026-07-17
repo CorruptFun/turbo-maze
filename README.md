@@ -186,3 +186,13 @@ stay fair. Grown-ups, in the 🔧 TWEAK ZONE: `powerUpsInVs` allows gear in batt
 whole system (or any one bucket) off cleanly — see
 [`docs/MYSTERY-CRATES.md`](docs/MYSTERY-CRATES.md) for the full loot tables,
 tuning knobs, **how to revert anything**, and **how to edit/add/remove assets**.
+
+---
+
+## License
+
+© 2026 CorruptFun. All Rights Reserved. **Proprietary** — see [LICENSE](LICENSE).
+
+This game is free to **play** at its official link, but the code, level designs,
+and artwork are not open source. The source is visible only because web games run
+in the browser; that is not a license to copy, reuse, or redistribute it.

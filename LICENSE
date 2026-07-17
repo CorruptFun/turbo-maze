@@ -1,0 +1,36 @@
+TURBO MAZE — Proprietary Software License
+Copyright (c) 2026 CorruptFun. All Rights Reserved.
+
+This software, including its source code (index.html, the worker/ code, build and
+authoring tools), together with all game design, level layouts, artwork, text, and
+other assets in this repository (collectively, the "Software"), is the proprietary
+and copyrighted property of the copyright holder.
+
+The Software's source is publicly visible ONLY because a web game must be delivered
+to and run inside the player's browser to be playable at its official URL. That
+technical visibility is NOT an offer, and does NOT grant any license or permission
+of any kind.
+
+YOU MAY:
+  - Play the game at its official URL(s).
+
+YOU MAY NOT, without the prior written permission of the copyright holder:
+  - copy, reproduce, republish, host, mirror, or redistribute the Software or any
+    portion of it;
+  - modify, adapt, translate, or create derivative works from it;
+  - reuse the source code, level designs, artwork, sounds, or other assets in any
+    other project, product, or service;
+  - sell, rent, sublicense, or otherwise commercially exploit the Software;
+  - remove, obscure, or alter this notice or any copyright or attribution notice.
+
+No open-source license is granted. No rights are granted by implication, estoppel,
+or otherwise except as expressly stated above. All rights not expressly granted are
+reserved by the copyright holder.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
+LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM, OUT OF, OR IN
+CONNECTION WITH THE SOFTWARE OR ITS USE.
+
+For licensing or permission inquiries, contact the copyright holder.

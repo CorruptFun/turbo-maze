@@ -38,7 +38,10 @@
   submissions (where kids actually browse web games).
 - [ ] **9. 🌐 Custom domain** — AFTER sync ships (localStorage is origin-keyed; sync
   first so saves survive the move). ~$10/yr Cloudflare Registrar.
-- [ ] **10. 📱 PWA install prompt** — manifest exists; add the install nudge.
+- [x] **10. 📱 PWA install prompt** (`see commit`) — dismissible "Add to Home Screen"
+  coach: iOS shows manual tap-Share→Add steps (no iOS install API), Android/Chrome
+  fires the native prompt via an ADD button. Never shown once already launched from
+  the home screen (standalone); ✕ dismisses for good; auto-hidden during a race.
 - [ ] **11. 🎬 Build-in-public clips** — record the dad+son sessions (family movies +
   the marketing engine); game link on every clip.
 - [ ] **12. 🔒 Keep the safety stance** — no accounts, no PII, no ads, ever. It's the

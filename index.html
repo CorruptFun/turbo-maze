@@ -1,4 +1,6 @@
 <!DOCTYPE html>
+<!-- TURBO MAZE  ·  (c) 2026 CorruptFun  ·  All Rights Reserved  ·  Proprietary, see LICENSE.
+     The source is visible only because web games run in the browser; that is NOT a license to copy or reuse. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -16,6 +18,22 @@
           --sal:env(safe-area-inset-left,0px); --sar:env(safe-area-inset-right,0px); }
   html, body { margin:0; padding:0; height:100%; overflow:hidden; background:#0b0e15; overscroll-behavior:none; }
   canvas { display:block; touch-action:none; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+  /* 📲 Add-to-Home-Screen coach (see ▸Add-to-Home-Screen in the script) */
+  #a2hs { position:fixed; left:50%; bottom:calc(14px + var(--sab)); transform:translateX(-50%); z-index:60;
+    box-sizing:border-box; max-width:min(430px, calc(100vw - 24px));
+    display:flex; align-items:center; gap:11px; padding:11px 12px 11px 14px; border-radius:16px;
+    background:rgba(20,24,34,0.97); color:#f4f6ff; border:1px solid rgba(255,255,255,0.09);
+    box-shadow:0 10px 34px rgba(0,0,0,0.55); font-family:'Avenir Next Condensed','Arial Narrow',system-ui,sans-serif;
+    animation:a2hsUp .32s ease; }
+  @keyframes a2hsUp { from{opacity:0; transform:translate(-50%,14px);} to{opacity:1; transform:translate(-50%,0);} }
+  #a2hs .a2-ico { font-size:24px; line-height:1; flex:none; }
+  #a2hs .a2-txt { min-width:0; font-size:14px; line-height:1.32; font-weight:700; letter-spacing:.2px; }
+  #a2hs .a2-txt b { color:#ffb742; }
+  #a2hs .a2-add { flex:none; border:none; border-radius:11px; background:#9ae64a; color:#12151f;
+    font:900 14px 'Avenir Next Condensed','Arial Narrow',sans-serif; padding:9px 14px; cursor:pointer; }
+  #a2hs .a2-x { flex:none; width:30px; height:30px; border:none; border-radius:9px;
+    background:rgba(255,255,255,0.11); color:#cfd5e4; font-size:19px; font-weight:900; line-height:1; cursor:pointer; }
+  #a2hs .a2-add:active, #a2hs .a2-x:active { filter:brightness(.9); }
 </style>
 </head>
 <body>
@@ -42,11 +60,13 @@
      add a car/pet → ▸vehicles & pets (VEHICLES / PETS) + stats in ▸vehicle stats
      crates/items  → ▸CRATES + docs/MYSTERY-CRATES.md
      cloud sync    → ▸CLOUD SYNC here + worker/  (docs/CLOUD-SYNC.md)
+     install nudge → ▸Add-to-Home-Screen  (the PWA "add to home screen" coach)
      debug in console → window.__tm  (exposed at the bottom, near ▸main loop)
    ═══════════════════════════════════════════════════════════════════════════ */
 /* ================================================================
    TURBO MAZE — a drift-racing maze game for a 7-year-old sigma
    Built by dad (+ Claude). One file, no deps, works on a tablet.
+   © 2026 CorruptFun · All Rights Reserved · Proprietary (see LICENSE)
    ================================================================
 
    🔧 TWEAK ZONE — change stuff here with your kid! 🔧            */
@@ -9644,6 +9664,74 @@ document.addEventListener("visibilitychange", ()=>{
   if(!document.hidden){ AU.resume(); if(syncEnabled()) syncNow("resume"); }   // ☁️ pull latest when the kid comes back / hops devices
 });
 
+/* ---------------- 📲 Add-to-Home-Screen coach (PWA install nudge — roadmap item 10) ---------------- */
+// A dismissible tutorial banner that nudges players to install the game to their
+// home screen (so it opens full-screen like a real app). Platform-aware:
+//   • iOS/iPadOS Safari has NO install API → show manual "tap Share → Add to Home Screen"
+//   • Android/desktop Chromium → capture beforeinstallprompt, offer a real ADD button
+// Rules: NEVER shown once already launched from the home screen (standalone); an ✕
+// dismisses it for good (remembered); auto-hidden during an active race so it can't
+// cover the controls. a2hsMenu() is called each frame from the render loop.
+let _a2hsEl = null, _a2hsActive = false, _a2hsMenuLast = null;
+function a2hsMenu(onMenu){                       // show on menus, hide during play — DOM touched only on change
+  if(!_a2hsActive || !_a2hsEl) return;
+  if(_a2hsMenuLast === onMenu) return;
+  _a2hsMenuLast = onMenu;
+  _a2hsEl.style.display = onMenu ? "flex" : "none";
+}
+(function a2hsCoach(){
+  const standalone = window.navigator.standalone === true
+      || matchMedia("(display-mode: standalone)").matches
+      || matchMedia("(display-mode: fullscreen)").matches;
+  if(standalone) return;                                                   // already installed → never nag
+  try { if(localStorage.getItem("tmA2HS") === "off") return; } catch(e){}  // dismissed before → stay gone
+
+  const ua = navigator.userAgent || "";
+  const isIOS = /iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && navigator.maxTouchPoints > 1);  // iPadOS reports as "Macintosh"
+  const touch = navigator.maxTouchPoints > 0 || matchMedia("(pointer: coarse)").matches;
+  let deferred = null;
+  const SHARE = '<svg width="15" height="17" viewBox="0 0 24 26" fill="none" stroke="#7ec9ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M12 2v14"/><path d="M8 6l4-4 4 4"/><path d="M6 11H4v13a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V11h-2"/></svg>';
+
+  function show(mode){
+    if(_a2hsEl) return;
+    const el = document.createElement("div"); el.id = "a2hs";
+    const x = '<button class="a2-x" aria-label="Not now">×</button>';
+    if(mode === "prompt")
+      el.innerHTML = '<span class="a2-ico">📲</span><span class="a2-txt">Add <b>TURBO MAZE</b> to your home screen — play full-screen, like an app!</span><button class="a2-add">ADD</button>' + x;
+    else if(mode === "ios")
+      el.innerHTML = '<span class="a2-ico">📲</span><span class="a2-txt">Play full-screen! Tap ' + SHARE + ' below, then <b>Add to Home Screen</b>.</span>' + x;
+    else
+      el.innerHTML = '<span class="a2-ico">📲</span><span class="a2-txt">Add <b>TURBO MAZE</b> to your home screen from your browser menu to play like an app.</span>' + x;
+    document.body.appendChild(el);
+    _a2hsEl = el; _a2hsActive = true; _a2hsMenuLast = null;
+    el.addEventListener("pointerdown", e => e.stopPropagation());          // don't leak taps to the canvas
+    el.querySelector(".a2-x").addEventListener("click", () => dismiss(true));
+    const add = el.querySelector(".a2-add");
+    if(add) add.addEventListener("click", async () => {
+      if(deferred){ deferred.prompt(); try { await deferred.userChoice; } catch(e){} deferred = null; }
+      dismiss(true);
+    });
+  }
+  function dismiss(remember){
+    _a2hsActive = false;
+    if(remember){ try { localStorage.setItem("tmA2HS", "off"); } catch(e){} }
+    if(_a2hsEl){ _a2hsEl.remove(); _a2hsEl = null; }
+  }
+
+  window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferred = e; });  // Chromium: a real install offer
+  window.addEventListener("appinstalled", () => dismiss(true));
+
+  setTimeout(() => {                                     // let the game paint first, then nudge
+    if(_a2hsEl) return;
+    if(deferred) show("prompt");
+    else if(touch && isIOS) show("ios");
+    else if(touch) show("generic");
+    // desktop with no install support: skip — "add to home screen" doesn't apply
+  }, 2800);
+
+  window.__a2hs = show;   // 🔧 QA: __a2hs("ios"|"prompt"|"generic") to preview a variant on any device
+})();
+
 /* ---------------- main loop ---------------- */
 let last = performance.now();
 function frame(now){
@@ -9656,6 +9744,7 @@ function tick(now){
   if(!CONFIG.cratesEnabled && game.state==="crates") game.state="home";   // 🎁 master off → never strand on the dead crates screen
   ctx.setTransform(DPR,0,0,DPR,0,0);
   ctx.clearRect(0,0,W,H);
+  a2hsMenu(!(game.state==="play" && !paused));   // 📲 hide the install nudge during an active race
   // tablet held upright → ask for landscape (menus only, never mid-game)
   const portraitHint = input.hasTouch && H > W*1.15 && (game.state==="title" || game.state==="map" || game.state==="series" || game.state==="home" || game.state==="cooppick");
   if(portraitHint) input.taps.length = 0;
