@@ -2009,6 +2009,474 @@ const LEVELS = [
     "######.####c########..#.##..#.........c.....#####c##",
     "####################################################"
   ], asteroids:[{"c":5,"r":8,"dx":1,"dy":0,"range":4,"period":4,"phase":0,"size":1},{"c":35,"r":29,"dx":0,"dy":1,"range":2,"period":3.2,"phase":0,"size":1},{"c":38,"r":29,"dx":0,"dy":1,"range":2,"period":3.4,"phase":0.33,"size":1},{"c":41,"r":29,"dx":0,"dy":1,"range":2,"period":3.6,"phase":0.66,"size":1}]},
+
+  // ═══════════════ World 7 · HOT LAVA 🌋 (levels 90-104) ═══════════════
+  // L90 · THE FLOOR IS LAVA (38x20)
+  { name:"THE FLOOR IS LAVA", emoji:"🌋", hue:"#ff5a3c", par:94, grid:[
+    "######################################",
+    "#SS.............LLLL..........LLLL.n.#",
+    "#SS....c.......LLLLLLL.........LLLL..#",
+    "#.............LLLLLLLLL.........LL..c#",
+    "#..........c...LLLLLLL.....c.........#",
+    "#................LLL...c...........c.#",
+    "#............c..............LLLL.....#",
+    "#.....LLLLL.......c.......LLLLLLLL...#",
+    "#.c..LLLLLLLL...c........LLLLLLLLLL..#",
+    "#.c.LLLLLLLLL.............LLLLLLLL.c.#",
+    "#.c..LLLLLLL.......c........LLLL.....#",
+    "#......LLLL.....LLLL..c..............#",
+    "#..............LLLLLL................#",
+    "#...............LLLLL....c...LLLL....#",
+    "#........c....LLLLLLLLL....c..LL.....#",
+    "#............LLLLLLLLLLL..c..........#",
+    "#..LLL.........LLLLLLL......c........#",
+    "#.LLLL.c....c....LLL....c.........FF.#",
+    "#.n...c........................c..FF.#",
+    "######################################"
+  ]},
+  // L91 · STEPPING HOT (39x21)
+  { name:"STEPPING HOT", emoji:"🔥", hue:"#ff8a3c", par:102, grid:[
+    "#######################################",
+    "#SS............................##....n#",
+    "#SS........##.c.....LLLLL......##.c...#",
+    "#....c.....##.......LLLLL......##.....#",
+    "#........c.##....c....c.....c.........#",
+    "#LLLLLLLcLLLLLLLLLcLLLLLLLLLcLLLLLLLLL#",
+    "#LLLLLLLcLLLLLLLLLLLLLLLLLLLcLLLLLLLLL#",
+    "#....##..c...........LL..c......c.....#",
+    "#..c.##.......c......LL....LLLL.......#",
+    "#..................c.LL....LLLL...c...#",
+    "#LLLLLLLLLLLLLLLcLLLLLLLLLLLLLLLLLcLLL#",
+    "#LLLLLLLLLLLLLLLcLLLLLLLLLLLLLcLLLcLLL#",
+    "#......c...LL..c.........c..........c.#",
+    "#..c.......LL....##..........c.LLLL...#",
+    "#...c....c.LL....##.c..........LLLL...#",
+    "#LLLcLLLLLLLLLLLLLLLLLcLLLLcLLLLLLLLLL#",
+    "#LLLcLLLLLLLLLLLLLLLLLcLLLLLLLLLLLLLLL#",
+    "#...c........LLLLL......c..c##....c...#",
+    "#.n....c.....LLLLL..c.......##.c...FF.#",
+    "#..........c.......................FF.#",
+    "#######################################"
+  ]},
+  // L92 · GEYSER PARK (40x22)
+  { name:"GEYSER PARK", emoji:"⛲", hue:"#ffce4a", par:100, grid:[
+    "########################################",
+    "#SS..c....c........ccLLLL..#..........n#",
+    "#SS....Y........Y...LLLLLLc............#",
+    "#...c....LLLL.....c..LLLL..Y.c.....Y...#",
+    "#.......LLLLLLc............#...........#",
+    "#........LLLL.......c..c...#....c......#",
+    "#..c..........#####Y.######...LLLL.c...#",
+    "#............................LLLLLL....#",
+    "#....................c........LLLL...c.#",
+    "#..Y......Y...LLLLL.......Y............#",
+    "#...c.......cLLLLLLL.c.c............Y..#",
+    "#.............LLLLL...n..............c.#",
+    "######Y.####.Y###########YY#####LLLLcY.#",
+    "#...LLLLL.c.....Y........c.......LLLL..#",
+    "#..LLLLLLL........c..c..LLLLL........c.#",
+    "#...LLLLL..............LLLLLLL.....c...#",
+    "#.c.................#...LLLLL.....c....#",
+    "#.....c...Y.........#..........Y...c...#",
+    "#...........LLLL.c..Y....c........c.FF.#",
+    "#.........c..LLLL...#.c.....c...cY..FF.#",
+    "#n..................#..................#",
+    "########################################"
+  ]},
+  // L93 · OUTRUN IT! (41x23)
+  { name:"OUTRUN IT!", emoji:"🏃", hue:14, par:180, sweep:{"dir":1,"speed":0.85,"delay":5}, grid:[
+    "#########################################",
+    "#.........LL..............LL..........LL#",
+    "#.S.....n.LL..............LL..........LL#",
+    "#.........LL.......c.*c...LL.LL...c.....#",
+    "#.........LL.....c........LL.LL.....c...#",
+    "#.........LL..............LL....c.......#",
+    "#..c.LLL..LL..............LL............#",
+    "#....LLL..LL......LL....c.LL.....LL.....#",
+    "#....LLL..LL.....cLL......LL.....LL...c.#",
+    "#....LLL..LL..LL..LL..LL..LL....cLLLL...#",
+    "#..c......LL..LL..LL..LL..LL.....LLLL...#",
+    "#.........LL..LL..LL..LLc.LL.....LLLL...#",
+    "#.........LL..LL.cLL..LL..LL.....LLLL.c.#",
+    "#.........LL..LL..LL..LL..LL....cLLLL...#",
+    "#..c......LL......LL......LL.....LL.....#",
+    "#.........LL......LL....c.LL.....LL.....#",
+    "#................cLL.............LL...c.#",
+    "#.................LL.............LL.....#",
+    "#.................LL.............LL.....#",
+    "#....*.c...c.*.c..LL.....n.c..c..LL.....#",
+    "#LL...............LL.............LL...F.#",
+    "#LL...............LL.............LL.....#",
+    "#########################################"
+  ]},
+  // L94 · LAVA FALLS (43x25)
+  { name:"LAVA FALLS", emoji:"🌊", hue:4, par:126, grid:[
+    "###########################################",
+    "#.........#.....LL............#.......LLLL#",
+    "#.S..c....#.....LL........c...#.......LLLL#",
+    "#.........#.....LL.....#......#.......#####",
+    "#.........#.....LL.....#......#.......#.n.#",
+    "#...............LL.....#..............xccc#",
+    "#........c...c.........#.........c....#...#",
+    "#..................c...#...............####",
+    "#LLLLL.cLLLLLLLLLLLLLLLLLLLLLLvvLLLLLLLLLL#",
+    "#LLLLL..LLLLLLLLLLLLLLLLLLLLLLvvLLLLLLLLLL#",
+    "#.....................LL.........#........#",
+    "#......c..............LL........c#......c.#",
+    "################......LL..........#####...#",
+    "#.....................LL..................#",
+    "#...........c.....c.n.LL................c.#",
+    "#.....................LL..................#",
+    "#LLLLLLLLLLLvvLLLLLLLLLLLLLLLLLLLLLL..LLLL#",
+    "#LLLLLLLLLLLvvLLLLLLLLLLLLLLLLLLLLLL..LLLL#",
+    "#.......LL......#..............#..........#",
+    "#.cc.n..LL......#..............#..........#",
+    "#.c.....LL......#...########...#...####...#",
+    "#LLLL...LL...c..#..............#..........#",
+    "#LLLL...LL..........>>>>>>>.c..#........F.#",
+    "#LLLL.........................c...c.......#",
+    "###########################################"
+  ]},
+  // L95 · VENT MAZE (44x26)
+  { name:"VENT MAZE", emoji:"🕳️", hue:24, par:202, grid:[
+    "############################################",
+    "#.......#......#......#......#......#......#",
+    "#.S..c..#......Y......#....Y........#......#",
+    "#..........c...Y......#.Y...........#..ccc.#",
+    "#..............#..........Y..#......Y..cn..#",
+    "#.......#......#..c......c...#..c...Y......#",
+    "#.......#......#......#......#......#......#",
+    "#########################YY#####..##########",
+    "#.......#......#..n...#......#......#......#",
+    "#.......#..LL.........#..LL.........#......#",
+    "#..c.......LLc....c......LL.c.......#..ccc.#",
+    "#..........LL..#.........LL..#......#......#",
+    "#.......#......#......#......#......#......#",
+    "##..###################################..###",
+    "#.......#......#......#......#......#......#",
+    "#..............#.............#..LL.........#",
+    "#....c.....c........c........Y.cLL.....c...#",
+    "#.......#.............#......Y..LL..#......#",
+    "#.......#......#......#......#......#......#",
+    "##################YY############..##########",
+    "#.......#......#......#......#......#..LL..#",
+    "#...........c..#.LL..........#......Y..LL..#",
+    "#....c...........LL.......c......c..Y......#",
+    "#.......#...........c.#.............#....F.#",
+    "#.......#......#......#......#......#......#",
+    "############################################"
+  ]},
+  // L96 · OBSIDIAN RUN (45x27)
+  { name:"OBSIDIAN RUN", emoji:"🧊", hue:210, par:238, grid:[
+    "#############################################",
+    "#~~~~~~LL~~~~~~LL~~~~~~LL~~~~~~LL~~~~~~LL~~~#",
+    "#~S~~~~LL~~~~~~LL~~~~~~LL~~~~~~LL~~~~~~LL~~~#",
+    "#~~~~~~LL~~~~~~~~~~~~~~LL~~~~~~~~~~~~c~LL~~~#",
+    "#~~~c~~LL~~~~~c~~~~~~~~LL~~~~~c~~~~~~~~LL~~~#",
+    "#~~~~~~LL~~~~~~~~~~~~~~LLc~~~~~~~~~~~~~LL~~~#",
+    "#~~~~~~LL~c~~~~LL~c~~~~LL~~~~~~LL~c~~~~LL~~~#",
+    "#~~c~~~LL~~~~~~LL~~~~~~LL~~~~~~LL~~~~~~LL~c~#",
+    "#~~~~~~LL~~~~~~LL~~~~~~LL~~~~~~LL~~~~~~LL~~~#",
+    "#~~~~~~LL~~LL~~LL~~LL~~LL~~LL~~LL~~LL~~LL~~~#",
+    "#~~n~~~LL~~LL~~LL~~LL~~LL~~LL~~LL~nLL~~LL~~~#",
+    "#~~~~~~LLc~LL~~LLc~LL~~LL~cLL~~LL~~LL~~LL~~~#",
+    "#~~~~~~LL~~LL~~LL~~LL~~LL~~LL~~LLc~LL~~LL~~~#",
+    "#~~~c~~LL~~LL~~LL~~LL~~LL~~LL~~LL~~LL~~LL~c~#",
+    "#~~~~~~LL~~LL~~LL~~LL~~LL~~LL~~LL~~LL~~LL~~~#",
+    "#~~~~~~LL~~LL~~LL~~LL~~LL~~LL~~LL~~LL~~LL~~~#",
+    "#~~~~~~LL~~LL~~LL~~LL~~LL~~LL~~LL~~LL~~LL~~~#",
+    "#~~~~~~LL~c~~~~LL~~~~~~LLc~~~~~LL~~~~~~LL~~~#",
+    "#~~~~~~LL~~~~~~LL~c~~~~LL~~~~~~LL~c~~~~LL~~~#",
+    "#~~c~~~LL~~~~~~LL~~~~~~LL~~~~~~LL~~~~~~LL~c~#",
+    "#~~~~~~LL~~~~~~LL~~~~~~LL~~~~~~LL~~~~~~LL~~~#",
+    "#~~~~~~~~~~~~~~LL~~~~~~~~~~~~~~LL~~~~~~~~~~~#",
+    "#~~~c~~~~~c~~~~LLc~~~~c~~~c~~~~LLc~~~~c~~~~~#",
+    "#~~~~~~~~~~~~~~LL~~~~~~~~~~~~~~LL~~~~~~~~~F~#",
+    "#~~~~~~LL~~~~~~LL~~~~~~LL~~~~~~LL~~~~~~LL~~~#",
+    "#~~~~~~LL~~~~~~LL~~~~~~LL~~~~~~LL~~~~~~LL~~~#",
+    "#############################################"
+  ]},
+  // L97 · THE BIG MELT (48x28)
+  { name:"THE BIG MELT", emoji:"🫠", hue:20, par:182, sweep:{"dir":1,"speed":0.95,"delay":6}, grid:[
+    "################################################",
+    "#........LL.......LL.......LL.......LL.........#",
+    "#........LL.......LL.......LL.......LL.........#",
+    "#.S..c...LL.......LL.......LL.......LL.........#",
+    "#........LL..LL..cLL..LL...LL.......LL.........#",
+    "#...cn.c.LL..LL...LL..LL...LL.......LL...LL....#",
+    "#........LL..LL...LL..LL...LL.......LL...LL....#",
+    "#.....c..LL.c............c.LL............LL....#",
+    "#........LL..........c.....LL.....n....c.......#",
+    "#.......cLL................LLc.................#",
+    "#........LL.Y.....LL.......LL.Y.....LL.........#",
+    "#........LL...c.Y.LL.Y.....LL..c..Y.LL.......c.#",
+    "#...LL...LL.......LL.......LL..LL...LL.........#",
+    "#...LL.Y.LL.......LL.....Y.LL..LL..cLL.Y.......#",
+    "#...LL...LL.......LL.......LL..LL...LL.........#",
+    "#...LL...LL.Y.....LL..c....LL..LL...LL.......c.#",
+    "#...LL...LL.......LL.......LL.Y.....LL.....Y...#",
+    "#........LL.......LL.Y.....LL.......LL.........#",
+    "#............c....LLc.............c.LL.Y.......#",
+    "#......Y..........LL..........c.....LL.......F.#",
+    "#...............c.LL................LL.........#",
+    "#........LL.......LL.......LL.......LL.....LL..#",
+    "#........LL....LL.LL....LL.LL.......LL.....LL..#",
+    "#........LL....LL.LL....LL.LL.......LL.....LL..#",
+    "#........LL....LL.LL....LL.LL.......LL.........#",
+    "#........LL.......LL.......LL.......LL.........#",
+    "#........LL.......LL.......LL.......LL.........#",
+    "################################################"
+  ]},
+  // L98 · MAGMA KEY (48x30)
+  { name:"MAGMA KEY", emoji:"🗝️", hue:32, par:290, grid:[
+    "################################################",
+    "#.......LL......LL......LL......LL......LL..#..#",
+    "#.S.....LL......LL......LL......LL......LL..#..#",
+    "#.......LL..............LL...........c..LL..#..#",
+    "#.......LL....c...c.....LL...c....c.....LLc.#..#",
+    "#.....c.LL............k.LL....n.........LL..#..#",
+    "#.......LL......LL......LL......LL......LL..#..#",
+    "#..c..n.LLc.....LL...c..LL....c.LL......LL..#..#",
+    "#.......LL..LLL.LL.....cLL......LL.LLL..LL..#..#",
+    "#.......LL..LLL.LL.LLL..LL......LL.LLL..LLc.#..#",
+    "#..LLL..LL..LLL.LL.LLL..LL..LLL.LL.LLL..LL..#..#",
+    "#..LLL..LL..LLL.LL.LLL..LL..LLL.LL.LLL..LL..#..#",
+    "#..LLL..LL..LLL.LL.LLL..LL..LLL.LL.LLL..LL..#..#",
+    "#..LLL..LL..LLL.LL.LLL..LL..LLL.LL.LLL..LL..#..#",
+    "#..LLL..LL......LL.LLL..LL..LLL.LL.LLL..LL..D.F#",
+    "#..LLL..LL......LL.LLL..LL......LL.LLL..LL..#..#",
+    "#..LLL..LL...c..LL......LLc.....LL.LLL..LL..#..#",
+    "#..LLL..LL......LL......LL......LL......LL..#..#",
+    "#..LLL..LL......LL......LL......LL......LL..#..#",
+    "#.......LL.LL...LL..c...LL.LL...LL..c...LL..#..#",
+    "#.......LL.LL...LL......LL.LL...LL......LL..#..#",
+    "#......cLL.LL...LL......LL.LL...LL......LLc.#..#",
+    "#.......LL.LL...LL......LL.LL...LL......LL..#..#",
+    "#.......LL......LL......LL.LL...LL......LL..#..#",
+    "#...............LL..............LL..........#..#",
+    "#...c......c....LL.c....c...c...LL.c....c...#..#",
+    "#...............LL..............LL..........#..#",
+    "#.......LL......LL......LL......LL......LL..#..#",
+    "#.......LL......LL......LL......LL......LL..#..#",
+    "################################################"
+  ]},
+  // L99 · CRUSHER CALDERA (48x30)
+  { name:"CRUSHER CALDERA", emoji:"🏭", hue:"#ff8a3c", par:206, grid:[
+    "################################################",
+    "#..................LL............L..........cc.#",
+    "#.S...LL...........LL............L.......c.Y.c.#",
+    "#.....LL.....LL..........LL..........LL........#",
+    "#...c.c......LL..........LL..........LL........#",
+    "#.............c........c.......................#",
+    "##############################..################",
+    "#....#..LLLLLLLLLLLLLLLLLLLLLLc.LLLLLLL...#....#",
+    "#.n..#..LLLLLLLLLLLLLLLLLLLLLL..LLLLLLL...#..c.#",
+    "#.......LLLLLLLLLLLLLLLLLLLLLL..LLLLLLL........#",
+    "#..............Y........c..Y............c......#",
+    "#..............Y...........Y...................#",
+    "#.c.c...LLLLLLLLLLLL..LLLLLLLLLLLLLLLLL...#..n.#",
+    "#.......LLLLLLLLLLLL..LLLLLLLLLLLLLLLLL...#....#",
+    "##..################..##########################",
+    "#.............#.c.....c...LL.LL.........c......#",
+    "#.....c.......#.........c.LL......Y............#",
+    "#....########.............LL###########........#",
+    "#.........................Y.c........c......c..#",
+    "#.......#.......####...........c...............#",
+    "#.......#..c....xcc#......LL###########........#",
+    "#...............x.n#......LL...................#",
+    "##########################################c....#",
+    "#......c..LLL....................cc.Y.......n..#",
+    "#..............c..........LLL.........LL.......#",
+    "##############################..################",
+    "#................LL........LL.....c............#",
+    "#.........c...........c.................c....F.#",
+    "#.n...........LLL.......LLL................c...#",
+    "################################################"
+  ], crushers:[{"c":10,"r":1,"dx":0,"dy":1,"range":4,"period":2.9,"phase":0},{"c":16,"r":1,"dx":0,"dy":1,"range":4,"period":2.9,"phase":0.33},{"c":22,"r":1,"dx":0,"dy":1,"range":4,"period":2.9,"phase":0.66},{"c":28,"r":1,"dx":0,"dy":1,"range":4,"period":2.9,"phase":0.17},{"c":35,"r":1,"dx":0,"dy":1,"range":4,"period":2.9,"phase":0.5},{"c":28,"r":18,"dx":1,"dy":0,"range":5,"period":3,"phase":0},{"c":38,"r":19,"dx":-1,"dy":0,"range":5,"period":3,"phase":0.5},{"c":6,"r":27,"dx":1,"dy":0,"range":6,"period":2.8,"phase":0},{"c":20,"r":26,"dx":1,"dy":0,"range":6,"period":2.8,"phase":0.5},{"c":33,"r":27,"dx":1,"dy":0,"range":5,"period":2.8,"phase":0},{"c":44,"r":26,"dx":-1,"dy":0,"range":5,"period":2.8,"phase":0.5}]},
+  // L100 · FIRE CHASE (49x31)
+  { name:"FIRE CHASE", emoji:"🛻", hue:"#ff6a5e", par:196, rival:{"mult":2.5}, sweep:{"dir":1,"speed":0.8,"delay":8}, grid:[
+    "#################################################",
+    "#...LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL#",
+    "#.S.LLLLLLLLLLL.n..LLLLLLLLLLLL.c..LLLLLLLLLLLLL#",
+    "#...LLLLLLLLLLLc.c.LLLLLLLLLLLLc.c.LLLLLLLLLLLLL#",
+    "#...LLLLLLLLLLL....LLLLLLLLLLLL....LLLLLLLLLLLLL#",
+    "#...LLLLLLLLLLL.Y..LLLLLLLLLLLL.Y..LLLLLLLLLLLLL#",
+    "##..############.###############.################",
+    "#..c.......c#...............#...................#",
+    "#...........#...........n...#...............c...#",
+    "#...........#...*...........#...*...............#",
+    "#...........#...............#.............#.....#",
+    "#......#....#..........c....#..........c..#.....#",
+    "#......#....#...#...#.......#...#...#.....#.....#",
+    "#......#....#...#...#...#...#...#...#.....#.....#",
+    "#......#....#...#...#...#...#...#...#.....#.....#",
+    "#......#...c#...#..c#...#..c#...#..c#.....#.....#",
+    "#......#....#...#...#...#...#...#...#.....#.....#",
+    "#...........#...#...#...#...#...#...#....c#.....#",
+    "#...........#.......#...#...#.......#.....#.....#",
+    "#..............c....#..........c....#.....#.....#",
+    "#...................#...............#.........c.#",
+    "#.....*.............#...............#..*........#",
+    "#........n..........#...............#...........#",
+    "#...................#...............#...........#",
+    "########.###############.###################....#",
+    "#LLLLLLLYLLLLLLLLLLLLLLLYLLLLLLLLLLLLLLLLLLL....#",
+    "#LLLLLL....LLLLLLLLLLLL....LLLLLLLLLLLLLLLLL....#",
+    "#LLLLLLc.ccLLLLLLLLLLLLc.ncLLLLLLLLLLLLLLLLL.n..#",
+    "#LLLLLL....LLLLLLLLLLLL....LLLLLLLLLLLLLLLLL....#",
+    "#LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL..F.#",
+    "#################################################"
+  ]},
+  // L101 · EMBER GANG (51x33)
+  { name:"EMBER GANG", emoji:"👾", hue:"#ff5c39", par:142, grid:[
+    "###################################################",
+    "#...........................................ccc...#",
+    "#.S.....c........c........c.......................#",
+    "#.................#...LLLLLLLLL...#.....###########",
+    "#.....LLLLLLLLL...#...LLLLLLLLL..c#...LLLLLLLLLLLL#",
+    "#.....LLLLLLLLL...#...LLLLLLLLL...#...LLLLLLLLLLLL#",
+    "#.....LLLLLLLLL.......LLLLLLLLL...#...LLLLLLLLLLLL#",
+    "#.....LLLLLLLLL...#...LLLLLLLLL.......LLLLLLLLLLLL#",
+    "#.....LLLLLLLLL...#...LLLLLLLLL...#...LLLLLLLLLLLL#",
+    "#.....LLLLLLLLL...#...............#...LLLLLLLLLLLL#",
+    "#..................c...............c..LLLLLLLLLLLL#",
+    "#.#...............................................#",
+    "#.#.....#######Y#.............###Y#####......~~~~.#",
+    "#...............#................c...........~c~~.#",
+    "#....LLLLLLLL...#...LLLLLLLLL...#.......c....~~c~.#",
+    "#.c..LLLLLLLL...#...LLLLLLLLL...#............~~~~.#",
+    "#####LLLLLLLL...#...LLLLLLLLL...#...LLLLLLLLL.....#",
+    "#....LLLLLLLL...Y...LLLLLLLLL...#...LLLLLLLLL..c..#",
+    "#....LLLLLLLL...#...LLLLLLLLL...#...LLLLLLLLL..c..#",
+    "#....LLLLLLLL...#...LLLLLLLLL...Y...LLLLLLLLL...n.#",
+    "#...............#...............#..cLLLLLLLLL.....#",
+    "#.......c.......................#...LLLLLLLL#######",
+    "#..n.....................c..................xcc.n.#",
+    "#...#####...............##...................######",
+    "#.....#...............#...............#.cLLLLLLLLL#",
+    "#.....#...LLLLLLLLL...#....LLLLLLLL...#..LLLLLLLLL#",
+    "#.....#...LLLLLLLLL...#....LLLLLLLL...#..LLLLLLLLL#",
+    "#.....#...LLLLLLLLL...#....LLLLLLLL...#..LLLLLLLLL#",
+    "#..####...LLLLLLLLL...Y....LLLLLLLL...#..LLLLLLLLL#",
+    "#.........LLLLLLLLL...#....LLLLLLLL...#.....c.....#",
+    "#.c.............................................F.#",
+    "#.nc..............................................#",
+    "###################################################"
+  ], hazards:[{"path":[[16,2],[32,2]],"speed":106},{"path":[[6,11],[26,11]],"speed":104},{"path":[[35,13],[35,21]],"speed":100},{"path":[[12,22],[34,22]],"speed":108},{"path":[[20,31],[38,31]],"speed":102}]},
+  // L102 · MIDNIGHT MAGMA (52x34)
+  { name:"MIDNIGHT MAGMA", emoji:"🌑", hue:"#ff5a2a", par:152, dark:true, grid:[
+    "####################################################",
+    "#S...c........##############LLLLLLLLLLLLLLLLLLLLLLL#",
+    "#........n....##############LLLLLLLLLLLLLLLLLLLLLLL#",
+    "#####L..####..LLLL##########LLLLLLLLLLLLLLLLLLLLLLL#",
+    "#####L..####..LLLL##########LLLLLLLLLLLLLLLLLLLLLLL#",
+    "######c.####..LLLL##########LLLLLLLLLLLLLLLLLLLLLLL#",
+    "############.cLLLL##########LLLLLLLLLLLLLLLLLLLLLLL#",
+    "############..####LLc.L#####LLLLLLLLLLLLLLLLLLLLLLL#",
+    "############..####LL..L#####LLLLLLLLLLLLLLLLLLLLLLL#",
+    "############..####LL..L#############################",
+    "############..............##########################",
+    "############.......c......##########################",
+    "########################..##########################",
+    "####################LLLL..##########################",
+    "####################LLLL..##########################",
+    "####################LLLL.c##LLc.L###################",
+    "####################LLLL..##LL..L###################",
+    "##LLLLLLLL##############..##LL..L###################",
+    "##LLLLLLLL##############...............#############",
+    "##LLLLLLLL##############.......c.......#############",
+    "##LLLLLLLL###########################.n#############",
+    "##LLLLLLLL#######################LLLL..#############",
+    "##LLLLLLLL#######################LLLL..##LLLLLLL####",
+    "#################################LLLL.c##LLLLLLL####",
+    "##LLLLLLLLLLLLLLLLLLLLL##########LLLL..##LLLLLLL####",
+    "##LLLLLLLLLLLLLLLLLLLLL##############..##LLLLLLL####",
+    "##LLLLLLLLLLLLLLLLLLLLL##############..............#",
+    "##LLLLLLLLLLLLLLLLLLLLL##############........c.....#",
+    "##LLLLLLLLLLLLLLLLLLLLL##########################..#",
+    "##LLLLLLLLLLLLLLLLLLLLL#################LLLLL..LL.c#",
+    "##LLLLLLLLLLLLLLLLLLLLL#################LLLLL..LL..#",
+    "##LLLLLLLLLLLLLLLLLLLLL#####################.c.....#",
+    "##LLLLLLLLLLLLLLLLLLLLL#####################......F#",
+    "####################################################"
+  ]},
+  // L103 · THE GAUNTLET OF FIRE (53x35)
+  { name:"THE GAUNTLET OF FIRE", emoji:"⚔️", hue:"#ff7a2a", par:152, sweep:{"dir":1,"speed":0.9,"delay":5}, grid:[
+    "#####################################################",
+    "##################LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL#",
+    "#S.c~~~~~~~~~~...#LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL#",
+    "#...~~~~~~~~~~...#LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL#",
+    "##############...#LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL#",
+    "#LLLLLLLLLLLL#...#LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL#",
+    "#LLLLLLLLLLLL#.c.#LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL#",
+    "#LLLLLLLLLLLL#...#LLc.LLLLLLLLLLLLLLLLLLLLLLLLLLLLLL#",
+    "#LLLLLLLLLLLL#...#LL..LLLLLLLLLLLLLLLLLLLLLLLLLLLLLL#",
+    "#LLLLLLLLLLLL#...#LL..LLLLLLLLLLLLLLLLLLLLLLLLLLLLLL#",
+    "##############.........Y.......###############LLLLLL#",
+    "##############.....Y..c....Y...###############LLLLLL#",
+    "############################...###############LLLLLL#",
+    "#LLLLLLLLLLLLLLLLLLLLLLLLLL#...###############LLLLLL#",
+    "#LLLLLLLLLLLLLLLLLLLLLLLLLL#...###############LLLLLL#",
+    "#LLLLLLLLLLLLLLLLLLLLLLLLLL#.c.###############LLLLLL#",
+    "#LLLLLLLLLLLLLLLLLLLLLLLLLL#...###############LLLLLL#",
+    "#LLLLLLLLLLLLLLLLLLLLLLLLLL#...###############LLLLLL#",
+    "#LLLLLLLLLLLLLLLLLLLLLLLLLL#..n..............#LLLLLL#",
+    "#LLLLLLLLLLLLLLLLLLLLLLLLLL#.................#LLLLLL#",
+    "#LLLLLLLLLLLLLLLLLLLLLLLLLL#...c......c......#LLLLLL#",
+    "#LLLLLLLLLLLLLLLLLLLLLLLLLL#.................#LLLLLL#",
+    "#LLLLLLLLLLLLLLLLLLLLLLLLLL#.................#LLLLLL#",
+    "#LLLLLLLLLLLLLLLLLLLLLLLLLL###############...#LLLLLL#",
+    "#LLLLLLLLLLLLLLLLLLLLLLLLLL#LLLLLLLLLLLLL#...#LLLLLL#",
+    "#LLLLLLLLLLLLLLLLLLLLLLLLLL#LLLLLLLLLLLLL#...#LLLLLL#",
+    "#LLLLLLLLLLLLLLLLLLLLLLLLLL#LLLLLLLLLLLLL#.c.#LLLLLL#",
+    "#LLLLLLLLLLLLLLLLLLLLLLLLLL#LLLLLLLLLLLLL#...#LLLLLL#",
+    "#LLLLLLLLLLLLLLLLLLLLLLLLLL#LLLLLLLLLLLLL#...#LLLLLL#",
+    "#LLLLLLLLLLLLLLLLLLLLLLLLLL#LLLLLLLLLLLLL#...#LLLLLL#",
+    "#LLLLLLLLLLLLLLLLLLLLLLLLLL#LLLLLLLLLLLLL#...########",
+    "#LLLLLLLLLLLLLLLLLLLLLLLLLL#LLLLLLLLLLLLL#..~~~~~~~.#",
+    "#LLLLLLLLLLLLLLLLLLLLLLLLLL#LLLLLLLLLLLLL#..~~~~~~~F#",
+    "#LLLLLLLLLLLLLLLLLLLLLLLLLL#LLLLLLLLLLLLL############",
+    "#####################################################"
+  ], crushers:[{"c":33,"r":18,"dx":0,"dy":1,"range":3,"period":2.8,"phase":0},{"c":37,"r":19,"dx":0,"dy":1,"range":3,"period":2.8,"phase":0.5},{"c":41,"r":18,"dx":0,"dy":1,"range":3,"period":2.8,"phase":0.25}]},
+  // L104 · ERUPTION (54x36)
+  { name:"ERUPTION", emoji:"💥", hue:"#ff4a1a", par:154, rival:{"mult":2.6}, sweep:{"dir":1,"speed":0.75,"delay":10}, grid:[
+    "######################################################",
+    "######################LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL#",
+    "#....................#LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL#",
+    "#S....c.....n........#LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL#",
+    "#....................#LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL#",
+    "##################...#LL.c.LLLLLLLLLLLLLLLLLLLLLLLLLL#",
+    "#LLLLLLLLLLLLLLLL#...#LL.Y.LLLLLLLLLLLLLLLLLLLLLLLLLL#",
+    "#LLLLLLLLLLLLLLLL#.c.#LL...LLLLLLLLLLLLLLLLLLLLLLLLLL#",
+    "#LLLLLLLLLLLLLLLL#...#LL.Y.LLLLLLLLLLLLLLLLLLLLLLLLLL#",
+    "#LLLLLLLLLLLLLLLL#...#LLc..LLLLLLLLLLLLLLLLLLLLLLLLLL#",
+    "#LLLLLLLLLLLLLLLL#....~~~~~~~~~~~....#################",
+    "#LLLLLLLLLLLLLLLL#....~~~~~~~~~~~....#################",
+    "#LLLLLLLLLLLLLLLL#...................#LLLLLLLLLLLLLLL#",
+    "##################################...#LLLLLLLLLLLLLLL#",
+    "#LLLLLLLLLLLLLLLL#################...#LLLLLLLLLLLLLLL#",
+    "#LLLLLLLLLLLLLLLL#################.c.#LLLLLLLLLLLLLLL#",
+    "#LLLLLLLLLLLLLLLL#################...#LLLLLLLLLLLLLLL#",
+    "#LLLLLLLLLLLLLLLL#################...#LLLLLLLLLLLLLLL#",
+    "#LLLLLLLLLLLLLLLL#################.................###",
+    "#LLLLLLLLLLLLLLLL#################.n......c........###",
+    "#LLLLLLLLLLLLLLLL#LLLLLLLLLLLL####.................###",
+    "#LLLLLLLLLLLLLLLL#LLLLLLLLLLLL######LL.........L...LL#",
+    "#LLLLLLLLLLLLLLLL#LLLLLLLLLLLL###.c.LL.......c.L...LL#",
+    "#LLLLLLLLLLLLLLLL#LLLLLLLLLLLL###.Y.LL..c...c..L.c.LL#",
+    "#LLLLLLLLLLLLLLLL#LLLLLLLLLLLL###...LL.........L...LL#",
+    "#LLLLLLLLLLLLLLLL#LLLLLLLLLLLL###...LLLLLLLLLLLL...LL#",
+    "#LLLLLLLLLLLLLLLL#LLLLLLLLLLLL.....................###",
+    "#LLLLLLLLLLLLLLLL#LLLLLLLLLLLL...............c.....###",
+    "#LLLLLLLLLLLLLLLL#LLLLLLLLLLLL.....................###",
+    "#LLLLLLLLLLLLLLLL#LLLLLLLLLLLL...LLLLL...............#",
+    "#LLLLLLLLLLLLLLLL#LLLLLLLLLLLL.c.LLLLL...............#",
+    "#LLLLLLLLLLLLLLLL#LLLLLLLLLLLL...LLLLL...............#",
+    "#LLLLLLLLLLLLLLLL#LLLLLLLLLLLL.......................#",
+    "#LLLLLLLLLLLLLLLL#LLLLLLLLLLLL..........~~~~~~~~~~~~F#",
+    "#LLLLLLLLLLLLLLLL#LLLLLLLLLLLL....................c..#",
+    "######################################################"
+  ], crushers:[{"c":40,"r":21,"dx":0,"dy":1,"range":3,"period":3,"phase":0},{"c":43,"r":21,"dx":0,"dy":1,"range":3,"period":3,"phase":0.5},{"c":45,"r":21,"dx":0,"dy":1,"range":3,"period":3,"phase":0.25}]},
 ];
 
 /* ----------------------------------------------------------------
@@ -2026,7 +2494,8 @@ const SERIES = [
   { name:"METAL MELTDOWN", emoji:"🏭", hue:"#ff8a3c", blurb:"Conveyor belts, sliding crushers & trap doors — survive the factory!", count:15, reward:"monster" },
   { name:"SPLASH ZONE", emoji:"🌊", hue:"#2fd0e0", blurb:"Splash pads, sticky shallows & sinking foam floats — ride the currents and waterslides!", count:15, reward:"wave" },
   { name:"COSMIC RUSH", emoji:"🌌", hue:"#7b6cff", blurb:"Slingshot round planets, dive through wormholes, dodge drifting rocks — everything floats out here.", count:15, reward:"ufo" },
-  { name:"NEW WORLD",    emoji:"🌋", hue:"#ff6a5e", blurb:"Even wilder. In the workshop!", comingSoon:true },
+  { name:"HOT LAVA", emoji:"🌋", hue:"#ff4d2e", blurb:"The floor is LAVA! Outrun the molten wave, dodge geysers & don't melt!", count:15, reward:"phoenix" },
+  { name:"NEW WORLD",    emoji:"🎢", hue:"#ff8fe0", blurb:"Something wild is cooking!", comingSoon:true },
 ];
 (function computeSeriesStarts(){
   let acc = 0;
@@ -3046,7 +3515,7 @@ const game = {
 
 function newCar(x,y,heading){
   return { x, y, vx:0, vy:0, heading, speed:0, nitroMeter:70,
-    drifting:false, spinT:0, invuln:0, sq:1, sqv:0, airT:0, airMax:0, wasSticky:false, trail:[], boost:0,
+    drifting:false, spinT:0, invuln:0, sq:1, sqv:0, airT:0, airMax:0, meltT:0, wasSticky:false, trail:[], boost:0,
     aura:0, coins:0, portalCool:0, driftT:0 };
 }
 
@@ -3087,6 +3556,8 @@ function transformLevel(L, key){
     { c:mapC(k.c), r:mapR(k.r), dx: h? -(k.dx||0) : (k.dx||0), dy: v? -(k.dy||0) : (k.dy||0) }));
   if(L.asteroids) out.asteroids = L.asteroids.map(a => Object.assign({}, a,  // ☄️ drift origin + direction reflect
     { c:mapC(a.c), r:mapR(a.r), dx: h? -(a.dx||0):(a.dx||0), dy: v? -(a.dy||0):(a.dy||0) }));
+  if(L.sweep) out.sweep = Object.assign({}, L.sweep, { dir: h? -(L.sweep.dir||1) : (L.sweep.dir||1) });   // 🔥 lava-sweep direction reflects
+
   if(L.hazards)  out.hazards  = L.hazards.map(hz => Object.assign({}, hz,    // sliding-bar patrol waypoints reflect
     { path: hz.path.map(([c,r]) => [mapC(c), mapR(r)]) }));
   if(L.seq)      out.seq      = L.seq.map(([c,r]) => [mapC(c), mapR(r)]);    // co-op sequence-pad order reflects
@@ -3149,7 +3620,9 @@ function startLevel(L, meta){
   game.conveyors = []; game.trapDoors = []; game.crushers = [];           // environmental hazards
   game.bounces = []; game.crumbles = [];                                  // 🌊 World 5: splash pads + foam floats
   game.wells = []; game.voids = []; game.rings = []; game.asteroids = []; // 🌌 World 6: gravity wells / chasms / launch rings / space rocks
+  game.lavas = []; game.geysers = []; game.sweep = null;                  // 🌋 World 7: molten pools / geyser vents / the lava sweep (reset for ALL modes)
   game.voidCell = [];   // 2D void mask, built per-row alongside game.solid
+  game.lavaCell = [];   // 2D lava mask, built per-row alongside game.solid (🌋 melt + BFS checks)
   game.hasKey=false; game.playT=0; game.bonks=0;
   game.vs = !!(meta && meta.vs);
   game.coop = !!(meta && meta.coop);
@@ -3162,7 +3635,7 @@ function startLevel(L, meta){
   game.parts=[]; game.floats=[]; game.stickers=[]; game.confetti=[]; game.hintT=0;
   let sx=1, sy=1, fx=1, fy=1, p2x=0, p2y=0, p2c=1, p2r=1;
   for(let r=0;r<game.rows;r++){
-    game.solid[r]=[]; game.slick[r]=[]; game.sticky[r]=[]; game.voidCell[r]=[];
+    game.solid[r]=[]; game.slick[r]=[]; game.sticky[r]=[]; game.voidCell[r]=[]; game.lavaCell[r]=[];
     for(let c=0;c<game.cols;c++){
       const ch = g[r][c]||"#";
       const wall = ch==="#" || ch==="@";   // 🪐 planet core collides like a wall — bump, never die
@@ -3170,7 +3643,7 @@ function startLevel(L, meta){
       game.slick[r][c] = ch==="~"?1:0;
       game.sticky[r][c] = ch==="&"?1:0;                             // 🟣 sticky shallows (inverse of ice)
       game.voidCell[r][c] = ch==="V" ? 1 : 0;                       // 🕳️ open-space chasm mask
-      if(!wall && ch!=="V") game.road.push([c,r]);   // 🕳️ void is not drivable "road" (no coins/overlays in the gap)
+      if(!wall && ch!=="V" && ch!=="L") game.road.push([c,r]);   // 🕳️/🌋 void + lava are not drivable "road" (no coins/overlays there)
       const wx=(c+0.5)*CELL, wy=(r+0.5)*CELL;
       if(ch==="S"){ sx=wx; sy=wy; game.startCell=[c,r]; }
       if(ch==="2" && !p2x){ p2x=wx; p2y=wy; p2c=c; p2r=r; }
@@ -3203,6 +3676,8 @@ function startLevel(L, meta){
       if(ch==="0") game.portals.push({c,r,x:wx,y:wy,cool:0,bh:true});                     // 🕳️ black-hole wormhole end
       if(ch==="V") game.voids.push({c,r,x:wx,y:wy,ph:Math.random()*TAU});                 // 🕳️ chasm
       if(ch==="U") game.rings.push({c,r,x:wx,y:wy,cool:0,ph:Math.random()*TAU});          // 🚀 launch ring
+      if(ch==="L"){ game.lavas.push({c,r,x:wx,y:wy,ph:Math.random()*TAU}); game.lavaCell[r][c]=1; }  // 🌋 molten lava pool — touch it and you MELT
+      if(ch==="Y") game.geysers.push({c,r,x:wx,y:wy,ph:((c*7+r*13)%10)/10, k:0});         // ⛲ geyser vent — passable road, deterministic phase, deadly mid-eruption
     }
   }
   game.portals.length = Math.min(2, game.portals.length);   // exactly one pair
@@ -3233,6 +3708,10 @@ function startLevel(L, meta){
     phase:a.phase||0, size:a.size||1, off:0,
     x:(a.c+0.5)*CELL, y:(a.r+0.5)*CELL,
     spin:Math.random()*TAU, spv:(Math.random()<0.5?-1:1)*(0.5+Math.random()*0.6) }));
+  // 🔥 W7 THE LAVA SWEEP (hand-authored via L.sweep:{dir,speed,delay}) — campaign only, NEVER in a
+  // two-player mode. A molten wall rolls across the map after a head start; pos is the front in CELLS.
+  if(L.sweep && !twoP) game.sweep = { dir:L.sweep.dir||1, speed:L.sweep.speed||0.9, delay:L.sweep.delay||4,
+    pos:(L.sweep.dir||1)>0 ? -1 : game.cols+1 };
   if(game.coop){
     game.car.home=false; if(game.car2) game.car2.home=false;
     game.car.spawn = {x:sx, y:sy, h:head};
@@ -3259,6 +3738,7 @@ function startLevel(L, meta){
   if(L.rival){
     const trapAvoid = new Set(game.trapDoors.map(t=>t.c+","+t.r));                          // a good driver routes around the hatches
     for(const cm of game.crumbles) trapAvoid.add(cm.c+","+cm.r);                            // 🧱 rival routes around foam floats too
+    for(const l of game.lavas) trapAvoid.add(l.c+","+l.r);                                  // 🌋 rival routes around molten pools (and NEVER melts — sweep included)
     for(const p of game.portals) if(p.bh) trapAvoid.add(p.c+","+p.r);                       // 🕳️ boss routes around black holes (no pull, no warp)
     let path = bfsPathCells(game.startCell, [game.finish.c, game.finish.r], trapAvoid);
     if(path.length<=1) path = bfsPathCells(game.startCell, [game.finish.c, game.finish.r]);  // trap door unavoidable → take the normal path
@@ -3315,6 +3795,7 @@ function rivalBlocked(c,r){
   for(const cr of game.crushers)  if(cr.cc===c && cr.cr===r) return true;
   for(const a of game.asteroids){ const ac=Math.round(a.c+a.dx*a.off), ar=Math.round(a.r+a.dy*a.off);   // ☄️ boss waits out a drifting rock
     if(ac===c && ar===r) return true; }
+  for(const gy of game.geysers)   if(gy.c===c && gy.r===r && gy.k>0.5) return true;   // ⛲ boss waits out an erupting geyser
   for(const g of game.gates)      if(g.c===c && g.r===r && g.open<0.5) return true;
   return false;
 }
@@ -3334,7 +3815,7 @@ function bfsPathCells(start, goal, avoid){
     if(c===goal[0] && r===goal[1]) break;
     for(const [dc,dr] of [[1,0],[-1,0],[0,1],[0,-1]]){
       const nc=c+dc, nr=r+dr;
-      if(nc<0||nr<0||nc>=C||nr>=R||game.solid[nr][nc]||(game.voidCell[nr]&&game.voidCell[nr][nc])||prev[nr][nc]||(avoid&&avoid.has(nc+","+nr))) continue;
+      if(nc<0||nr<0||nc>=C||nr>=R||game.solid[nr][nc]||(game.voidCell[nr]&&game.voidCell[nr][nc])||(game.lavaCell[nr]&&game.lavaCell[nr][nc])||prev[nr][nc]||(avoid&&avoid.has(nc+","+nr))) continue;
       prev[nr][nc] = [c,r]; q.push([nc,nr]);
     }
   }
@@ -3361,7 +3842,7 @@ function updateObjective(force){
     for(const [dc,dr] of [[1,0],[-1,0],[0,1],[0,-1]]){
       const nc=c+dc, nr=r+dr;
       if(nc<0||nr<0||nc>=game.cols||nr>=game.rows) continue;
-      if(game.solid[nr][nc] || (game.voidCell[nr]&&game.voidCell[nr][nc])) continue;   // hint path ignores doors/gates, never points into the chasm
+      if(game.solid[nr][nc] || (game.voidCell[nr]&&game.voidCell[nr][nc]) || (game.lavaCell[nr]&&game.lavaCell[nr][nc])) continue;   // hint path ignores doors/gates, never points into the chasm or the lava
       if(dst[nr][nc]!==-1) continue;
       dst[nr][nc]=dst[r][c]+1; q.push([nc,nr]);
     }
@@ -3381,7 +3862,7 @@ function finishDist(overVoid){
       const nc=c+dc, nr=r+dr;
       if(nc<0||nr<0||nc>=game.cols||nr>=game.rows) continue;
       if(d[nr][nc]!==-1) continue;
-      if(isWallCell(nc,nr) || (!overVoid && game.voidCell[nr]&&game.voidCell[nr][nc])) continue;   // doors/gates treated as passable → gradient always reaches (voids never, unless overVoid)
+      if(isWallCell(nc,nr) || (!overVoid && game.voidCell[nr]&&game.voidCell[nr][nc]) || (!overVoid && game.lavaCell[nr]&&game.lavaCell[nr][nc])) continue;   // doors/gates treated as passable → gradient always reaches (voids/lava never, unless overVoid)
       d[nr][nc]=d[r][c]+1; q.push([nc,nr]);
     }
   }
@@ -3410,6 +3891,9 @@ const WORLD_THEME = [
   // 5 COSMIC RUSH — deep space (indigo / violet, star-white accents)
   { ground:"#1a1630", speck:"rgba(200,190,255,0.05)", glow:"140,120,255", wall:"#070512", wallTop:"#140f28",
     sky:["#05030f","#0c0820"], back:"void", accent:"#b9a8ff" },
+  // 6 HOT LAVA — volcano night (scorched rock, ember orange)
+  { ground:"#2e1a12", speck:"rgba(255,170,90,0.06)", glow:"255,96,32", wall:"#140806", wallTop:"#2a120a",
+    sky:["#1a0705","#2d0e06"], back:"lava", accent:"#ff6a3c" },
 ];
 function worldTheme(){
   const s = (game.levelIx>=0 && !game.customId) ? seriesOf(game.levelIx) : -1;
@@ -3545,6 +4029,13 @@ function prerenderGround(L){
     if(vz(c+1,r)) x.fillRect(px+CELL-5,py,5,CELL); if(vz(c-1,r)) x.fillRect(px,py,5,CELL);
     x.globalAlpha=1;
   }
+  // 🌋 lava-edge CRUST RIM — molten lip on every road edge that borders a lava pool (same rail idea, ember hot)
+  if(game.lavas.length) for(const [c,r] of game.road){
+    const lz=(cc,rr)=> (game.lavaCell[rr] && game.lavaCell[rr][cc]);
+    const px=c*CELL, py=r*CELL; x.fillStyle="rgba(255,110,40,0.5)";
+    if(lz(c,r+1)) x.fillRect(px,py+CELL-5,CELL,5); if(lz(c,r-1)) x.fillRect(px,py,CELL,5);
+    if(lz(c+1,r)) x.fillRect(px+CELL-5,py,5,CELL); if(lz(c-1,r)) x.fillRect(px,py,5,CELL);
+  }
   // 🕳️ punch the chasms TRANSPARENT (the parallax starfield backdrop shows through) + a violet rim glow
   for(const v of (game.voids||[])){
     x.clearRect(v.c*CELL, v.r*CELL, CELL, CELL);                 // reveal deep space
@@ -3587,6 +4078,24 @@ function updateCar(car, ctrl, dt){
     game.shake = Math.min(4, game.shake+1.5);
   }
   car.wasSticky = onSticky;
+  // 🫠 W7 THE MELT: locked in the lava — no input, no movement, until the timer respawns him
+  if(car.meltT>0){
+    car.meltT -= dt;
+    car.vx = car.vy = 0; car.x = car.meltX; car.y = car.meltY;                 // pinned where he melted
+    if(Math.random()<0.5) puff(car.x+rand(-12,12), car.y+rand(-10,2), Math.random()<0.5? "rgba(255,120,50,0.5)" : "rgba(40,28,20,0.55)");
+    if(car.meltT<=0){                                                          // full trap-door respawn contract
+      const sp = car.spawn || {x:car.x, y:car.y, h:car.heading};
+      for(let i=0;i<12;i++) puff(car.x, car.y, "rgba(255,110,40,0.5)");
+      car.x=sp.x; car.y=sp.y; car.heading=sp.h; car.vx=car.vy=0; car.invuln=1.4; car.spinT=0.35; car.sq=0.5;
+      if(game.sweep){                                                          // 🔥 FORGIVENESS: the wall backs off ~3 cells behind the respawn
+        const rcx = Math.floor(sp.x/CELL);
+        game.sweep.pos = game.sweep.dir>0 ? Math.max(-1, rcx-3) : Math.min(game.cols+1, rcx+3);
+      }
+    }
+    car.sqv += (1-car.sq)*260*dt; car.sqv *= Math.exp(-14*dt); car.sq += car.sqv*dt;   // keep the squash spring sane while locked
+    if(ctrl.main){ AU.setDrift(false); AU.setEngine(0, false); }
+    return;
+  }
   if(car.spinT>0){ car.spinT-=dt; car.heading += dt*12; }
   else if(hasInput){
     const want = Math.atan2(iv.y, iv.x);
@@ -3774,6 +4283,19 @@ function scatterCoins(px, py, n){
     game.coins.push({x:(cc+0.5)*CELL+rand(-18,18), y:(rr+0.5)*CELL+rand(-18,18), got:false, ph:Math.random()*TAU, cool:1.0});
   }
 }
+// 🫠 W7 THE MELT — touch lava / an erupting geyser / the sweep front → the car melts in place for
+// 0.8s (locked, no input), then takes the full trap-door respawn contract (updateCar owns the timer).
+// Shield/ghost/saver power-ups rescue him via blockHit, exactly like every other hazard.
+function meltCar(car){
+  if(car.meltT>0 || car.invuln>0 || blockHit(car, car.x, car.y)) return;
+  car.meltT = 0.8; car.meltX = car.x; car.meltY = car.y;     // pinned where he melted
+  car.vx = car.vy = 0;
+  AU.bonk(); AU.beep(600,0.35,"sawtooth",0.12,80);           // sizzle slide-down
+  game.shake = Math.min(8, game.shake+4);
+  for(let i=0;i<10;i++) puff(car.x+rand(-16,16), car.y+rand(-16,16), i%2? "rgba(255,110,40,0.6)" : "rgba(35,24,16,0.6)");
+  sticker(game.vs||game.coop||game.ko ? "🫠 "+pName(car.p2?1:0)+" MELTED!"
+        : pick(["🫠 MELTED!","🔥 TOO HOT!","🌋 OUCH — MOLTEN!"]), "#ff6a3c");
+}
 function updateEntities(dt){
   // gates cycle (shared)
   for(const g of game.gates){
@@ -3782,6 +4304,14 @@ function updateEntities(dt){
     const target = cyc < 0.55 ? 1 : 0;      // open 55% of the time
     g.open = lerp(g.open, target, dt*8);
   }
+  // ⛲ W7 geysers: gate-style 3.2s cycle on game.gt (⏱️ slow-mo aware) — erupting ~35% of the time,
+  // deterministic per-vent phase so the pattern is learnable. k = eruption intensity (drives melt + draw).
+  for(const gy of game.geysers){
+    const on = ((game.gt||0)/3.2 + gy.ph) % 1 < 0.35 ? 1 : 0;
+    gy.k = lerp(gy.k, on, dt*8);
+  }
+  // 🔥 W7 lava sweep: after the head start, the molten wall rolls across the map (pos in cells)
+  if(game.sweep && game.playT > game.sweep.delay) game.sweep.pos += game.sweep.dir * game.sweep.speed * dt;
   // shifting walls: set A and set B take turns being solid — the maze rearranges.
   // safe "both open" gaps between so nobody is ever fully trapped.
   if(game.shiftWalls.length){
@@ -4064,12 +4594,24 @@ function updateEntities(dt){
       sticker("🌌 "+(game.vs||game.coop||game.ko? pName(car.p2?1:0)+" DRIFTED OFF!":"DRIFTED INTO SPACE — BEAMED BACK!"), "#7b6cff");
     }
   }
+  // 🌋 W7 HOT LAVA: molten pool / erupting geyser / behind the sweep front → THE MELT
+  // (a splash-pad or launch-ring hop with airT>0 sails clean over all three; meltCar itself
+  //  handles invuln + power-up saves, and the boss rival is never in game.cars → never melts)
+  if((game.lavas.length || game.geysers.length || game.sweep) && car.airT<=0 && car.meltT<=0){
+    const mcx=Math.floor(car.x/CELL), mcy=Math.floor(car.y/CELL);
+    if(game.lavaCell[mcy] && game.lavaCell[mcy][mcx]) meltCar(car);
+    else if(game.geysers.some(gy=>gy.c===mcx && gy.r===mcy && gy.k>0.5)) meltCar(car);
+    else if(game.sweep && game.playT > game.sweep.delay &&
+            (game.sweep.dir>0 ? mcx < game.sweep.pos-0.5 : mcx > game.sweep.pos+0.5)) meltCar(car);
+  }
   // 🚩 auto-checkpoint: reached the halfway mark on solid, safe ground → respawn moves here
   if(game.ckptField && !car._ckpt && (car===game.car || game.coop) && car.airT<=0 && car.invuln<=0){
     const kc=Math.floor(car.x/CELL), kr=Math.floor(car.y/CELL);
     const kd=(game.ckptField[kr]||[])[kc];
     if(kd>=0 && kd<=game.ckptHalf && !isSolid(kc,kr)
        && !(game.voidCell[kr]&&game.voidCell[kr][kc])
+       && !(game.lavaCell[kr]&&game.lavaCell[kr][kc])
+       && !game.geysers.some(gy=>gy.c===kc&&gy.r===kr)
        && !game.trapDoors.some(t=>t.c===kc&&t.r===kr)
        && !game.crumbles.some(m=>m.c===kc&&m.r===kr)){
       car._ckpt = true;                                  // per-car: in co-op each player earns their own
@@ -4477,6 +5019,30 @@ function drawBackdrop(dt){
       ctx.globalAlpha=Math.sin(p*Math.PI)*0.85; ctx.strokeStyle="#e6ecff"; ctx.lineWidth=2; ctx.lineCap="round";
       ctx.beginPath(); ctx.moveTo(hx,hy); ctx.lineTo(hx-30,hy-11); ctx.stroke();
     }
+  } else if(B==="lava"){
+    for(let n=0;n<2;n++){                                       // two warm heat-glow radials low on the horizon
+      const gx=(n? W*0.72 : W*0.24) - px*(0.02+n*0.015), gy=H*(0.62+n*0.12);
+      const rad=ctx.createRadialGradient(gx,gy,0, gx,gy,H*(0.5+n*0.2));
+      rad.addColorStop(0, n? "rgba(255,90,30,0.12)":"rgba(255,140,40,0.14)"); rad.addColorStop(1,"rgba(40,8,4,0)");
+      ctx.globalAlpha=1; ctx.fillStyle=rad; ctx.fillRect(0,0,W,H);
+    }
+    const vx=((W*0.6 - px*0.03)%(W+400)+W+400)%(W+400)-200, vbase=H*0.80, vw=W*0.40, vh=H*0.36;   // distant volcano
+    const crP=0.5+0.5*Math.sin(t*1.2);
+    const cg=ctx.createRadialGradient(vx, vbase-vh, 2, vx, vbase-vh, 72);                         // pulsing crater glow behind the peak
+    cg.addColorStop(0,"rgba(255,150,50,"+(0.35+0.3*crP)+")"); cg.addColorStop(1,"rgba(255,120,30,0)");
+    ctx.fillStyle=cg; ctx.beginPath(); ctx.arc(vx, vbase-vh, 72, 0, TAU); ctx.fill();
+    ctx.fillStyle="#160806"; ctx.beginPath();                                                     // the cone silhouette
+    ctx.moveTo(vx-vw, vbase); ctx.lineTo(vx-vw*0.16, vbase-vh); ctx.lineTo(vx+vw*0.16, vbase-vh); ctx.lineTo(vx+vw, vbase); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle="rgba(255,110,40,"+(0.4+0.35*crP)+")"; ctx.lineWidth=3;                        // molten crater lip
+    ctx.beginPath(); ctx.moveTo(vx-vw*0.16, vbase-vh); ctx.lineTo(vx+vw*0.16, vbase-vh); ctx.stroke();
+    for(let i=0;i<40;i++){                                                                        // ~40 rising embers w/ parallax (factory-branch shape)
+      const xx=((i*113.7 - px*0.04)%W+W)%W, yy=H-((i*41.3 + t*(26+(i%6)*10))%(H+20));
+      ctx.globalAlpha=0.22+0.5*Math.abs(Math.sin(t*2+i)); ctx.fillStyle=(i%4)?"#ff8a3c":"#ffd23b";
+      ctx.beginPath(); ctx.arc(xx, yy, 1+(i%3)*0.7, 0, TAU); ctx.fill();
+    }
+    ctx.fillStyle="#6b5f57";                                                                      // sparse falling ash
+    for(let i=0;i<18;i++){ const xx=((i*151.7 - px*0.02)%W+W)%W, yy=((i*67.3 + t*(10+(i%4)*5))%(H+20))-10;
+      ctx.globalAlpha=0.10+0.14*(((i*7)%10)/10); ctx.beginPath(); ctx.arc(xx, yy, 0.8+(i%2)*0.6, 0, TAU); ctx.fill(); }
   } else {
     ctx.fillStyle="#aab4d8";
     for(let i=0;i<50;i++){ const xx=(i*127.3)%W, yy=(i*89.7)%(H*0.8);
@@ -4537,6 +5103,8 @@ function drawWorld(dt){
   for(const w of game.wells) drawWell(w);                // 🪐 floor-level, so the pull ring sits UNDER the car
   for(const bp of game.bounces) drawBounce(bp);          // 🟠 splash pads
   for(const cm of game.crumbles) drawCrumble(cm);        // 🧱 foam floats
+  for(const l of game.lavas) drawLava(l);                // 🌋 molten pools (floor hazard, under the car)
+  for(const gy of game.geysers) drawGeyser(gy);          // ⛲ geyser vents (dormant crack ↔ erupting fountain)
   for(const rg of game.rings) drawRing(rg);              // 🚀 launch rings
 
   if(!game.ko) drawFinish();
@@ -4610,6 +5178,7 @@ function drawWorld(dt){
       ctx.fillText(nm, c2.x, c2.y-28);
     });
   }
+  if(game.sweep) drawSweep();   // 🔥 the molten wall — covers ground + entities + cars it has reached, under particles/floaters/HUD
   // particles
   for(const p of game.parts){
     ctx.globalAlpha = 1-p.t/p.life;
@@ -4648,6 +5217,7 @@ const VEHICLES = [
   { id:"glitch",  name:"GLITCH GT",  price:0, trail:()=>"#c56cff", reward:true },
   { id:"monster", name:"CRUSHER",    price:0, trail:()=>"#ff8a3c", reward:true, ownWheels:true },
   { id:"wave",    name:"TIDAL WAVE", price:0, trail:()=>"#25d4e0", reward:true },
+  { id:"phoenix", name:"PHOENIX",    price:0, trail:()=>"#ff6a3c", reward:true },
   { id:"goat",    name:"GOLDEN GOAT", price:0, trail:()=>"#ffd76a", secret:true },
 ];
 const PETS = [
@@ -4715,6 +5285,7 @@ const CAR_STATS = {
   glitch:  {spd:8, acc:8, hnd:7, bst:8},   // 🌀 W3 reward: no weakness
   monster: {spd:9, acc:6, hnd:7, bst:8},   // 🏭 W4 reward: top-speed bruiser
   wave:    {spd:7, acc:8, hnd:8, bst:7},   // 🌊 W5 reward: nimble all-rounder that rides the currents
+  phoenix: {spd:9, acc:7, hnd:7, bst:8},   // 🌋 W6 reward: blazing fire-bird — top-speed flyer with a big boost
   goat:    {spd:9, acc:9, hnd:9, bst:10},  // 👑 secret: best overall, the lone S
 };
 const STAT_KEYS = ["spd","acc","hnd","bst"];
@@ -5340,6 +5911,43 @@ function drawVehicleBody(vid){
     ctx.strokeStyle="rgba(0,0,0,0.28)";                                           // rim shade: bottom+right
     ctx.beginPath(); ctx.moveTo(-10,9.5); ctx.lineTo(10,9.5); ctx.moveTo(17,-2.5); ctx.lineTo(17,2.5); ctx.stroke();
   }
+  else if(vid==="phoenix"){                                  // 🌋 World 6 reward — blazing fire-bird racer
+    let tp=ctx.createLinearGradient(-16,0,-30,0);                                 // glowing tail plume trailing off the back (behind body)
+    tp.addColorStop(0,"#ffd23b"); tp.addColorStop(0.5,"rgba(255,122,30,0.7)"); tp.addColorStop(1,"rgba(255,90,30,0)");
+    ctx.fillStyle=tp; ctx.beginPath();
+    ctx.moveTo(-16,-6); ctx.quadraticCurveTo(-30,-3,-27,0); ctx.quadraticCurveTo(-30,3,-16,6); ctx.quadraticCurveTo(-22,0,-16,-6); ctx.closePath(); ctx.fill();
+    let g=ctx.createLinearGradient(-17,-9.5,17,9.5);                              // dimensional ember body
+    g.addColorStop(0,"#ff8a3c"); g.addColorStop(0.5,"#e5451a"); g.addColorStop(1,"#7a1408");
+    ctx.fillStyle=g; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,8); ctx.fill();
+    let sh=ctx.createLinearGradient(0,-9.5,0,-1.5);                               // top sheen
+    sh.addColorStop(0,"rgba(255,240,200,0.4)"); sh.addColorStop(1,"rgba(255,240,200,0)");
+    ctx.fillStyle=sh; ctx.beginPath(); ctx.roundRect(-16,-9,32,7.5,7); ctx.fill();
+    ctx.fillStyle="rgba(255,138,40,0.9)";                                         // feathered wing flicks sweeping back
+    for(const wsg of [-1,1]){
+      ctx.beginPath(); ctx.moveTo(2,8.5*wsg); ctx.quadraticCurveTo(-10,15*wsg,-15,11*wsg);
+      ctx.quadraticCurveTo(-6,9*wsg,-2,7*wsg); ctx.closePath(); ctx.fill();
+    }
+    let crg=ctx.createLinearGradient(0,-11.5,0,-6);                               // flame-gradient crest along the ridge
+    crg.addColorStop(0,"#fff0a0"); crg.addColorStop(0.5,"#ff9a2e"); crg.addColorStop(1,"#e5540f");
+    ctx.fillStyle=crg; ctx.beginPath();
+    ctx.moveTo(-11,-8); ctx.lineTo(-4,-11.5); ctx.lineTo(0,-8); ctx.lineTo(5,-11.5); ctx.lineTo(9,-8); ctx.lineTo(9,-6); ctx.lineTo(-11,-6); ctx.closePath(); ctx.fill();
+    let bk=ctx.createLinearGradient(13,0,22,0);                                   // golden beak nose
+    bk.addColorStop(0,"#ffe27a"); bk.addColorStop(1,"#e59a12");
+    ctx.fillStyle=bk; ctx.beginPath(); ctx.moveTo(13,-4.6); ctx.lineTo(22,0); ctx.lineTo(13,4.6); ctx.closePath(); ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,0.5)"; ctx.beginPath(); ctx.moveTo(13,-3); ctx.lineTo(18,0); ctx.lineTo(13,-0.5); ctx.closePath(); ctx.fill();  // beak glint
+    ctx.fillStyle="#2a0e06"; ctx.beginPath(); ctx.roundRect(-6,-6,12,12,4); ctx.fill();          // glossy cockpit
+    let gl=ctx.createLinearGradient(-5,-5.5,5,5.5);
+    gl.addColorStop(0,"rgba(255,210,120,0.6)"); gl.addColorStop(0.5,"rgba(255,150,60,0.08)"); gl.addColorStop(1,"rgba(255,150,60,0)");
+    ctx.fillStyle=gl; ctx.beginPath(); ctx.roundRect(-5.4,-5.4,10.8,10.8,3.4); ctx.fill();
+    ctx.fillStyle="#ffb347"; ctx.beginPath(); ctx.arc(0,0,2.2,0,TAU); ctx.fill();                 // molten glint core
+    let sp=ctx.createRadialGradient(-9,-6,0,-9,-6,7);                             // body specular
+    sp.addColorStop(0,"rgba(255,240,200,0.45)"); sp.addColorStop(1,"rgba(255,240,200,0)");
+    ctx.fillStyle=sp; ctx.beginPath(); ctx.ellipse(-9,-6,6.5,3.6,-0.3,0,TAU); ctx.fill();
+    ctx.strokeStyle="rgba(255,220,150,0.45)"; ctx.lineWidth=1;                     // rim light: top+left
+    ctx.beginPath(); ctx.moveTo(-10,-9.5); ctx.lineTo(10,-9.5); ctx.moveTo(-17,-2.5); ctx.lineTo(-17,2.5); ctx.stroke();
+    ctx.strokeStyle="rgba(0,0,0,0.3)";                                            // rim shade: bottom+right
+    ctx.beginPath(); ctx.moveTo(-10,9.5); ctx.lineTo(10,9.5); ctx.moveTo(17,-2.5); ctx.lineTo(17,2.5); ctx.stroke();
+  }
   else { // rocket
     drawRocketBody(CONFIG.carColor, CONFIG.stripe);
   }
@@ -5437,6 +6045,13 @@ function drawCar(car){
   ctx.globalAlpha = 1;
   ctx.save();
   ctx.translate(car.x, car.y);
+  // 🫠 W7 THE MELT: sink + shrink + molten wobble as he liquefies over the 0.8s lock (0→1 progress)
+  const meltP = car.meltT>0 ? 1-car.meltT/0.8 : 0;
+  if(meltP>0){
+    ctx.translate(0, meltP*10);                     // sinks screen-down into the pool
+    ctx.scale(1-meltP*0.7, 1-meltP*0.7);            // melts down to a puddle
+    ctx.rotate(Math.sin(game.t*30)*0.15*meltP);     // fast molten shudder
+  }
   // underglow — 💡 a kind:"glow" cosmetic (v3) recolours it, brighter + pulsing (pure looks, player car only)
   let glowCol = game.lv.hue, glowA = 0.3, glowR = 1;
   if(!car.p2 && cosOn() && store.cosmetic){
@@ -5486,8 +6101,27 @@ function drawCar(car){
     ctx.fillStyle = car.boost>0 ? "#ff8f8f" : "#c23a4a";
     ctx.fillRect(-18,-7,2.6,4); ctx.fillRect(-18,3,2.6,4);
   }
+  if(meltP>0){                                       // 🫠 molten tint over the whole body: hot orange → charred crust past half-melt
+    ctx.fillStyle = "#ff6a2e"; ctx.globalAlpha = meltP*0.8;
+    ctx.beginPath(); ctx.roundRect(-18,-10,36,20,6); ctx.fill();
+    if(meltP>0.5){ ctx.fillStyle = "#1a0e08"; ctx.globalAlpha = (meltP-0.5)*2*0.8;
+      ctx.beginPath(); ctx.roundRect(-18,-10,36,20,6); ctx.fill(); }
+    ctx.globalAlpha = 1;
+  }
   ctx.restore();
   ctx.globalAlpha = 1;
+  if(meltP>0){                                        // 🫠 melt smoke: time-driven wisps rising off the puddle (pause-safe — no particle pushes)
+    for(let i=0;i<4;i++){
+      const wph = i*1.9 + car.meltX*0.03;
+      const rise = (game.t*0.8 + wph) % 1;
+      const wx = car.x + Math.sin((game.t*1.4 + wph)*2)*7;
+      const wy = car.y - 4 - rise*24;
+      ctx.globalAlpha = (1-rise)*0.4*meltP;
+      ctx.fillStyle = i%2 ? "#3a322b" : "#251f19";
+      ctx.beginPath(); ctx.arc(wx, wy, 3+rise*7, 0, TAU); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
   // 🎁 equipped cosmetic (player's car only): ✨ shine sparkle + 🐐/👑 topper (world-space, above the car)
   if(!car.p2 && cosOn() && store.cosmetic){
     const cos = COSMETICS[store.cosmetic];
@@ -5667,6 +6301,93 @@ function drawConveyor(cv){
     ctx.beginPath(); ctx.moveTo(x-9,-15); ctx.lineTo(x+9,0); ctx.lineTo(x-9,15); ctx.stroke(); }
   ctx.restore();
   ctx.strokeStyle="rgba(95,134,200,0.4)"; ctx.lineWidth=2; ctx.strokeRect(px+3,py+3,CELL-6,CELL-6);
+}
+function drawLava(l){                                     // 🌋 roiling molten pool (one L cell) — radial glow, drifting bubble rings, dark crust
+  const cx=l.x, cy=l.y, hs=CELL/2, t=game.t;
+  const pulse = 0.5+0.5*Math.sin(t*1.6+l.ph);
+  const g=ctx.createRadialGradient(cx,cy,2, cx,cy,hs*1.05);                        // deep-red core → hot orange rim
+  g.addColorStop(0,"#ff9a2e"); g.addColorStop(0.5,"#e5451a"); g.addColorStop(1,"#7a1408");
+  ctx.fillStyle=g; ctx.fillRect(cx-hs, cy-hs, CELL, CELL);
+  ctx.globalAlpha=0.22+0.2*pulse; ctx.fillStyle="#ffd24a";                         // breathing bright roil
+  ctx.beginPath(); ctx.ellipse(cx+Math.sin(t*0.9+l.ph)*4, cy+Math.cos(t*0.7+l.ph)*4, hs*0.42, hs*0.30, 0, 0, TAU); ctx.fill();
+  ctx.globalAlpha=1;
+  for(let i=0;i<3;i++){                                                            // 3 drifting bubble rings, rising + popping
+    const rp=((t*(0.5+0.15*i) + l.ph + i*0.37) % 1);
+    const bx=cx + Math.sin(l.ph*3 + i*2.1)*hs*0.4, by=cy + Math.cos(l.ph*2 + i*1.7)*hs*0.4 - rp*4;
+    ctx.globalAlpha=(1-rp)*0.55; ctx.strokeStyle="#ffcf6a"; ctx.lineWidth=1.6;
+    ctx.beginPath(); ctx.arc(bx, by, 2+rp*5, 0, TAU); ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+  ctx.strokeStyle="rgba(24,10,4,0.4)"; ctx.lineWidth=2;                            // dark crust edge (subtle so multi-cell pools stay molten)
+  ctx.strokeRect(cx-hs+1, cy-hs+1, CELL-2, CELL-2);
+}
+function drawGeyser(g){                                   // ⛲ geyser vent — dormant cracked vent → molten fountain when erupting (k>0.5)
+  const cx=g.x, cy=g.y, hs=CELL/2, t=game.t, k=g.k;
+  const vg=ctx.createRadialGradient(cx,cy,2, cx,cy,hs*0.62);                       // vent basin (glows when hot)
+  vg.addColorStop(0, k>0.5? "#ff7a1e":"#3a1a10"); vg.addColorStop(1,"#140a06");
+  ctx.fillStyle=vg; ctx.beginPath(); ctx.arc(cx,cy,hs*0.62,0,TAU); ctx.fill();
+  ctx.strokeStyle="rgba(20,10,6,0.9)"; ctx.lineWidth=2;                            // radial cracks
+  for(let a=0;a<4;a++){ const an=a*1.7+g.ph; ctx.beginPath();
+    ctx.moveTo(cx+Math.cos(an)*hs*0.2, cy+Math.sin(an)*hs*0.2);
+    ctx.lineTo(cx+Math.cos(an)*hs*0.58, cy+Math.sin(an)*hs*0.58); ctx.stroke(); }
+  if(k<=0.5){                                                                      // DORMANT → faint drifting steam
+    for(let i=0;i<3;i++){ const rp=((t*0.5 + g.ph + i*0.4)%1);
+      ctx.globalAlpha=(1-rp)*0.16*(0.35+k); ctx.fillStyle="#c9b6a0";
+      ctx.beginPath(); ctx.arc(cx+Math.sin(t*0.8+i)*4, cy-rp*20, 2+rp*5, 0, TAU); ctx.fill(); }
+    ctx.globalAlpha=1; return;
+  }
+  const e=(k-0.5)*2;                                                               // ERUPTING → 0..1 fountain strength
+  const glow=ctx.createRadialGradient(cx,cy,2, cx,cy,hs*1.4);
+  glow.addColorStop(0,"rgba(255,150,40,"+(0.5*e)+")"); glow.addColorStop(1,"rgba(255,120,30,0)");
+  ctx.fillStyle=glow; ctx.beginPath(); ctx.arc(cx,cy,hs*1.4,0,TAU); ctx.fill();
+  const colH=CELL*1.5*e, w=hs*0.34;                                               // molten column jetting up
+  const cg=ctx.createLinearGradient(0,cy,0,cy-colH);
+  cg.addColorStop(0,"#ffe27a"); cg.addColorStop(0.5,"#ff8a1a"); cg.addColorStop(1,"rgba(255,110,30,0)");
+  ctx.fillStyle=cg; ctx.beginPath();
+  ctx.moveTo(cx-w, cy); ctx.quadraticCurveTo(cx-w*0.5, cy-colH*0.6, cx, cy-colH);
+  ctx.quadraticCurveTo(cx+w*0.5, cy-colH*0.6, cx+w, cy); ctx.closePath(); ctx.fill();
+  ctx.fillStyle="rgba(255,240,170,"+(0.7*e)+")";                                   // hot inner jet
+  ctx.beginPath(); ctx.moveTo(cx-w*0.4,cy); ctx.quadraticCurveTo(cx,cy-colH*0.7,cx+w*0.4,cy); ctx.closePath(); ctx.fill();
+  for(let i=0;i<6;i++){                                                            // ember flecks (time-driven, deterministic — NO particle pushes)
+    const ph=i*1.37+g.ph, rp=((t*1.3+ph)%1);
+    const ex=cx+Math.sin(ph*3+i)*w*1.4*rp, ey=cy-rp*colH*1.1;
+    ctx.globalAlpha=(1-rp)*e; ctx.fillStyle=i%2?"#ffd24a":"#ff7a2e";
+    ctx.beginPath(); ctx.arc(ex,ey,1.4+(i%2),0,TAU); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+function drawSweep(){                                     // 🔥 the lava sweep — molten wall consuming everything behind its front (one clipped gradient + wavy edge)
+  const s=game.sweep, t=game.t, wH=game.rows*CELL, wW=game.cols*CELL;
+  const frontX = s.pos*CELL;                                                       // front in world px
+  if(s.dir>0 ? frontX<=0 : frontX>=wW) return;                                     // still parked off-map → nothing to draw
+  ctx.save();
+  ctx.beginPath();                                                                 // clip to the consumed region, bounded by a wavy leading edge
+  const seg=18;
+  if(s.dir>0){
+    ctx.moveTo(0,0);
+    for(let yy=0; yy<=wH; yy+=seg){ const wob=Math.sin(yy*0.06 + t*3)*7; ctx.lineTo(frontX+wob, yy); }
+    ctx.lineTo(0,wH);
+  } else {
+    ctx.moveTo(wW,0);
+    for(let yy=0; yy<=wH; yy+=seg){ const wob=Math.sin(yy*0.06 + t*3)*7; ctx.lineTo(frontX+wob, yy); }
+    ctx.lineTo(wW,wH);
+  }
+  ctx.closePath(); ctx.clip();
+  const g=ctx.createLinearGradient(s.dir>0?0:wW,0, frontX,0);                      // semi-opaque molten fill, brightest at the front
+  g.addColorStop(0,"rgba(90,16,6,0.72)"); g.addColorStop(0.7,"rgba(200,50,14,0.78)"); g.addColorStop(1,"rgba(255,140,40,0.85)");
+  ctx.fillStyle=g; ctx.fillRect(0,0,wW,wH);
+  ctx.restore();
+  ctx.strokeStyle="rgba(255,220,120,"+(0.6+0.3*Math.sin(t*6))+")"; ctx.lineWidth=3;  // wavy bright leading edge
+  ctx.beginPath();
+  for(let yy=0; yy<=wH; yy+=seg){ const wob=Math.sin(yy*0.06 + t*3)*7; yy===0?ctx.moveTo(frontX+wob,yy):ctx.lineTo(frontX+wob,yy); }
+  ctx.stroke();
+  for(let i=0;i<14;i++){                                                            // rising embers along the front (time-driven, no particle pushes)
+    const ph=i*0.73, yy=((i*97.7)%wH), rp=((t*0.9+ph)%1);
+    const ex=frontX+Math.sin(yy*0.06+t*3)*7 + (s.dir>0?-1:1)*rp*10;
+    ctx.globalAlpha=(1-rp)*0.7; ctx.fillStyle=i%2?"#ffd24a":"#ff7a2e";
+    ctx.beginPath(); ctx.arc(ex, yy-rp*22, 1.4+(i%2), 0, TAU); ctx.fill();
+  }
+  ctx.globalAlpha=1;
 }
 function drawTrapDoor(t){
   const cx=t.x, cy=t.y, wob=0.5+Math.sin(game.t*2.4+t.ph)*0.5;
@@ -7518,6 +8239,8 @@ function spawnGolden(){
   for(const t of game.trapDoors)  add(t.c, t.r);
   for(const bp of game.bounces)   add(bp.c, bp.r);   // 🟠 can't stop on a trampoline to grab it
   for(const cm of game.crumbles)  add(cm.c, cm.r);   // 🧱 vanishing floor — never place gold on foam
+  for(const l of game.lavas)      add(l.c, l.r);     // 🌋 never place gold in a molten pool
+  for(const g2 of game.geysers)   add(g2.c, g2.r);   // ⛲ …or on a geyser vent
   for(const k of game.crushers) for(let s=0;s<=k.range;s++) add(k.c+k.dx*s, k.r+k.dy*s);   // whole swept lane
   for(const gb of game.goobers) for(const [wx,wy] of gb.path){                            // patrol path + padding
     const gc=Math.floor(wx/CELL), gr=Math.floor(wy/CELL);

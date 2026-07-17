@@ -1,5 +1,7 @@
 # 🌋 WORLD 7 — HOT LAVA: build state + handoff (2026-07-17)
 
+> ✅ **SHIPPED (2026-07-17)** — World 7 is live; everything below is DONE except the §Queued garage-showroom task, which remains open.
+>
 > **Why this doc exists:** the session hit its usage limit mid-build. Everything below lets
 > THIS session (post-recovery) or a FRESH session finish and ship World 7 + one queued UI
 > task. Recovery agents were relaunched on Opus; if their outputs exist (checked below),

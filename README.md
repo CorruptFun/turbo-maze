@@ -15,7 +15,7 @@ One HTML file, no dependencies. Runs on a tablet or with a keyboard.
 - Worlds grow **bigger and brainier** the deeper you go — endgame mazes are giants.
   Long mazes plant a 🚩 **checkpoint** at the halfway mark: fall in a trap late and
   you respawn there, never back at the start.
-- **90 levels across 6 worlds** with ice to drift on 🧊, portals 🌀, smashable
+- **105 levels across 7 worlds** with ice to drift on 🧊, portals 🌀, smashable
   crates 💥, goober gangs, headlights-only night levels 🌙, gate mazes 🚧,
   shifting walls that rearrange the maze mid-run, a whole **factory floor**
   of conveyor belts, sliding crushers and trap doors, and a **water park** 🌊
@@ -38,7 +38,11 @@ currents and waterslides — see [docs/SPLASH-ZONE.md](docs/SPLASH-ZONE.md)) and
 planets whose gravity bends your racing line, 🕳️ dive into black holes and warp
 out the white hole, 🚀 blast through launch rings over chasms of real starfield,
 and dodge drifting asteroids ☄️. The boss flies a UFO — **beat the world and the
-saucer is yours** 🛸 — see [docs/WORLD6-BUILD-SPEC.md](docs/WORLD6-BUILD-SPEC.md)). The
+saucer is yours** 🛸 — see [docs/WORLD6-BUILD-SPEC.md](docs/WORLD6-BUILD-SPEC.md)) and
+**HOT LAVA** (the volcano 🌋 — THE FLOOR IS LAVA: molten pools that **melt your car**
+(it sinks, chars and wobbles away — then beams back to the checkpoint), erupting
+geysers to time, and on the wildest levels a **wall of lava that chases you across
+the whole maze**. Beat the world for the 🐦‍🔥 PHOENIX). The
 title screen opens a **PICK YOUR
 WORLD** hub: tap a world to see its level map, or 🗺️ to come back. Beat every
 level in a world (1 ⭐ each) and the next world unlocks — each one a little
