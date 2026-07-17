@@ -39,7 +39,10 @@ by reading order top→bottom,left→right) · `<` `>` `^` `v` conveyor floors �
 `@` gravity well (**solid** core — the pull is runtime; validator treats it as wall) · `0` black-hole
 wormhole (**pairs: exactly 0 or 2** per level, **XOR with `T`** — never both, they share the portal
 pair) · `V` void (transparent chasm — **wall for ground reachability**, cross only by launch ring;
-campaign-only) · `U` launch ring (passable pad that flings the car airborne along its heading).
+campaign-only) · `U` launch ring (passable pad that flings the car airborne along its heading) ·
+`L` molten lava pool (**wall for every reachability check** — a car can never drive it, it melts;
+the validator normalizes `L` to `#`) · `Y` geyser vent (passable timed hazard — dormant most of
+its cycle, erupts on a timer; World 7).
 
 ## Level properties
 
@@ -53,6 +56,9 @@ campaign-only) · `U` launch ring (passable pad that flings the car airborne alo
 - `asteroids:[{c,r,dx,dy,range,period,phase,size}]` — drifting space rocks (World 6). Anchor `c,r`;
   drifts `range` cells along `dx,dy`; `period` seconds per cycle; `phase` 0–1 offset; `size` in cells.
   Runtime prop like crushers — not a grid tile, invisible to the validator, so lane-clear by hand.
+- `sweep:{dir,speed,delay}` — lava sweep wave (World 7): a wall of lava that scrolls across the level
+  in direction `dir` at `speed` cells/s after `delay` seconds. Runtime prop like crushers/asteroids —
+  not a grid tile, invisible to the validator, so verify beatability by hand (see W7 guardrails).
 
 `par` = target seconds for the ⭐ speed star (≈ `1.7–2.0 ×` the BFS path length; generous for kids).
 
@@ -70,6 +76,22 @@ campaign-only) · `U` launch ring (passable pad that flings the car airborne alo
   rival isn't pulled by wells and ignores rings, so hazards on its line only punish the kid.
 - **Asteroids vs boss corridors:** never seal a boss's sole corridor with an asteroid — stagger
   `phase` (e.g. 0/0.33/0.66) so a timing gap is always open.
+
+## World 7 (HOT LAVA) authoring guardrails
+
+- **Lava never surrounds the only route:** `L` is a hard wall for reachability — the validator
+  enforces this automatically (it normalizes `L` to `#` before every check), so a lava-walled-off
+  flag hard-fails with CAN'T REACH.
+- **Geysers are fair timing hazards:** every `Y` vent must be dormant for **≥ 60% of its cycle** —
+  a kid who waits always gets a generous window. The validator treats `Y` as passable floor; the
+  timing fairness is on the author.
+- **Sweep levels must be beatable at CRUISE speed:** the sweep must lose to a cruising kid with
+  **≥ 25% margin** — check `BFS path length / 3.4 cells-per-sec` (CRUISE) against the sweep's
+  arrival time and keep the margin ≥ 25%. The `sweep` prop is validator-invisible, so verify by hand.
+- **Boss rival corridors lava-free:** keep the rival's ideal BFS line clear of `L` (and erupting
+  `Y` timing traps) — like wells in World 6, hazards on its line only punish the kid.
+- **Sweep speed on boss levels ≤ 1.0 cells/s:** a boss race already pressures the kid; a fast
+  sweep on top makes it unfair.
 
 ## Add a world / arena
 
@@ -102,9 +124,10 @@ should challenge you as you get better). W1 stays small (tutorial). Shipped band
 | 4 METAL MELTDOWN | ~28×15 | 38×21 |
 | 5 SPLASH ZONE | ~34×18 | 44×25 |
 | 6 COSMIC RUSH | ~36×19 | **52×34** (≈8.8× the pre-growth late game) |
+| 7 HOT LAVA | ~38×20 | **54×36** |
 
 **A future World N should open bigger than World N-1 opened** and finale past it.
-Hard caps: width ≤ 52, height ≤ 34 (see the resolution cap below). Complexity scales
+Hard caps: width ≤ 54, height ≤ 36 (the engine resolution cap below absorbs it). Complexity scales
 with size: real branching, loops, coin-rewarded dead-ends — something interesting
 every ~6-8 cells, never barren corridors. `par` = `Math.ceil(BFSpath*1.9/2)*2`.
 

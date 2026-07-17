@@ -43,6 +43,9 @@ function bfs(rows, starts, passable){
 // World 6 (space): @ gravity well = WALL (route around; the pull is runtime) · 0 black-hole wormhole
 // = passable (pairs like T; suction is runtime) · V void = WALL for ground reachability (campaign-only)
 // · U launch ring = passable pad. Asteroids are a runtime property (L.asteroids), not in the grid.
+// World 7 (hot lava): L molten lava pool = WALL (a car can never drive it — it melts; normalized to #
+// for every reachability check) · Y geyser vent = passable timed hazard (dormant most of its cycle).
+// sweep:{dir,speed,delay} is a runtime level prop (validator-invisible, like crushers/asteroids).
 const openPass  = ch => ch!=="#";                 // gates/doors treated open
 const shutPass  = ch => ch!=="#" && ch!=="Q";     // co-op gate Q shut
 const noCrate   = ch => ch!=="#" && ch!=="x";     // crate x as a wall (no forced smash)
@@ -62,7 +65,7 @@ function frame(rows, issues){
 
 // ---- per-mode checks ----
 function checkCampaign(L){                          // LEVELS: single car, race to F
-  const rows = L.grid.map(row=>row.replace(/@/g,'#')), iss=[]; frame(rows,iss);   // 🪐 @ well = wall for every check below
+  const rows = L.grid.map(row=>row.replace(/[@L]/g,'#')), iss=[]; frame(rows,iss);   // 🪐 @ well + 🌋 L lava = wall for every check below
   const S=findIn(rows,"S"), F=findIn(rows,"F"), key=findIn(rows,"k");
   if(!S) iss.push("no S"); if(!F) iss.push("no F");
   if(rows.some(r=>r.includes("D")) && !key) iss.push("door needs a key");
