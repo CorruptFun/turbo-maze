@@ -12,8 +12,10 @@
 - [x] **2. 👻 Ghost time-trials** (`see commit`) — race a translucent replay of your own best run,
   campaign solo only; "GHOST BEATEN!" celebration; compressed saves (default-safe
   `store.ghosts`), per-level best-time chip. 
-- [ ] **3. 🚗 Garage = real showroom, owned-only** — full spec:
-  `docs/WORLD7-HANDOFF.md` §Queued (sh.garageMode on the existing showroom).
+- [x] **3. 🚗 Garage = real showroom, owned-only** (`see commit`) — HOME 🚗 tile now
+  opens the real shop showroom in `sh.garageMode`: owned cars only, no CARS|PETS tab,
+  🚗 GARAGE title, equip-only (no price/lock). Old `drawGarage` grid + `"garage"` state
+  deleted. Spec: `docs/WORLD7-HANDOFF.md` §Queued.
 - [ ] **4. 🅱️ B-side worlds** — a second 15 unlocked by beating a world (co-op
   Season-2 shape). Parked until more playtime is wanted; rejected flat-30.
 - [ ] **5. World 8** — pick the next theme (comingSoon card teases 🎢); follow

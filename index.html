@@ -7415,57 +7415,14 @@ function drawHome(){
       if(b.act==="mute"){ AU.toggleMute(); return; }
       game.importedTrack = null;
       if(b.act==="worlds") game.state="series";
-      else if(b.act==="garage") game.state="garage";
+      else if(b.act==="garage"){ sh.garageMode=true; sh.tab="cars"; shopSyncSel(); game.state="shop"; }
       else if(b.act==="build") enterBuilder(null);
-      else if(b.act==="shop"){ sh.tab="cars"; shopSyncSel(); game.state="shop"; }
+      else if(b.act==="shop"){ sh.garageMode=false; sh.tab="cars"; shopSyncSel(); game.state="shop"; }
       else if(b.act==="crates" && CONFIG.cratesEnabled){ bk.open=false; game.state="crates"; }
       else if(b.act==="vs") game.state="vspick";
       else if(b.act==="coop") game.state="cooppick";
       else if(b.act.startsWith("pc:")){ const cl = store.customLevels.find(c=>c.id===+b.act.slice(3)); if(cl) loadCustom(cl, "map"); }
       return;
-    }
-  }
-}
-
-/* ---------------- 🚗 GARAGE — quick-switch between OWNED rides (no shopping, just pick & go) ---------------- */
-function drawGarage(){
-  nightSky();
-  hudBtns.length = 0;
-  const hS = navS();
-  drawIconBtn(PADX, 12+safeT, hS, "↩️", "back");
-  ctx.textAlign="center"; ctx.textBaseline="alphabetic";
-  ctx.font = "900 italic 34px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#9ae64a";
-  fillTextC("🚗 GARAGE", W/2, 44+safeT);
-  ctx.font = "800 14px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#8b93ad";
-  ctx.fillText("TAP A RIDE TO DRIVE IT", W/2, 64+safeT);
-  ctx.textBaseline="middle";
-  const owned = VEHICLES.filter(v=>store.ownedCars.includes(v.id));
-  const bandTop = 92+safeT, bandBot = H-16-safeB, gap = 12;
-  const cols = clamp(Math.floor((W-2*PADX)/168), 2, 6);
-  const rows = Math.ceil(owned.length/cols);
-  const tw3 = Math.min(210, Math.floor((W-2*PADX-gap*(cols-1))/cols));
-  const th3 = Math.min(170, Math.max(96, Math.floor((bandBot-bandTop-gap*(rows-1))/rows)));
-  const gridH = rows*th3+gap*(rows-1), y0 = bandTop + Math.max(0,(bandBot-bandTop-gridH)/2);
-  owned.forEach((v,i)=>{
-    const rIx=(i/cols)|0;
-    const inRow = (rIx===rows-1)? owned.length-(rows-1)*cols : cols;
-    const rowW = inRow*tw3+gap*(inRow-1), rx0=(W-rowW)/2;
-    const x = rx0 + (i%cols)*(tw3+gap), y = y0 + rIx*(th3+gap);
-    const riding = store.car===v.id;
-    roundedPanel(x, y, tw3, th3, 16, riding? "rgba(34,64,44,0.95)" : "rgba(20,24,38,0.94)");
-    if(riding){ ctx.strokeStyle="#9ae64a"; ctx.lineWidth=3.5; ctx.beginPath(); ctx.roundRect(x+1.5,y+1.5,tw3-3,th3-3,15); ctx.stroke(); }
-    drawVehiclePreview(v.id, x+tw3/2, y+th3*0.42, Math.max(1.1, (th3-46)/40), 1);
-    ctx.font = "900 "+clamp(Math.round(th3*0.13),12,17)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-    ctx.fillStyle = riding? "#9ae64a" : "#f4f6ff"; ctx.textAlign="center"; ctx.textBaseline="middle";
-    fillTextC(riding? "✓ "+v.name : v.name, x+tw3/2, y+th3-16);
-    hudBtns.push({x, y, w:tw3, h:th3, act:"eq:"+v.id});
-  });
-  for(const tp of input.taps.splice(0)){
-    for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){
-      AU.ui();
-      if(b.act==="back"){ game.state="home"; return; }
-      if(b.act.startsWith("eq:")){ const id=b.act.slice(3); if(store.ownedCars.includes(id)){ store.car=id; save(); AU.key();
-        const v=VEHICLES.find(x=>x.id===id); sticker("🏎️ "+(v?v.name:"RIDE")+" — LET'S GO!", "#9ae64a"); } return; }
     }
   }
 }
@@ -7538,7 +7495,7 @@ function drawSeries(){
       if(b.act==="home"){ game.state="home"; return; }
       game.importedTrack = null;
       if(b.act==="build") enterBuilder(null);
-      else if(b.act==="shop"){ sh.tab="cars"; shopSyncSel(); game.state="shop"; }   // centre the showroom on the equipped car every time it opens
+      else if(b.act==="shop"){ sh.garageMode=false; sh.tab="cars"; shopSyncSel(); game.state="shop"; }   // centre the showroom on the equipped car every time it opens
       else if(b.act==="crates" && CONFIG.cratesEnabled){ bk.open=false; game.state="crates"; }
       else if(b.act==="vs") game.state="vspick";
       else if(b.act==="coop") game.state="cooppick";
@@ -9020,10 +8977,10 @@ function bookTile(x, y, s, it){
    Performance-Index badge + segmented stat bars, and a swipeable filmstrip below.
    The flat grid is gone. See docs/GARAGE-SHOWROOM.md. */
 let shopPending = null;
-const sh = { tab:"cars", sel:0, scroll:0, target:0, ptr:null,
+const sh = { tab:"cars", sel:0, scroll:0, target:0, ptr:null, garageMode:false,
              bars:{spd:0,acc:0,hnd:0,bst:0}, pi:0, max:0,
              strip:{cx:0,y:0,h:0,step:64} };
-function shopRoster(){ return sh.tab==="cars" ? VEHICLES : PETS; }
+function shopRoster(){ if(sh.garageMode) return VEHICLES.filter(v=>store.ownedCars.includes(v.id)); return sh.tab==="cars" ? VEHICLES : PETS; }
 // centre the carousel on whatever's currently equipped (called on entry + tab switch)
 function shopSyncSel(){
   const r = shopRoster();
@@ -9037,7 +8994,7 @@ function shopSyncSel(){
   shopPending = null;
 }
 function shopAction(a){
-  if(a==="back"){ AU.ui(); sh.ptr = null; shopPending = null; game.state="home"; return; }
+  if(a==="back"){ AU.ui(); sh.ptr = null; shopPending = null; sh.garageMode = false; game.state="home"; return; }
   if(a==="noop"){ AU.bonk(); return; }
   if(a==="tab:cars"||a==="tab:pets"){ AU.ui(); sh.tab = a.slice(4); shopSyncSel(); return; }
   if(a==="prev"||a==="next"){ AU.ui(); sh.sel = clamp(sh.sel + (a==="next"?1:-1), 0, sh.max); sh.target = sh.sel; shopPending = null; return; }
@@ -9308,21 +9265,23 @@ function drawShop(dt){
   drawIconBtn(PADX, top, 44, "↩️", "back");
   ctx.font = "italic 900 26px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillStyle="#ffb742";
-  ctx.fillText("🛒 GARAGE", PADX+56, top+23);
+  ctx.fillText(sh.garageMode ? "🚗 GARAGE" : "🛒 GARAGE", PADX+56, top+23);
   const bw2 = 128;
   roundedPanel(W-PADX-bw2, top, bw2, 44, 12);
   ctx.fillStyle="#e8a930"; ctx.beginPath(); ctx.arc(W-PADX-bw2+22, top+22, 9, 0, TAU); ctx.fill();
   ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.arc(W-PADX-bw2+22, top+21, 8, 0, TAU); ctx.fill();
   ctx.font="900 21px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#f4f6ff"; ctx.textAlign="left";
   ctx.fillText(store.coinsBank, W-PADX-bw2+40, top+23);
-  // ---- tabs ----
+  // ---- tabs (garage mode is cars-only → hide the CARS|PETS row + reclaim its space) ----
   const land = W > H*1.2;
   const tabH = land?32:36, tabW = Math.min(land?240:300, W-2*PADX), tabX = (W-tabW)/2, tabY = top+50;
-  shopTab(tabX, tabY, tabW/2, tabH, "🏎 CARS", "tab:cars", isCars);
-  shopTab(tabX+tabW/2, tabY, tabW/2, tabH, "🐾 PETS", "tab:pets", !isCars);
+  if(!sh.garageMode){
+    shopTab(tabX, tabY, tabW/2, tabH, "🏎 CARS", "tab:cars", isCars);
+    shopTab(tabX+tabW/2, tabY, tabW/2, tabH, "🐾 PETS", "tab:pets", !isCars);
+  }
 
   // ---- responsive region math: big STAGE up top, big CAROUSEL below ----
-  const botSafe = safeB + 10, contentTop = tabY + tabH + 10, colBot = H - botSafe;
+  const botSafe = safeB + 10, contentTop = tabY + (sh.garageMode?0:tabH) + 10, colBot = H - botSafe;
   const availH = colBot - contentTop;
   let stage, stripR, numR, buyR;
   if(land){
@@ -9545,13 +9504,12 @@ function tick(now){
   ctx.setTransform(DPR,0,0,DPR,0,0);
   ctx.clearRect(0,0,W,H);
   // tablet held upright → ask for landscape (menus only, never mid-game)
-  const portraitHint = input.hasTouch && H > W*1.15 && (game.state==="title" || game.state==="map" || game.state==="series" || game.state==="home" || game.state==="garage" || game.state==="cooppick");
+  const portraitHint = input.hasTouch && H > W*1.15 && (game.state==="title" || game.state==="map" || game.state==="series" || game.state==="home" || game.state==="cooppick");
   if(portraitHint) input.taps.length = 0;
 
   if(game.state==="title"){ drawTitle(dt); }
   else if(game.state==="series"){ drawSeries(); updateStickers(dt); drawStickers(); }
   else if(game.state==="home"){ drawHome(); updateStickers(dt); drawStickers(); }
-  else if(game.state==="garage"){ drawGarage(); updateStickers(dt); drawStickers(); }
   else if(game.state==="map"){ drawMap(); updateStickers(dt); drawStickers(); }
   else if(game.state==="build"){ drawBuild(dt); updateStickers(dt); drawStickers(); }
   else if(game.state==="shop"){ updateFx(dt); drawShop(dt); drawConfettiScreen(); drawStickers(); }
@@ -9665,6 +9623,7 @@ window.__tm = { game, loadLevel, loadCustom, store, CONFIG, CRATES, spawnGolden,
   SERIES, seriesUnlocked, seriesBeaten, seriesOf, save,
   COOP_LEVELS, startCoop, KO_ARENAS, startKo,
   AU, ghostEnc, ghostDec, ghostAt, ghostEligible, musicMode,   // 🎵/👻 test hooks
+  sh, shopRoster, hudBtns, input,                              // 🚗 garage/showroom test hooks
   step(sec){ paused = false; let n = last; for(let i=0;i<sec*60;i++){ n += 1000/60; tick(n); } last = performance.now(); } };
 </script>
 </body>
