@@ -12,6 +12,9 @@ One HTML file, no dependencies. Runs on a tablet or with a keyboard.
 - Watch out for the goober 👾 — he yoinks your coins (steal 'em back).
   Or hit him at **nitro speed** for the 💥 TAKEDOWN: +25 aura and he drops his loot.
 - Finish fast + all coins = ⭐⭐⭐
+- Worlds grow **bigger and brainier** the deeper you go — endgame mazes are giants.
+  Long mazes plant a 🚩 **checkpoint** at the halfway mark: fall in a trap late and
+  you respawn there, never back at the start.
 - **90 levels across 6 worlds** with ice to drift on 🧊, portals 🌀, smashable
   crates 💥, goober gangs, headlights-only night levels 🌙, gate mazes 🚧,
   shifting walls that rearrange the maze mid-run, a whole **factory floor**
