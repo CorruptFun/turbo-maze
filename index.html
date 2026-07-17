@@ -9177,18 +9177,11 @@ function drawHome(){
 function drawSeries(){
   nightSky();
   hudBtns.length = 0;
-  // brand title
-  ctx.textAlign="center"; ctx.textBaseline="alphabetic";
-  ctx.font = "900 italic 38px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#ffb742";
-  ctx.fillText(CONFIG.title, W/2, 44+safeT);
-  ctx.font = "800 15px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#8b93ad";
-  ctx.fillText("PICK YOUR WORLD", W/2, 64+safeT);
-  // aura bank (top-left) + mute (top-right)
-  ctx.textBaseline="middle";
-  roundedPanel(PADX, 12+safeT, 150, 40, 12);
-  ctx.font = "800 19px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.textAlign="left";
-  ctx.fillStyle = "#ffd76a"; ctx.fillText("✦", PADX+14, 33+safeT);
-  ctx.fillStyle = "#f4f6ff"; ctx.fillText("AURA "+Math.round(store.aura), PADX+32, 33+safeT);
+  // branded wordmark + racing stripe (sibling of HOME)
+  UI.header(CONFIG.title);
+  // aura status pill under the wordmark
+  UI.chip(PADX, 56+safeT, "✦ "+Math.round(store.aura), "#ffd76a");
+  // top-right nav
   const wnS = navS();
   drawIconBtn(W-PADX-wnS, 12+safeT, wnS, store.muted?"🔇":"🔊", "mute");
   drawIconBtn(W-PADX-wnS*2-8, 12+safeT, wnS, "🏠", "home");
@@ -9198,7 +9191,7 @@ function drawSeries(){
   const cw = Math.min(300, Math.max(140, (W-2*PADX-48)/Math.min(N,4)));
   const perRow = Math.max(1, Math.min(N, Math.floor((W-2*PADX+16)/(cw+16))));
   const rows = Math.ceil(N/perRow);
-  const bandTop = 82+safeT, bandBot = garageY-14;
+  const bandTop = 100+safeT, bandBot = garageY-14;
   const chh = clamp((bandBot-bandTop-(rows-1)*16)/rows, 92, 210);
   const gridH = rows*chh+(rows-1)*16;
   const y0 = Math.round(bandTop + (bandBot-bandTop-gridH)/2);
@@ -9211,25 +9204,39 @@ function drawSeries(){
     const S = SERIES[s];
     const open = seriesUnlocked(s);
     const done = !S.comingSoon && seriesBeaten(s);
-    roundedPanel(x, y, cw, chh, 16, open? "rgba(20,24,36,0.94)" : "rgba(30,34,48,0.7)");
-    if(open && !done){   // pulsing ring on the world you're up to
+    const upNext = open && !done;
+    // hue drives the accent: real hue for playable + coming-soon teaser, muted for locked
+    const tint = (open || S.comingSoon) ? S.hue : UI.mut;
+    // premium card
+    UI.card(x, y, cw, chh, 16);
+    // locked worlds read recessed (coming-soon stays teased in its hue)
+    if(!open && !S.comingSoon){
+      ctx.fillStyle="rgba(15,20,32,0.30)"; ctx.beginPath(); ctx.roundRect(x,y,cw,chh,16); ctx.fill();
+    }
+    // pulsing ring on the world you're up to
+    if(upNext){
       ctx.strokeStyle = S.hue; ctx.lineWidth = 3+Math.sin(game.t*4)*1.5;
       ctx.beginPath(); ctx.roundRect(x-2,y-2,cw+4,chh+4,18); ctx.stroke();
     }
+    // world badge — emoji tinted with the world's hue
+    UI.badge(x+cw/2, y+chh*0.33, clamp(Math.round(chh*0.42),42,62),
+             S.comingSoon? "🚧" : (open? S.emoji : "🔒"), tint);
+    // world name
+    ctx.fillStyle = tint; ctx.font = UI.font(clamp(Math.round(chh*0.13),15,19),900);
     ctx.textAlign="center"; ctx.textBaseline="middle";
-    ctx.globalAlpha = open? 1 : 0.55;
-    ctx.font = Math.round(chh*0.30)+"px sans-serif"; ctx.fillStyle = "#f4f6ff";
-    fillTextC(S.comingSoon? "🚧" : (open? S.emoji : "🔒"), x+cw/2, y+chh*0.30);
-    ctx.font = "900 18px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-    ctx.fillStyle = open? S.hue : "#8b93ad";
-    ctx.fillText(S.name, x+cw/2, y+chh*0.58);
-    ctx.font = "800 14px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+    fillTextC(S.name, x+cw/2, y+chh*0.64);
+    // progress subtitle
     let status, scol;
-    if(S.comingSoon){ status="COMING SOON"; scol="#8b93ad"; }
-    else if(!open){ status="🔒 LOCKED"; scol="#8b93ad"; }
+    if(S.comingSoon){ status="COMING SOON"; scol=UI.mut; }
+    else if(!open){ status="🔒 LOCKED"; scol=UI.mut; }
     else if(done){ status="COMPLETE ✓"; scol="#9ae64a"; }
     else { status = seriesBeatCount(s)+" / "+S.count+"   ▶ PLAY"; scol="#ffd76a"; }
-    ctx.fillStyle = scol; fillTextC(status, x+cw/2, y+chh*0.80);
+    ctx.fillStyle = scol; ctx.font = UI.font(clamp(Math.round(chh*0.09),12,14),800);
+    fillTextC(status, x+cw/2, y+chh*0.82);
+    // bottom racing-stripe accent in the world's hue (pulses on the world you're up to)
+    ctx.globalAlpha = upNext ? (0.6+Math.sin(game.t*5)*0.35) : (open? 0.9 : 0.4);
+    ctx.fillStyle = S.hue;
+    ctx.beginPath(); ctx.roundRect(x+cw/2-16, y+chh-7, 32, 3, 1.5); ctx.fill();
     ctx.globalAlpha = 1;
     hudBtns.push({x, y, w:cw, h:chh, act:"s:"+s});
   }
@@ -9260,6 +9267,7 @@ function drawSeries(){
 const mapNodes = [];
 function drawMap(){
   nightSky();
+  hudBtns.length = 0;
   const S = SERIES[store.curSeries] || SERIES[0];
   // giant faint world-emoji watermark — instant theme + fills big screens
   ctx.save(); ctx.globalAlpha = 0.06;
@@ -9267,20 +9275,17 @@ function drawMap(){
   fillTextC(S.emoji, W/2, H*0.56);
   ctx.restore();
   const base = S.start, n = S.count;
-  // header: world name (center), back + mute (top-right), aura + coins (top-left)
-  ctx.font = "900 italic 34px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-  ctx.textAlign="center"; ctx.textBaseline="alphabetic"; ctx.fillStyle=S.hue;
-  fillTextC(S.emoji+" "+S.name, W/2, 46+safeT);
-  ctx.textBaseline="middle";
-  roundedPanel(PADX, 12+safeT, 150, 40, 12);
-  ctx.font = "800 19px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.textAlign="left";
-  ctx.fillStyle = "#ffd76a"; ctx.fillText("✦", PADX+14, 33+safeT);
-  ctx.fillStyle = "#f4f6ff"; ctx.fillText("AURA "+Math.round(store.aura), PADX+32, 33+safeT);
-  roundedPanel(PADX, 58+safeT, 104, 36, 12);
-  ctx.fillStyle="#e8a930"; ctx.beginPath(); ctx.arc(PADX+18, 76+safeT, 8, 0, TAU); ctx.fill();
-  ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.arc(PADX+18, 75.2+safeT, 7.2, 0, TAU); ctx.fill();
-  ctx.fillStyle = "#f4f6ff"; ctx.fillText(store.coinsBank, PADX+34, 76+safeT);
-  hudBtns.length = 0;
+  // ── header (kit): branded world wordmark tinted in the world's hue + racing stripe (sibling of drawSeries) ──
+  ctx.textAlign="left"; ctx.textBaseline="alphabetic";
+  ctx.font="900 italic 30px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle=S.hue;
+  ctx.fillText(S.emoji+" "+S.name, PADX, 40+safeT);
+  ctx.globalAlpha=0.9; ctx.fillStyle=S.hue; ctx.fillRect(PADX,47+safeT,40,3);
+  ctx.globalAlpha=0.35; ctx.fillRect(PADX+45,47+safeT,18,3); ctx.globalAlpha=1;
+  // aura + coins status pills under the wordmark
+  let cx = PADX;
+  cx += UI.chip(cx, 56+safeT, "✦ "+Math.round(store.aura), "#ffd76a") + 8;
+  UI.chip(cx, 56+safeT, "🪙 "+store.coinsBank);
+  // top-right nav: mute + back-to-worlds
   const mS=navS();
   drawIconBtn(W-PADX-mS, 12+safeT, mS, store.muted?"🔇":"🔊", "mute");
   drawIconBtn(W-PADX-mS*2-8, 12+safeT, mS, "🗺️", "back");
@@ -9728,12 +9733,11 @@ const coopNodes = [];
 function drawCoopMap(){
   nightSky(); hudBtns.length = 0;
   const n = COOP_LEVELS.length;
-  ctx.font = "900 italic 32px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-  ctx.textAlign="center"; ctx.textBaseline="alphabetic"; ctx.fillStyle="#7ef7ff";
-  fillTextC("🤝 CO-OP", W/2, 40+safeT);
-  ctx.font="600 14px 'Avenir Next',sans-serif"; ctx.fillStyle="#8b93ad"; ctx.textBaseline="middle";
-  ctx.fillText((input.hasTouch? pName(0)+" = left thumb · "+pName(1)+" = right thumb"
-                              : pName(0)+" = ARROWS · "+pName(1)+" = WASD")+" · both cars reach the flag!", W/2, 62+safeT);
+  // ── header + control chips (kit) ──
+  UI.header("CO-OP");
+  let cx = PADX;
+  cx += UI.chip(cx, 56+safeT, "👤 "+pName(0)+" · "+(input.hasTouch?"left thumb":"arrows"), "#7ef7ff") + 8;
+  UI.chip(cx, 56+safeT, "👤 "+pName(1)+" · "+(input.hasTouch?"right thumb":"WASD"), "#c79bff");
   const mS=navS();
   drawIconBtn(W-PADX-mS, 12+safeT, mS, store.muted?"🔇":"🔊", "mute");
   drawIconBtn(W-PADX-mS*2-8, 12+safeT, mS, "🗺️", "back");
@@ -9754,6 +9758,7 @@ function drawCoopMap(){
     const wig = Math.sin(i*1.7)*Math.min(20, rowGap*0.15);
     pts.push([mx+(W-2*mx)*tt, yTop+row*rowGap+wig]);
   }
+  // winding racetrack: dark shoulder, cyan asphalt, dashed center line
   ctx.lineCap="round"; ctx.lineJoin="round";
   ctx.strokeStyle="rgba(9,12,20,0.6)";      ctx.lineWidth=R*0.9+7; traceTrack(pts); ctx.stroke();
   ctx.strokeStyle="rgba(126,247,255,0.30)"; ctx.lineWidth=R*0.9;   traceTrack(pts); ctx.stroke();
@@ -9763,9 +9768,19 @@ function drawCoopMap(){
     const [x,y]=pts[i];
     const unlocked = i < unlockedN || i===0;
     const stars = (store.coopStars&&store.coopStars[i])||0;
-    ctx.beginPath(); ctx.arc(x,y,R,0,TAU);
-    ctx.fillStyle = unlocked? "#eafcff" : "rgba(60,66,86,0.9)"; ctx.fill();
-    if(unlocked && i===unlockedN-1){ ctx.strokeStyle=COOP_LEVELS[i].hue; ctx.lineWidth=4+Math.sin(game.t*4)*1.5; ctx.beginPath(); ctx.arc(x,y,R+6,0,TAU); ctx.stroke(); }
+    const hue = COOP_LEVELS[i].hue;
+    // premium node — UI.card language (drop shadow · top-lit body · hairline) on a disc
+    ctx.fillStyle="rgba(0,0,0,0.30)"; ctx.beginPath(); ctx.arc(x+1.5,y+4,R,0,TAU); ctx.fill();
+    if(unlocked){ const g=ctx.createLinearGradient(0,y-R,0,y+R); g.addColorStop(0,"#f2fdff"); g.addColorStop(1,"#c3e9f1"); ctx.fillStyle=g; }
+    else ctx.fillStyle=UI.bg1;
+    ctx.beginPath(); ctx.arc(x,y,R,0,TAU); ctx.fill();
+    ctx.save(); ctx.beginPath(); ctx.arc(x,y,R,0,TAU); ctx.clip();
+    const gl=ctx.createLinearGradient(0,y-R,0,y+R*0.1);
+    gl.addColorStop(0, unlocked?"rgba(255,255,255,0.5)":"rgba(255,255,255,0.08)"); gl.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=gl; ctx.fillRect(x-R,y-R,2*R,R*1.1); ctx.restore();
+    ctx.strokeStyle = unlocked? "rgba(255,255,255,0.55)" : UI.line; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(x,y,R-0.5,0,TAU); ctx.stroke();
+    // pulsing ring on the level you're up to
+    if(unlocked && i===unlockedN-1){ ctx.strokeStyle=hue; ctx.lineWidth=4+Math.sin(game.t*4)*1.5; ctx.beginPath(); ctx.arc(x,y,R+6,0,TAU); ctx.stroke(); }
     ctx.textAlign="center"; ctx.textBaseline="middle";
     if(unlocked){
       ctx.fillStyle="#0b2a30"; ctx.font="900 "+Math.round(R*0.62)+"px 'Avenir Next Condensed',sans-serif";
@@ -9777,8 +9792,9 @@ function drawCoopMap(){
     ctx.globalAlpha=1;
     if(unlocked) coopNodes.push({x,y,r:R+9,ix:i});
   }
-  ctx.font="600 15px 'Avenir Next',sans-serif"; ctx.fillStyle="#8b93ad"; ctx.textAlign="center";
-  fillTextC(input.hasTouch? "tap a level!  ·  🗺️ = worlds" : "press ENTER  ·  🗺️ = worlds", W/2, H-24-safeB);
+  ctx.font=UI.font(15,800); ctx.fillStyle=UI.mut; ctx.textAlign="center";
+  fillTextC(input.hasTouch? "🏁 both reach the flag  ·  tap a level  ·  🗺️ = worlds"
+                          : "🏁 both reach the flag  ·  press ENTER  ·  🗺️ = worlds", W/2, H-24-safeB);
   for(const tp of input.taps.splice(0)){
     const curG = Math.min(unlockedN-1, n-1);
     if(tp.screen){ AU.ui(); startCoop(curG); return; }
@@ -9877,28 +9893,34 @@ function drawVsPick(){
   drawIconBtn(PADX, top, navS(), "↩️", "back");
   const ko = game.vsMode==='ko';
   const arenas = ko ? KO_ARENAS : VS_ARENAS;
-  ctx.font = "italic 900 30px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-  ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillStyle= ko?"#ff5a6a":"#ff8fe0";
+  const mCol = ko?"#ff5a6a":"#ff8fe0";
+  // ── branded header: mode wordmark + kit racing-stripe underline (sibling of UI.header) ──
+  ctx.font = "900 italic 30px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillStyle=mCol;
   ctx.fillText(ko?"💥 KNOCKOUT":"⚔️ VS RACE", PADX+56, top+23);
+  ctx.globalAlpha=0.9; ctx.fillRect(PADX+56, top+40, 40, 3);
+  ctx.globalAlpha=0.35; ctx.fillRect(PADX+101, top+40, 18, 3); ctx.globalAlpha=1;
   const score = (ko? store.koScore : store.vsScore)||[0,0];
-  ctx.font = "800 18px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-  ctx.fillStyle="#ffd76a"; ctx.textAlign="right";
+  ctx.font = UI.font(18,800);
+  ctx.fillStyle=UI.accent; ctx.textAlign="right"; ctx.textBaseline="middle";
   ctx.fillText((ko?"KO":"SERIES")+"  "+pName(0)+" "+score[0]+" — "+score[1]+" "+pName(1), W-PADX-4, top+23);
-  // RACE / KNOCKOUT toggle
+  // RACE / KNOCKOUT toggle (kit pills: active = mode-tinted, inactive = hairline card)
   const tW=Math.min(150,(W-2*PADX-8)/2), tH=32, tY=top+44, tGap=8, tX0=W/2-(tW*2+tGap)/2;
   [["🏁 RACE",false],["💥 KNOCKOUT",true]].forEach(([lbl,isKo],idx)=>{
-    const x=tX0+idx*(tW+tGap), on=(isKo===ko);
-    roundedPanel(x,tY,tW,tH,10, on?(isKo?"#ff5a6a":"#ff8fe0"):"rgba(30,34,48,0.85)");
-    ctx.fillStyle= on?"#12151f":"#8b93ad"; ctx.font="900 15px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+    const x=tX0+idx*(tW+tGap), on=(isKo===ko), col=isKo?"#ff5a6a":"#ff8fe0";
+    if(on){ ctx.fillStyle=col; ctx.beginPath(); ctx.roundRect(x,tY,tW,tH,10); ctx.fill(); }
+    else { ctx.fillStyle=UI.bg1; ctx.beginPath(); ctx.roundRect(x,tY,tW,tH,10); ctx.fill();
+      ctx.strokeStyle=UI.line; ctx.lineWidth=1; ctx.beginPath(); ctx.roundRect(x+0.5,tY+0.5,tW-1,tH-1,10); ctx.stroke(); }
+    ctx.fillStyle= on?"#12151f":UI.mut; ctx.font=UI.font(15,900);
     ctx.textAlign="center"; ctx.textBaseline="middle"; fillTextC(lbl, x+tW/2, tY+tH/2+1);
     hudBtns.push({x,y:tY,w:tW,h:tH,act:isKo?"mode:ko":"mode:race"});
   });
-  ctx.font = "600 14px 'Avenir Next',sans-serif"; ctx.fillStyle="#8b93ad"; ctx.textAlign="center";
+  ctx.font = UI.font(14,600); ctx.fillStyle=UI.mut; ctx.textAlign="center"; ctx.textBaseline="middle";
   ctx.fillText(input.hasTouch ? pName(0)+" = left thumb · "+pName(1)+" = right thumb"
                               : pName(0)+" = ARROWS · "+pName(1)+" = WASD", W/2, top+92);
   fillTextC(ko ? "3 lives each · ram (or ⚡zap then ram) your rival into a 🕳️ pit · last one standing wins!"
                   : "first to the flag · 💥 ram to swipe a coin · ⚡ grab a zap · 🧱 spring the trap!", W/2, top+112);
-  // arena cards — wrapping grid
+  // arena cards — wrapping grid (kit cards + mode-tinted badges)
   const N = arenas.length, availW = W-2*PADX;
   const perRow = Math.min(N, Math.max(3, Math.floor((availW+12)/180)));
   const cw = Math.floor((availW - 12*(perRow-1)) / perRow);
@@ -9908,24 +9930,25 @@ function drawVsPick(){
   arenas.forEach((a,i)=>{
     const row=(i/perRow)|0, col=i%perRow;
     const x = PADX + col*(cw+12), y = gridTop + row*(chh+10);
-    roundedPanel(x, y, cw, chh, 14);
-    ctx.font = Math.round(chh*0.34)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillStyle="#f4f6ff";
-    fillTextC(a.emoji, x+cw/2, y+chh*0.36);
-    ctx.font = "900 15px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle = a.hue;
-    ctx.fillText(a.name, x+cw/2, y+chh-15);
+    UI.card(x, y, cw, chh, 14);
+    UI.badge(x+cw/2, y+chh*0.37, clamp(Math.round(chh*0.44),30,52), a.emoji, a.hue);
+    ctx.fillStyle = a.hue; ctx.font = UI.font(15,900);
+    ctx.textAlign="center"; ctx.textBaseline="middle"; fillTextC(a.name, x+cw/2, y+chh*0.74);
+    ctx.globalAlpha=0.9; ctx.fillStyle=a.hue;   // bottom racing-stripe accent (matches HOME tiles)
+    ctx.beginPath(); ctx.roundRect(x+cw/2-16, y+chh-7, 32, 3, 1.5); ctx.fill(); ctx.globalAlpha=1;
     hudBtns.push({x, y, w:cw, h:chh, act:"a:"+i});
   });
   const gridBot = gridTop + gRows*(chh+10);
-  // custom tracks (races only)
+  // custom tracks (races only) — kit chip cards
   if(!ko && store.customLevels.length){
-    ctx.font = "800 14px 'Avenir Next Condensed',sans-serif"; ctx.fillStyle="#8b93ad"; ctx.textAlign="left";
+    ctx.font = UI.font(14,800); ctx.fillStyle=UI.mut; ctx.textAlign="left";
     ctx.fillText("OR RACE A CUSTOM TRACK:", PADX+4, gridBot+8);
     let cx3 = PADX+4;
     for(const cl of store.customLevels){
-      roundedPanel(cx3, gridBot+20, 48, 46, 12, "rgba(20,24,36,0.92)");
-      ctx.font="17px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillStyle="#f4f6ff";
+      UI.card(cx3, gridBot+20, 48, 46, 12);
+      ctx.font="17px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillStyle=UI.txt;
       fillTextC(EMOJIS[cl.emojiIx||0], cx3+24, gridBot+35);
-      ctx.font="800 11px 'Avenir Next Condensed',sans-serif"; ctx.fillStyle="#8b93ad";
+      ctx.font=UI.font(11,800); ctx.fillStyle=UI.mut;
       ctx.fillText("T"+cl.id, cx3+24, gridBot+55);
       hudBtns.push({x:cx3, y:gridBot+20, w:48, h:46, act:"ct:"+cl.id});
       cx3 += 54;
@@ -10529,17 +10552,130 @@ function drawCrates(dt){
   hudBtns.length = 0;
   const top = 8+safeT;
   const SHORT = H < 520;   // 🆕 v3: short landscape phones get a compact stack
+
+  /* ---- local kit sub-drawers (inlined so this screen owns its look) ---- */
+  const label = (txt, xx, yy)=>{                                           // kit section label
+    ctx.font=UI.font(13,800); ctx.fillStyle=UI.mut;
+    ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillText(txt, xx, yy+9);
+  };
+  // premium buy card — UI.card body, mode-tinted badge + ring, rarity-odds bar, coin CTA
+  const drawCrate = (x, y, w, h, key)=>{
+    const c = CRATES[key]; if(!c) return;
+    const can = store.coinsBank >= c.price;
+    const tint = key==="mega" ? "#ff5db1" : "#ffb742";                     // MEGA = pink, MYSTERY = amber
+    UI.card(x, y, w, h, 14);
+    ctx.strokeStyle=tint; ctx.globalAlpha= can?0.9:0.4; ctx.lineWidth=2;     // mode-tinted premium ring
+    ctx.beginPath(); ctx.roundRect(x+1, y+1, w-2, h-2, 13); ctx.stroke(); ctx.globalAlpha=1;
+    // gift badge (left), dimmed to a neutral chip when unaffordable
+    const bs = SHORT?40:46, bcy = y+(h-16)/2;
+    UI.badge(x+12+bs/2, bcy, bs, c.emoji, can? tint : UI.mut);
+    // right column — name (clipped so long names never spill) + coin CTA
+    const colX = x+12+bs+12, colW = w-(colX-x)-12;
+    ctx.save(); ctx.beginPath(); ctx.rect(colX, y, colW, h); ctx.clip();
+    ctx.font=UI.font(SHORT?13:14,900); ctx.fillStyle= can? tint : UI.mut;
+    ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillText(c.name, colX, y+(SHORT?24:27));
+    ctx.restore();
+    const ctaY = y+(SHORT?34:40), ctaH = SHORT?20:22, ccy = ctaY+ctaH/2;
+    ctx.fillStyle= can? "rgba(154,230,74,0.16)" : "rgba(255,143,143,0.12)";
+    ctx.beginPath(); ctx.roundRect(colX, ctaY, colW, ctaH, ctaH/2); ctx.fill();
+    ctx.fillStyle="#e8a930"; ctx.beginPath(); ctx.arc(colX+13, ccy+1, 5.5, 0, TAU); ctx.fill();   // coin
+    ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.arc(colX+13, ccy, 4.5, 0, TAU); ctx.fill();
+    ctx.font=UI.font(SHORT?12:13,900); ctx.fillStyle= can? "#9ae64a" : "#ff8f8f";
+    ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillText(c.price+"   OPEN ▶", colX+23, ccy+0.5);
+    // 🎨 rarity chance bar — each tier's slice of this crate's odds (tiny slices floored to 6px, SECRET twinkles)
+    const barX=x+14, barW=w-28, barY=y+h-(SHORT?12:14), barH=6, tot2=c.odds.reduce((a,b)=>a+b,0);
+    ctx.fillStyle="rgba(0,0,0,0.28)"; ctx.beginPath(); ctx.roundRect(barX,barY,barW,barH,barH/2); ctx.fill();
+    const ws2 = c.odds.map(o=> o/tot2*barW);
+    for(let i2=0;i2<ws2.length;i2++) if(c.odds[i2]>0 && ws2[i2]<6){
+      const d2=6-ws2[i2]; ws2[i2]=6; ws2[ws2.indexOf(Math.max(...ws2))]-=d2; }
+    ctx.save(); ctx.beginPath(); ctx.roundRect(barX, barY, barW, barH, barH/2); ctx.clip();
+    let sx2=barX; c.odds.forEach((o,i2)=>{ if(o<=0) return;
+      ctx.fillStyle=RARITY[i2].col;
+      if(i2===RARITY.length-1) ctx.globalAlpha=0.7+0.3*Math.sin(game.t*4);
+      ctx.fillRect(sx2, barY, ws2[i2], barH); ctx.globalAlpha=1; sx2+=ws2[i2]; });
+    ctx.restore();
+    hudBtns.push({x, y, w, h, act:"buy:"+key});
+  };
+  // upgrade tile — kit mini-card, tinted emoji, 5 level pips (gold-prestige aware) + % bonus
+  const drawUpg = (x, y, w, h, k)=>{
+    const u = CRATE_UPG[k]; if(!u) return;
+    const t = Math.min(store.upg[k]||0, u.mult.length-1), gold = t>RARITY.length;   // 🥇 tier 6 = GOLD prestige
+    const rc = gold ? PRESTIGE.col : (t>0 ? RARITY[Math.min(t,RARITY.length)-1].col : UI.mut);
+    UI.card(x, y, w, h, 10);
+    if(gold){ ctx.strokeStyle=PRESTIGE.col; ctx.globalAlpha=0.6+0.4*Math.sin(game.t*5); ctx.lineWidth=2;
+      ctx.beginPath(); ctx.roundRect(x+1,y+1,w-2,h-2,9); ctx.stroke(); ctx.globalAlpha=1; }
+    else if(t){ ctx.strokeStyle=rc; ctx.globalAlpha=0.5; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.roundRect(x+1,y+1,w-2,h-2,9); ctx.stroke(); ctx.globalAlpha=1; }
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.font=(SHORT?18:20)+"px sans-serif"; ctx.globalAlpha= t?1:0.42;
+    fillTextC(u.emoji, x+w/2, y+(SHORT?15:17)); ctx.globalAlpha=1;
+    ctx.font=UI.font(SHORT?11:12,800); ctx.fillStyle=rc;                     // current bonus
+    const pct = "+"+Math.round((u.mult[t]-1)*100)+"%";
+    if(gold) fillTextC("🥇"+pct, x+w/2, y+(SHORT?30:33));                     // fillTextC: label carries an emoji
+    else if(t) ctx.fillText(pct, x+w/2, y+(SHORT?30:33));
+    else { ctx.fillStyle=UI.mut; ctx.fillText("—", x+w/2, y+(SHORT?30:33)); }
+    const ps = Math.min(8, (w-8)/4), py = y+h-(SHORT?9:10);                   // 5 level pips (matches the collection book)
+    for(let i=0;i<5;i++){
+      ctx.fillStyle = i<t ? (gold? PRESTIGE.col : RARITY[i].col) : "rgba(120,132,158,0.35)";
+      ctx.beginPath(); ctx.arc(x+w/2+(i-2)*ps, py, 2.5, 0, TAU); ctx.fill();
+    }
+    if(isNewItem("upg:"+k)){ ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.arc(x+w-8, y+8, 4, 0, TAU); ctx.fill(); }   // 📖 NEW dot
+  };
+  // power-up chip — kit card, rarity-bordered, cyan ARMED glow, stock count + arm label
+  const drawPu = (x, y, w, h, id)=>{
+    const p = POWERUPS[id]; if(!p) return;
+    const n = store.powerups[id], armed = store.armed===id, rc = RARITY[p.rarity].col;
+    UI.card(x, y, w, h, 10);
+    if(armed){
+      ctx.fillStyle="rgba(126,247,255,0.10)"; ctx.beginPath(); ctx.roundRect(x,y,w,h,10); ctx.fill();
+      ctx.strokeStyle="#7ef7ff"; ctx.globalAlpha=0.85+0.15*Math.sin(game.t*5); ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.roundRect(x+1.5,y+1.5,w-3,h-3,9); ctx.stroke(); ctx.globalAlpha=1;
+    } else {
+      ctx.strokeStyle=rc; ctx.globalAlpha=0.5; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.roundRect(x+1,y+1,w-2,h-2,9); ctx.stroke(); ctx.globalAlpha=1;
+    }
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.font=(SHORT?22:24)+"px sans-serif"; fillTextC(p.emoji, x+w/2, y+(SHORT?20:22));
+    ctx.font=UI.font(11,900); ctx.fillStyle="#c9d0e4"; ctx.textAlign="right"; ctx.fillText("×"+n, x+w-6, y+11);   // stock
+    ctx.font=UI.font(SHORT?10:11,900); ctx.fillStyle= armed? "#7ef7ff" : UI.mut;
+    ctx.textAlign="center"; ctx.fillText(armed? "ARMED" : "ARM", x+w/2, y+h-(SHORT?9:10));
+    if(isNewItem("pu:"+id)){ ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.arc(x+8, y+8, 4, 0, TAU); ctx.fill(); }   // 📖 NEW dot
+    hudBtns.push({x, y, w, h, act:"arm:"+id});
+  };
+  // cosmetic chip — kit card, rarity-bordered, amber WORN glow
+  const drawCos = (x, y, w, h, id)=>{
+    const c = COSMETICS[id]; if(!c) return;
+    const on = store.cosmetic===id, rc = RARITY[c.rarity].col;
+    UI.card(x, y, w, h, 10);
+    if(on){
+      ctx.fillStyle="rgba(255,183,66,0.12)"; ctx.beginPath(); ctx.roundRect(x,y,w,h,10); ctx.fill();
+      ctx.strokeStyle=UI.accent; ctx.globalAlpha=0.85+0.15*Math.sin(game.t*5); ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.roundRect(x+1.5,y+1.5,w-3,h-3,9); ctx.stroke(); ctx.globalAlpha=1;
+    } else {
+      ctx.strokeStyle=rc; ctx.globalAlpha=0.5; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.roundRect(x+1,y+1,w-2,h-2,9); ctx.stroke(); ctx.globalAlpha=1;
+    }
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.font=(SHORT?20:22)+"px sans-serif"; fillTextC(c.emoji, x+w/2, y+(SHORT?18:20));
+    ctx.font=UI.font(SHORT?10:11,900); ctx.fillStyle= on? UI.accent : UI.mut;
+    ctx.fillText(on? "ON" : "WEAR", x+w/2, y+h-(SHORT?9:10));
+    if(isNewItem("cos:"+id)){ ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.arc(x+8, y+8, 4, 0, TAU); ctx.fill(); }   // 📖 NEW dot
+    hudBtns.push({x, y, w, h, act:"wear:"+id});
+  };
+
+  // ── header: back button + amber wordmark with kit racing-stripe underline (sibling of drawVsPick) ──
   drawIconBtn(PADX, top, navS(), "↩️", "back");
-  ctx.font = "italic 900 28px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-  ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillStyle="#ffb742";
+  ctx.font = "900 italic 30px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillStyle=UI.accent;
   ctx.fillText("🎁 CRATES", PADX+56, top+23);
-  const bw2 = 130;
-  roundedPanel(W-PADX-bw2, top, bw2, 44, 12);
-  ctx.fillStyle="#e8a930"; ctx.beginPath(); ctx.arc(W-PADX-bw2+22, top+22, 9, 0, TAU); ctx.fill();
-  ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.arc(W-PADX-bw2+22, top+21, 8, 0, TAU); ctx.fill();
-  ctx.font="900 21px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-  ctx.fillStyle="#f4f6ff"; ctx.textAlign="left"; ctx.fillText(store.coinsBank, W-PADX-bw2+40, top+23);
+  ctx.globalAlpha=0.9; ctx.fillStyle=UI.accent; ctx.fillRect(PADX+56, top+40, 40, 3);
+  ctx.globalAlpha=0.35; ctx.fillRect(PADX+101, top+40, 18, 3); ctx.globalAlpha=1;
+  // coins — kit stat pill, right-aligned to the safe edge
+  ctx.font = UI.font(15,800);
+  const coinTxt = "🪙 "+store.coinsBank, coinW = Math.round(ctx.measureText(coinTxt).width+26);
+  UI.chip(W-PADX-coinW, top+6, coinTxt, "#ffd76a");
   // 📖 v3 book toggle — left of the coins pill; pink pulse-bubble counts unseen finds
+  const bw2 = 130;                                   // reserves the coins-cluster width so the book hit-rect is unchanged
   const bkX = W-PADX-bw2-52;
   drawIconBtn(bkX, top, 44, "📖", "book");
   const nNew = unseenCount();
@@ -10556,34 +10692,34 @@ function drawCrates(dt){
   // crates to buy — every CRATES entry WITH a price (golden/price:0 is a free in-level find, not sold here)
   const buyable = Object.keys(CRATES).filter(k=> CRATES[k].price>0);
   const cw = (gridW-14)/2;
-  buyable.forEach((k,i)=> crateCard(x0 + (i%2)*(cw+14), y + ((i/2)|0)*((SHORT?92:100)+14), cw, (SHORT?92:100), k));
+  buyable.forEach((k,i)=> drawCrate(x0 + (i%2)*(cw+14), y + ((i/2)|0)*((SHORT?92:100)+14), cw, (SHORT?92:100), k));
   y += Math.max(1, Math.ceil(buyable.length/2))*((SHORT?92:100)+14) + 2;
   // upgrades (info only)
   if(upgOn()){
-    sectionLabel("UPGRADES", xr, y); y += 20;
+    label("UPGRADES", xr, y); y += 20;
     const uh = SHORT?48:56, uw = Math.min(84, (rowW-(UPG_KEYS.length-1)*8)/UPG_KEYS.length);   // 🆕 v3: 9 stats, one wide row
-    UPG_KEYS.forEach((k,i)=> upgChip(xr + i*(uw+8), y, uw, uh, k));
+    UPG_KEYS.forEach((k,i)=> drawUpg(xr + i*(uw+8), y, uw, uh, k));
     y += uh + (SHORT?12:16);
   }
   // power-ups — tap to arm ONE
   if(puOn()){
-    sectionLabel("POWER-UPS  ·  tap to arm one", xr, y); y += 20;
+    label("POWER-UPS  ·  tap to arm one", xr, y); y += 20;
     const owned = Object.keys(store.powerups).filter(id=>store.powerups[id]>0 && POWERUPS[id]);
     if(!owned.length){
-      ctx.font="600 14px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#5a6178"; ctx.textAlign="left";
+      ctx.font=UI.font(14,600); ctx.fillStyle=UI.mut; ctx.textAlign="left"; ctx.textBaseline="middle";
       ctx.fillText("Open crates to find power-ups!", xr, y+22);
     } else {
       const ph2 = SHORT?56:64, pw = Math.max(48, Math.min(66, (rowW-(owned.length-1)*8)/owned.length));
-      owned.forEach((id,i)=>{ if(xr + i*(pw+8) + pw <= xr+rowW) puChip(xr + i*(pw+8), y, pw, ph2, id); });
+      owned.forEach((id,i)=>{ if(xr + i*(pw+8) + pw <= xr+rowW) drawPu(xr + i*(pw+8), y, pw, ph2, id); });
     }
     y += (SHORT?56:64) + (SHORT?12:16);
   }
   // cosmetics — tap to wear (filter to live ids so a deleted cosmetic can't crash)
   const looks = store.cosmetics.filter(id=> COSMETICS[id]);
   if(cosOn() && looks.length){
-    sectionLabel("LOOKS  ·  tap to wear", xr, y); y += 20;
+    label("LOOKS  ·  tap to wear", xr, y); y += 20;
     const kh = SHORT?48:56, kw = Math.max(44, Math.min(60, (rowW-(looks.length-1)*8)/looks.length));
-    looks.forEach((id,i)=>{ if(xr + i*(kw+8) + kw <= xr+rowW) cosChip(xr + i*(kw+8), y, kw, kh, id); });
+    looks.forEach((id,i)=>{ if(xr + i*(kw+8) + kw <= xr+rowW) drawCos(xr + i*(kw+8), y, kw, kh, id); });
   }
 
   if(bk.open){ hudBtns.length = 0; drawBook(dt); }   // 📖 book owns the tap surface (buy/arm/wear/back unreachable)
@@ -11010,23 +11146,32 @@ function drawShop(dt){
   const owned = isCars ? store.ownedCars.includes(sel.id) : store.ownedPets.includes(sel.id);
   const locked = isCars && (sel.reward||sel.secret) && !owned;
 
-  // ---- header: back · title · coins ----
+  // ---- header: back · branded wordmark + racing stripe · coins chip (sibling of HOME/VS) ----
   drawIconBtn(PADX, top, navS(), "↩️", "back");
-  ctx.font = "italic 900 26px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-  ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillStyle="#ffb742";
+  ctx.font = "900 italic 30px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillStyle=UI.accent;
   ctx.fillText(sh.garageMode ? "🚗 GARAGE" : "🛒 GARAGE", PADX+56, top+23);
-  const bw2 = 128;
-  roundedPanel(W-PADX-bw2, top, bw2, 44, 12);
-  ctx.fillStyle="#e8a930"; ctx.beginPath(); ctx.arc(W-PADX-bw2+22, top+22, 9, 0, TAU); ctx.fill();
-  ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.arc(W-PADX-bw2+22, top+21, 8, 0, TAU); ctx.fill();
-  ctx.font="900 21px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#f4f6ff"; ctx.textAlign="left";
-  ctx.fillText(store.coinsBank, W-PADX-bw2+40, top+23);
+  ctx.globalAlpha=0.9; ctx.fillRect(PADX+56, top+40, 40, 3);          // kit racing-stripe underline
+  ctx.globalAlpha=0.35; ctx.fillRect(PADX+101, top+40, 18, 3); ctx.globalAlpha=1;
+  // coins — kit stat pill, flush right (gold currency read)
+  const coinTxt = "🪙 "+store.coinsBank;
+  ctx.font = UI.font(15,800);
+  const coinW = Math.round(ctx.measureText(coinTxt).width+26);
+  UI.chip(W-PADX-coinW, top+7, coinTxt, "#ffd76a");
   // ---- tabs (garage mode is cars-only → hide the CARS|PETS row + reclaim its space) ----
   const land = W > H*1.2;
   const tabH = land?32:36, tabW = Math.min(land?240:300, W-2*PADX), tabX = (W-tabW)/2, tabY = top+50;
   if(!sh.garageMode){
-    shopTab(tabX, tabY, tabW/2, tabH, "🏎 CARS", "tab:cars", isCars);
-    shopTab(tabX+tabW/2, tabY, tabW/2, tabH, "🐾 PETS", "tab:pets", !isCars);
+    // CARS | PETS toggle — kit pills (active = accent fill, inactive = hairline card), sibling of VS RACE's toggle
+    [["🏎 CARS","tab:cars",isCars],["🐾 PETS","tab:pets",!isCars]].forEach(([lbl,act,on],idx)=>{
+      const x = tabX + idx*(tabW/2), w = tabW/2;
+      if(on){ ctx.fillStyle=UI.accent; ctx.beginPath(); ctx.roundRect(x,tabY,w,tabH,10); ctx.fill(); }
+      else { ctx.fillStyle=UI.bg1; ctx.beginPath(); ctx.roundRect(x,tabY,w,tabH,10); ctx.fill();
+        ctx.strokeStyle=UI.line; ctx.lineWidth=1; ctx.beginPath(); ctx.roundRect(x+0.5,tabY+0.5,w-1,tabH-1,10); ctx.stroke(); }
+      ctx.fillStyle= on?"#12151f":UI.mut; ctx.font=UI.font(15,900);
+      ctx.textAlign="center"; ctx.textBaseline="middle"; fillTextC(lbl, x+w/2, tabY+tabH/2+1);
+      hudBtns.push({x, y:tabY, w, h:tabH, act});
+    });
   }
 
   // ---- responsive region math: big STAGE up top, big CAROUSEL below ----
@@ -11179,10 +11324,15 @@ function drawClear(dt){
   } else input.taps.length = 0;
 }
 function drawBigBtn(x,y,w,h,label,act,bg,fg,fontPx){
-  ctx.fillStyle = "rgba(12,14,22,0.9)";
-  ctx.beginPath(); ctx.roundRect(x+4,y+4,w,h,16); ctx.fill();
+  ctx.fillStyle = "rgba(0,0,0,0.35)";                                            // soft drop shadow (depth)
+  ctx.beginPath(); ctx.roundRect(x+2,y+5,w,h,14); ctx.fill();
   ctx.fillStyle = bg;
-  ctx.beginPath(); ctx.roundRect(x,y,w,h,16); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(x,y,w,h,14); ctx.fill();
+  const gl = ctx.createLinearGradient(0,y,0,y+h*0.6);                            // glossy top highlight
+  gl.addColorStop(0,"rgba(255,255,255,0.20)"); gl.addColorStop(1,"rgba(255,255,255,0)");
+  ctx.fillStyle = gl; ctx.beginPath(); ctx.roundRect(x,y,w,Math.max(2,h*0.6),14); ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.13)"; ctx.lineWidth = 1;                 // crisp edge
+  ctx.beginPath(); ctx.roundRect(x+0.5,y+0.5,w-1,h-1,14); ctx.stroke();
   ctx.fillStyle = fg;
   ctx.font = "900 "+(fontPx||25)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.textBaseline="middle";
