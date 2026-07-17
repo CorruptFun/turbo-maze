@@ -77,7 +77,7 @@ const CONFIG = {
   player2Name: "P2",               // 👈 who's on the right side in VS mode (you!)
   carColor:   "#ff4757",           // 👈 the car! try "#3ddc55" (tractor green)
   stripe:     "#ffe9a3",
-  speed:      0.85,                // 👈 car speed: 1 = fast & furious, 0.7 = kid cruise
+  speed:      0.78,                // 👈 car speed: 1 = fast & furious, 0.7 = kid cruise (eased down from 0.85 — "a little fast")
   bossSpeed:  95,                  // 👈 base boss speed; each boss level's rival:{mult:…} scales it (mults climb across the campaign — see LEVELS)
   zoom:       1.3,                 // 👈 bigger cars on screen! (1 = old view, up to 2)
   easyMode:   false,               // true = slower goober, more nitro
@@ -4241,6 +4241,587 @@ function worldTheme(){
   return WORLD_THEME[s] || WORLD_THEME[0];
 }
 
+/* ---- 🌍 per-world GROUND TEXTURE — vivid + detailed, readability FIRST. Drawn into the prerendered
+   ground (once per level, so detail is free per-frame) UNDER the walls + feature overlays, so it only
+   shows on the ROAD. Must stay tonal/subtle enough that road never reads as a wall or a hazard.
+   Keyed by T.back; each fn draws across the whole ground in world px: function(x, w, h, T). ---- */
+const WORLD_GROUND = {};
+function worldGroundDetail(x, w, h, T){ const f = WORLD_GROUND[T.back]; if(f) f(x, w, h, T); }
+WORLD_GROUND["city"]    = function(x,w,h,T){
+    const R=(a,b)=>a+Math.random()*(b-a);
+const area=w*h;
+
+// ── 1. broad asphalt tone — uneven pour + resurfacing patches (soft, tonal, no hard edges)
+let patches=Math.min(90, Math.round(area/240000));
+for(let i=0;i<patches;i++){
+  const px=R(0,w), py=R(0,h), pr=R(CELL*1.5, CELL*4.2);
+  const g=x.createRadialGradient(px,py,0,px,py,pr);
+  if(Math.random()<0.62){ g.addColorStop(0,"rgba(126,142,178,0.05)"); g.addColorStop(1,"rgba(126,142,178,0)"); }
+  else { g.addColorStop(0,"rgba(8,10,17,0.06)"); g.addColorStop(1,"rgba(8,10,17,0)"); }
+  x.fillStyle=g; x.fillRect(px-pr,py-pr,pr*2,pr*2);
+}
+
+// ── 2. fine aggregate — the stone grit in the tarmac: pale chips, warm chips, dark grains, a few coarse stones
+let grains=Math.min(6000, Math.round(area/1200));
+for(let i=0;i<grains;i++){
+  const gx=R(0,w), gy=R(0,h), rr=Math.random(); let s;
+  if(rr<0.50){ x.fillStyle="rgba(196,208,236,0.05)"; s=R(1,2); }
+  else if(rr<0.78){ x.fillStyle="rgba(255,214,158,0.045)"; s=R(1,2); }   // warm sodium-lit grit
+  else if(rr<0.94){ x.fillStyle="rgba(0,0,0,0.13)"; s=R(1,2); }
+  else { x.fillStyle="rgba(210,220,244,0.06)"; s=R(2,3); }               // coarser stone chip
+  x.fillRect(gx,gy,s,s);
+}
+
+// ── 3. hairline joints + surface cracks (kept thin so they read as texture, never obstacles)
+let seams=Math.min(60, Math.round(area/380000));
+for(let i=0;i<seams;i++){
+  const horiz=Math.random()<0.5; let sx=R(0,w), sy=R(0,h);
+  const len=R(CELL*1.2, CELL*3), steps=5+Math.floor(R(0,4));
+  x.beginPath(); x.moveTo(sx,sy);
+  for(let s=1;s<=steps;s++){
+    sx+= horiz? len/steps : R(-6,6);
+    sy+= horiz? R(-6,6) : len/steps;
+    x.lineTo(sx,sy);
+  }
+  x.strokeStyle= Math.random()<0.5 ? "rgba(150,166,200,0.05)" : "rgba(0,0,0,0.10)";
+  x.lineWidth=R(1,1.8); x.stroke();
+}
+
+// ── 4. tire scuffs / skid streaks along the driving line — twin parallel rubber tracks, soft + warm
+let skids=Math.min(46, Math.round(area/440000));
+for(let i=0;i<skids;i++){
+  const ang=(Math.random()<0.5?0:Math.PI/2)+R(-0.06,0.06);
+  const len=R(CELL*1.4, CELL*3.4), gap=R(7,12), wob=R(0.6,1.6);
+  x.save(); x.translate(R(0,w),R(0,h)); x.rotate(ang);
+  x.lineCap="round"; x.lineJoin="round";
+  for(let t=-1;t<=1;t+=2){
+    const off=t*gap, ph=R(0,Math.PI), steps=Math.max(6, len/14|0);
+    x.beginPath();
+    for(let s=0;s<=steps;s++){
+      const px=(s/steps)*len, py=off+Math.sin(s/steps*Math.PI*wob+ph)*R(2,5);
+      if(s===0) x.moveTo(px,py); else x.lineTo(px,py);
+    }
+    x.strokeStyle="rgba(12,13,20,0.10)"; x.lineWidth=R(6,9); x.stroke();     // rubber shadow
+    x.strokeStyle="rgba(70,60,50,0.06)"; x.lineWidth=R(2,3.5); x.stroke();   // warm scuffed core
+  }
+  x.restore();
+}
+
+// ── 5. faint painted lane hints — thin solid guide lines (complement the dashed centre lines drawn later)
+let hints=Math.min(40, Math.round(area/520000));
+for(let i=0;i<hints;i++){
+  const horiz=Math.random()<0.5;
+  const cx=(Math.floor(R(0,w)/CELL)+0.5)*CELL, cy=(Math.floor(R(0,h)/CELL)+0.5)*CELL, len=CELL*R(0.8,1.9);
+  x.beginPath();
+  if(horiz){ x.moveTo(cx-len/2,cy); x.lineTo(cx+len/2,cy); }
+  else { x.moveTo(cx,cy-len/2); x.lineTo(cx,cy+len/2); }
+  x.strokeStyle="rgba(255,255,255,0.055)"; x.lineWidth=R(3,4.5); x.stroke();
+  x.strokeStyle="rgba("+T.glow+",0.05)"; x.lineWidth=R(1,2); x.stroke();      // warm lamp cast on the paint
+}
+
+// ── 6. warm amber lamp sheen pooling across the tarmac (ambient, soft, low)
+let pools=Math.min(34, Math.round(area/520000));
+for(let i=0;i<pools;i++){
+  const px=R(0,w), py=R(0,h), pr=R(CELL*1.6, CELL*3.6);
+  const g=x.createRadialGradient(px,py,0,px,py,pr);
+  g.addColorStop(0,"rgba("+T.glow+",0.07)"); g.addColorStop(0.5,"rgba("+T.glow+",0.03)"); g.addColorStop(1,"rgba("+T.glow+",0)");
+  x.fillStyle=g; x.fillRect(px-pr,py-pr,pr*2,pr*2);
+}
+  };   // filled in below (per-world detail)
+WORLD_GROUND["snow"]    = function(x,w,h,T){
+    // ❄️ BRAIN FREEZE — frozen ice sheet: cold sheen, cracked veins, frost ferns, sparkle glints.
+// Everything is LIGHTER/cooler than T.ground so the road always reads as skateable ice, never a hazard.
+x.save();
+x.lineCap = "round"; x.lineJoin = "round";
+const A = w*h, rr = (a,b)=> a + Math.random()*(b-a);
+
+// 1) cold light-source wash — a low glare raking across the frozen sheet from the upper-left
+const lw = x.createRadialGradient(w*0.24, h*0.14, 0, w*0.24, h*0.14, Math.hypot(w,h)*0.85);
+lw.addColorStop(0,   "rgba(196,226,255,0.07)");
+lw.addColorStop(0.6, "rgba(150,196,240,0.03)");
+lw.addColorStop(1,   "rgba(150,196,240,0)");
+x.fillStyle = lw; x.fillRect(0,0,w,h);
+
+// 2) undulating ice tone — soft pale-blue frost blooms (mostly bright, a few cooler; none dark)
+const patches = Math.min(150, Math.floor(A/115000));
+for(let i=0;i<patches;i++){
+  const px=Math.random()*w, py=Math.random()*h, pr=rr(CELL*1.3, CELL*4.4);
+  const cool = Math.random()<0.3, c = cool ? "120,170,212," : "184,218,248,";
+  const g = x.createRadialGradient(px,py,0, px,py,pr);
+  g.addColorStop(0, "rgba("+c+(cool?0.03:0.05)+")");
+  g.addColorStop(1, "rgba("+c+"0)");
+  x.fillStyle=g; x.fillRect(px-pr, py-pr, pr*2, pr*2);
+}
+
+// 3) glassy sheen streaks — long soft diagonal bands, the polished shine of ice
+const streaks = Math.min(12, 6 + Math.floor(A/1100000));
+for(let i=0;i<streaks;i++){
+  const t=(i+rr(0.2,0.8))/streaks, g=x.createLinearGradient(0,0,w,h);
+  g.addColorStop(Math.max(0,t-0.05), "rgba(206,232,255,0)");
+  g.addColorStop(t,                  "rgba(206,232,255,0.05)");
+  g.addColorStop(Math.min(1,t+0.05), "rgba(206,232,255,0)");
+  x.fillStyle=g; x.fillRect(0,0,w,h);
+}
+
+// 4) cracked-ice veins — faint branching fractures with a hairline groove-shadow for depth
+function crack(cx,cy,ang,len,gen){
+  const segs=Math.max(3,Math.floor(len/28)), dl=len/segs; let px=cx,py=cy,a=ang;
+  for(let i=0;i<segs;i++){
+    a += rr(-0.34,0.34);
+    const nx=px+Math.cos(a)*dl, ny=py+Math.sin(a)*dl;
+    x.strokeStyle="rgba(11,20,30,0.10)"; x.lineWidth=1.5;                 // sub-surface groove (hairline, offset)
+    x.beginPath(); x.moveTo(px,py+1); x.lineTo(nx,ny+1); x.stroke();
+    x.strokeStyle="rgba(200,229,252,"+(0.15-gen*0.045)+")"; x.lineWidth=1.1;  // bright frozen vein
+    x.beginPath(); x.moveTo(px,py); x.lineTo(nx,ny); x.stroke();
+    px=nx; py=ny;
+    if(gen<2 && Math.random()<0.17) crack(px,py, a+(Math.random()<0.5?1:-1)*rr(0.5,1.15), len*rr(0.34,0.58), gen+1);
+  }
+}
+const cracks = Math.min(48, Math.floor(A/220000));
+for(let i=0;i<cracks;i++) crack(Math.random()*w, Math.random()*h, Math.random()*TAU, rr(CELL*1.1, CELL*3.2), 0);
+
+// 5) frost-crystal ferns — delicate feathered fractals radiating in blooms, like frost on cold glass
+function fern(fx,fy,ang,len){
+  const steps=Math.max(4,Math.floor(len/13)), dl=len/steps; let px=fx,py=fy,a=ang;
+  for(let i=0;i<steps;i++){
+    const k=1-i/steps, nx=px+Math.cos(a)*dl, ny=py+Math.sin(a)*dl;
+    x.strokeStyle="rgba(219,241,255,"+(0.05+0.13*k)+")"; x.lineWidth=0.5+0.9*k;   // spine, brighter at the base
+    x.beginPath(); x.moveTo(px,py); x.lineTo(nx,ny); x.stroke();
+    const bl = dl*2.1*k + 3;                                                       // barbs taper toward the tip
+    for(const s of [-1,1]){
+      const ba=a+s*rr(0.85,1.12), ex=nx+Math.cos(ba)*bl, ey=ny+Math.sin(ba)*bl;
+      x.lineWidth=0.35+0.55*k;
+      x.beginPath(); x.moveTo(nx,ny); x.lineTo(ex,ey); x.stroke();
+      const sa=ba+s*0.85, mx=(nx+ex)*0.5, my=(ny+ey)*0.5;                          // tiny secondary frost twig
+      x.beginPath(); x.moveTo(mx,my); x.lineTo(mx+Math.cos(sa)*bl*0.42, my+Math.sin(sa)*bl*0.42); x.stroke();
+    }
+    px=nx; py=ny; a += rr(-0.045,0.045);
+  }
+}
+const blooms = Math.min(34, Math.floor(A/240000));
+for(let b=0;b<blooms;b++){
+  const bx=Math.random()*w, by=Math.random()*h, arms=3+Math.floor(Math.random()*3), base=Math.random()*TAU, sc=rr(0.55,1.15);
+  for(let a=0;a<arms;a++) fern(bx,by, base + a*(TAU/arms) + rr(-0.22,0.22), CELL*rr(0.5,1.0)*sc);
+}
+
+// 6) sparkle glints catching the light — fine crushed-ice dust, a few flaring into a bright cross
+const sparks = Math.min(2600, Math.floor(A/6800));
+for(let i=0;i<sparks;i++){
+  const sx=Math.random()*w, sy=Math.random()*h, r=Math.random();
+  if(r<0.84){
+    x.fillStyle="rgba("+(r<0.4?"238,249,255":"201,232,255")+","+rr(0.07,0.24)+")";
+    const s=rr(0.7,1.8); x.fillRect(sx,sy,s,s);
+  } else {
+    const al=rr(0.24,0.5), gl=rr(3,6);
+    const hg=x.createRadialGradient(sx,sy,0, sx,sy,gl*1.7);                        // soft halo
+    hg.addColorStop(0,"rgba(212,237,255,"+(al*0.55)+")"); hg.addColorStop(1,"rgba(212,237,255,0)");
+    x.fillStyle=hg; x.fillRect(sx-gl*1.7, sy-gl*1.7, gl*3.4, gl*3.4);
+    x.strokeStyle="rgba(230,246,255,"+al+")"; x.lineWidth=0.8;                     // 4-point flare
+    x.beginPath(); x.moveTo(sx-gl,sy); x.lineTo(sx+gl,sy); x.moveTo(sx,sy-gl); x.lineTo(sx,sy+gl); x.stroke();
+    x.fillStyle="rgba(244,251,255,"+Math.min(1,al+0.2)+")"; x.fillRect(sx-0.9, sy-0.9, 1.8, 1.8);  // hot core
+  }
+}
+x.restore();
+  };
+WORLD_GROUND["grid"]    = function(x,w,h,T){
+    // ── MAZE MAYHEM ground: neon digital void — TRON grid + circuit traces + scanline shimmer ──
+  const G = T.glow;                 // "197,108,255" — reuse the world's neon as rgb for rgba()
+  const cell = 110;                 // CELL — the maze unit, so the grid feels native to the level
+  const half = cell / 2;
+
+  // 1) VIOLET HAZE POOLS — soft blooms of neon fog give the flat void real depth (only lifts, never darkens)
+  x.save();
+  x.globalCompositeOperation = "lighter";
+  const pools = Math.min(64, Math.max(12, Math.floor(w * h / 240000)));
+  for (let i = 0; i < pools; i++) {
+    const px = Math.random() * w, py = Math.random() * h, pr = 240 + Math.random() * 560;
+    const gr = x.createRadialGradient(px, py, 0, px, py, pr);
+    gr.addColorStop(0, "rgba(" + G + ",0.055)");
+    gr.addColorStop(1, "rgba(" + G + ",0)");
+    x.fillStyle = gr; x.fillRect(px - pr, py - pr, pr * 2, pr * 2);
+  }
+  x.restore();
+
+  // 2) THE NEON GRID — faint half-cell sub-lines under brighter full-cell rails (the TRON floor)
+  x.save();
+  x.lineWidth = 1;
+  x.strokeStyle = "rgba(" + G + ",0.045)";          // minor sub-grid (offset half a cell)
+  x.beginPath();
+  for (let gx = half; gx < w; gx += cell) { x.moveTo(gx + 0.5, 0); x.lineTo(gx + 0.5, h); }
+  for (let gy = half; gy < h; gy += cell) { x.moveTo(0, gy + 0.5); x.lineTo(w, gy + 0.5); }
+  x.stroke();
+  x.strokeStyle = "rgba(" + G + ",0.11)";           // major grid rails
+  x.beginPath();
+  for (let gx = 0; gx <= w; gx += cell) { x.moveTo(gx + 0.5, 0); x.lineTo(gx + 0.5, h); }
+  for (let gy = 0; gy <= h; gy += cell) { x.moveTo(0, gy + 0.5); x.lineTo(w, gy + 0.5); }
+  x.stroke();
+  x.restore();
+
+  // 3) GLOWING NODES — a lit core on every major intersection, twinkling blooms on a sparse subset
+  x.save();
+  x.globalCompositeOperation = "lighter";
+  for (let gy = 0; gy <= h; gy += cell) {
+    for (let gx = 0; gx <= w; gx += cell) {
+      const tw = ((gx * 13 + gy * 7) % 97) / 97;    // stable pseudo-random per node
+      x.fillStyle = "rgba(" + G + "," + (0.13 + tw * 0.12).toFixed(3) + ")";
+      x.fillRect(gx - 1, gy - 1, 2, 2);             // cheap bright via core
+      if (tw > 0.72) {                              // ~28% get a soft bloom = flickering data ports
+        const rr = 6 + tw * 7;
+        const gr = x.createRadialGradient(gx, gy, 0, gx, gy, rr);
+        gr.addColorStop(0, "rgba(" + G + "," + (0.16 + tw * 0.14).toFixed(3) + ")");
+        gr.addColorStop(1, "rgba(" + G + ",0)");
+        x.fillStyle = gr; x.fillRect(gx - rr, gy - rr, rr * 2, rr * 2);
+      }
+    }
+  }
+  x.restore();
+
+  // 4) CIRCUIT TRACES — faint PCB routing that snaps to the grid and right-angles like real copper, capped by a via
+  x.save();
+  x.globalCompositeOperation = "lighter";
+  x.lineCap = "round"; x.lineJoin = "round";
+  const traces = Math.min(210, Math.max(28, Math.floor(w * h / 88000)));
+  for (let i = 0; i < traces; i++) {
+    let cx = Math.round(Math.random() * (w / half)) * half;
+    let cy = Math.round(Math.random() * (h / half)) * half;
+    const segs = 2 + Math.floor(Math.random() * 4);
+    let horiz = Math.random() < 0.5;
+    x.strokeStyle = "rgba(" + G + "," + (0.05 + Math.random() * 0.06).toFixed(3) + ")";
+    x.lineWidth = 1.5;
+    x.beginPath(); x.moveTo(cx, cy);
+    for (let s = 0; s < segs; s++) {
+      const len = (1 + Math.floor(Math.random() * 3)) * half * (Math.random() < 0.5 ? 1 : -1);
+      if (horiz) cx += len; else cy += len;
+      x.lineTo(cx, cy);
+      horiz = !horiz;
+    }
+    x.stroke();
+    x.fillStyle = "rgba(" + G + ",0.14)";           // solder pad / via at the trace end
+    x.beginPath(); x.arc(cx, cy, 2.3, 0, TAU); x.fill();
+  }
+  x.restore();
+
+  // 5) SCANLINE SHIMMER — a fine CRT raster, alternating a hair of neon lift and a hair of shade (3px pitch, imperceptible as hazard)
+  x.save();
+  for (let sy = 0; sy < h; sy += 3) {
+    const s = ((sy / 3) | 0) % 7;
+    x.fillStyle = s < 3 ? "rgba(" + G + ",0.020)" : "rgba(0,0,0,0.028)";
+    x.fillRect(0, sy, w, 1);
+  }
+  x.restore();
+
+  // 6) DATA MOTES — a dusting of glowing pixels drifting in the void, like packets in transit
+  x.save();
+  x.globalCompositeOperation = "lighter";
+  const motes = Math.min(1900, Math.floor(w * h / 6200));
+  for (let i = 0; i < motes; i++) {
+    const mx = Math.random() * w, my = Math.random() * h;
+    x.fillStyle = "rgba(" + G + "," + (0.05 + Math.random() * 0.22).toFixed(3) + ")";
+    const sz = Math.random() < 0.14 ? 2 : 1;
+    x.fillRect(mx, my, sz, sz);
+  }
+  x.restore();
+  };
+WORLD_GROUND["factory"] = function(x,w,h,T){
+    // METAL MELTDOWN — riveted foundry steel floor: defined plates, rivets, tread, oil sheen, ember warmth.
+    const R=Math.random, A=w*h;
+    x.save();
+    let n=Math.min(50, Math.round(A/230000));                             // warm furnace glow patches
+    for(let i=0;i<n;i++){ const px=R()*w, py=R()*h, rad=CELL*(2+R()*4);
+      const g=x.createRadialGradient(px,py,0,px,py,rad);
+      g.addColorStop(0,"rgba(150,110,70,0.16)"); g.addColorStop(1,"rgba(150,110,70,0)");
+      x.fillStyle=g; x.fillRect(px-rad,py-rad,rad*2,rad*2); }
+    const PS=CELL*1.5;                                                     // STEEL FLOOR PLATES
+    for(let py=0; py<h; py+=PS) for(let px=0; px<w; px+=PS){
+      x.strokeStyle="rgba(255,206,150,0.12)"; x.lineWidth=1.5;            // lit seam (top+left)
+      x.beginPath(); x.moveTo(px+1,py+PS); x.lineTo(px+1,py+1); x.lineTo(px+PS,py+1); x.stroke();
+      x.strokeStyle="rgba(0,0,0,0.34)"; x.lineWidth=1.5;                  // shade seam (bottom+right)
+      x.beginPath(); x.moveTo(px+PS-1,py+1); x.lineTo(px+PS-1,py+PS); x.lineTo(px+1,py+PS); x.stroke();
+      for(const rc of [[px+8,py+8],[px+PS-8,py+8],[px+8,py+PS-8],[px+PS-8,py+PS-8]]){  // corner rivets
+        x.fillStyle="rgba(0,0,0,0.42)"; x.beginPath(); x.arc(rc[0],rc[1],2.6,0,TAU); x.fill();
+        x.fillStyle="rgba(255,224,175,0.55)"; x.beginPath(); x.arc(rc[0]-0.7,rc[1]-0.7,1.1,0,TAU); x.fill(); }
+      x.strokeStyle="rgba(255,200,130,0.06)"; x.lineWidth=2; x.lineCap="round";         // tread chevrons
+      for(let d=0;d<4;d++){ const dx=px+PS*0.28+d*PS*0.15, dy=py+PS*0.5;
+        x.beginPath(); x.moveTo(dx-5,dy-4); x.lineTo(dx,dy); x.lineTo(dx-5,dy+4); x.stroke(); } }
+    n=Math.min(46, Math.round(A/260000));                                 // oil-sheen + ember streaks
+    for(let i=0;i<n;i++){ const px=R()*w, py=R()*h, len=CELL*(0.5+R());
+      x.strokeStyle=R()<0.5?"rgba(255,140,50,0.07)":"rgba(120,150,180,0.05)"; x.lineWidth=rand(3,7); x.lineCap="round";
+      x.beginPath(); x.moveTo(px,py); x.lineTo(px+len,py+rand(-6,6)); x.stroke(); }
+    n=Math.min(3200, Math.round(A/2800));                                 // warm grit + steel flecks
+    for(let i=0;i<n;i++){ const px=R()*w, py=R()*h, t=R();
+      x.fillStyle = t<0.45?"rgba(255,190,120,0.11)":t<0.75?"rgba(0,0,0,0.30)":"rgba(180,190,205,0.08)"; x.fillRect(px,py,rand(0.7,1.7),rand(0.7,1.7)); }
+    x.restore();
+  };
+WORLD_GROUND["water"]   = function(x,w,h,T){
+    // SPLASH ZONE — luminous deep-aqua water. Everything is drawn additively (composite "lighter")
+// so the floor only ever BRIGHTENS: no dark shape can read as a wall, pit or hazard. Layers:
+// depth-shimmer pools → interlocking caustic net → sparkle glints → foam stipple → bubbles.
+const R = Math.random, glow = T.glow;
+const cells = (w*h)/(CELL*CELL);
+x.save();
+x.globalCompositeOperation = "lighter";
+x.lineJoin = "round"; x.lineCap = "round";
+
+// ── depth wash: broad soft pools of blue-green shimmer (shallow spots glow, deep stays calm) ──
+const pools = Math.min(96, Math.round(cells/9)) + 6;
+for(let i=0;i<pools;i++){
+  const px=R()*w, py=R()*h, pr=rand(1.4,4.4)*CELL, bright=rand(0.04,0.13);
+  const gShift = Math.round(rand(-16,24));          // aqua↔green hue drift = living water
+  const g = x.createRadialGradient(px,py,pr*0.08, px,py,pr);
+  g.addColorStop(0,    `rgba(92,${210+gShift},224,${bright})`);
+  g.addColorStop(0.55, `rgba(66,190,208,${bright*0.5})`);
+  g.addColorStop(1,    `rgba(${glow},0)`);
+  x.fillStyle = g;
+  x.beginPath(); x.arc(px,py,pr,0,TAU); x.fill();
+}
+
+// ── caustics: two crossing families of wavy bright strands; where they overlap the additive
+//    blend swells into the classic sun-through-water net. Each strand = one cheap stroke. ──
+function strands(vertical){
+  const span  = vertical ? h : w;                   // draw along this axis
+  const cross = vertical ? w : h;                   // step across this axis
+  const sp = CELL*0.82, n = Math.ceil(cross/sp), step = CELL*0.6;
+  for(let s=0;s<=n;s++){
+    const base = s*sp + rand(-sp*0.3, sp*0.3);
+    const a1=rand(6,20), a2=rand(4,12);
+    const f1=rand(0.9,1.7)/CELL, f2=rand(1.8,3.4)/CELL;
+    const ph1=R()*TAU, ph2=R()*TAU;
+    for(let pass=0; pass<2; pass++){                 // wide soft underlay, then thin bright core
+      x.beginPath();
+      for(let t=0; t<=span+step; t+=step){
+        const off = base + a1*Math.sin(t*f1+ph1) + a2*Math.sin(t*f2+ph2);
+        const cx = vertical ? off : t, cy = vertical ? t : off;
+        if(t===0) x.moveTo(cx,cy); else x.lineTo(cx,cy);
+      }
+      if(pass===0){ x.lineWidth=rand(5,9);   x.strokeStyle=`rgba(120,226,236,${rand(0.03,0.06)})`; }
+      else        { x.lineWidth=rand(1,2.2); x.strokeStyle=`rgba(206,250,255,${rand(0.06,0.11)})`; }
+      x.stroke();
+    }
+  }
+}
+strands(false); strands(true);
+
+// ── fine sparkle: tiny light glints riding the ripple crests ──
+const glints = Math.min(2600, Math.round(cells*2.4));
+for(let i=0;i<glints;i++){
+  const s=rand(0.6,2.2);
+  x.fillStyle = R()<0.35 ? `rgba(222,252,255,${rand(0.12,0.30)})` : `rgba(${glow},${rand(0.05,0.14)})`;
+  x.fillRect(R()*w, R()*h, s, s);
+}
+
+// ── foam: clustered bright stipple, like sun-lit froth gathering on the surface ──
+const foamCl = Math.min(190, Math.round(cells/6));
+for(let c=0;c<foamCl;c++){
+  const cx=R()*w, cy=R()*h, rr=rand(CELL*0.2,CELL*0.7), cn=Math.round(rand(4,12));
+  for(let k=0;k<cn;k++){
+    const fa=R()*TAU, fd=Math.sqrt(R())*rr;         // sqrt = even disc fill
+    x.fillStyle = `rgba(231,253,255,${rand(0.10,0.28)})`;
+    x.fillRect(cx+Math.cos(fa)*fd, cy+Math.sin(fa)*fd, rand(0.8,1.8), rand(0.8,1.8));
+  }
+}
+
+// ── bubbles: little rings each with a highlight glint ──
+const bubbles = Math.min(520, Math.round(cells*0.8));
+x.lineWidth = 1;
+for(let i=0;i<bubbles;i++){
+  const bx=R()*w, by=R()*h, br=rand(1.6,5.5);
+  x.strokeStyle = `rgba(190,245,255,${rand(0.08,0.20)})`;
+  x.beginPath(); x.arc(bx,by,br,0,TAU); x.stroke();
+  x.fillStyle = `rgba(236,255,255,${rand(0.14,0.30)})`;
+  const hs = Math.max(0.8, br*0.35);
+  x.fillRect(bx-br*0.4, by-br*0.4, hs, hs);
+}
+
+x.restore();   // resets composite/lineWidth/alpha for the caller's lamp-pool pass
+  };
+WORLD_GROUND["void"]    = function(x,w,h,T){
+    const A = w*h;
+
+// ===== 1. NEBULA WISPS — soft violet/blue clouds. Fully ADDITIVE, so they only bloom
+//         the floor brighter (never darken it into something that reads as a wall/pit). =====
+x.save();
+x.globalCompositeOperation = "lighter";
+const nebN = Math.min(12, Math.max(5, Math.round(A/1.9e6)));
+for(let i=0;i<nebN;i++){
+  const cx=rand(0,w), cy=rand(0,h), rr=rand(CELL*3, CELL*7.5), hue=i%3;
+  const col = hue===0 ? T.glow : hue===1 ? "80,120,235" : "170,95,205"; // theme violet / deep blue / magenta
+  x.save();
+  x.translate(cx,cy); x.rotate(rand(0,TAU));
+  x.scale(rand(1.1,2.2), rand(0.35,0.7));            // stretch the bloom into a drifting wisp/streak
+  const g=x.createRadialGradient(0,0,0,0,0,rr);
+  g.addColorStop(0,    "rgba("+col+","+rand(0.06,0.11).toFixed(3)+")");
+  g.addColorStop(0.45, "rgba("+col+",0.03)");
+  g.addColorStop(1,    "rgba("+col+",0)");
+  x.fillStyle=g; x.fillRect(-rr,-rr,rr*2,rr*2);
+  x.restore();
+}
+x.restore();
+
+// ===== 2. COSMIC DUST — fine faint grains sprinkled across the whole platform =====
+x.save();
+x.globalCompositeOperation = "lighter";
+const dustN = Math.min(3200, Math.round(A/5800));
+for(let i=0;i<dustN;i++){
+  x.fillStyle="rgba(198,192,255,"+rand(0.02,0.09).toFixed(3)+")";
+  x.fillRect(Math.random()*w, Math.random()*h, 1, 1);
+}
+// a few faint drift streaks (long-exposure motion of dust past the platform)
+const strN = Math.min(6, Math.max(2, Math.round(A/4e6)));
+for(let i=0;i<strN;i++){
+  const sx=rand(0,w), sy=rand(0,h), len=rand(CELL*1.5, CELL*4);
+  x.save(); x.translate(sx,sy); x.rotate(rand(-0.5,0.5));
+  const lg=x.createLinearGradient(0,0,len,0);
+  lg.addColorStop(0,"rgba(210,205,255,0)");
+  lg.addColorStop(0.5,"rgba("+T.glow+",0.10)");
+  lg.addColorStop(1,"rgba(210,205,255,0)");
+  x.fillStyle=lg; x.fillRect(0,-0.6,len,1.2);
+  x.restore();
+}
+x.restore();
+
+// ===== 3. STARFIELD — varied sizes + brightness, a rare few with a soft cross-glint =====
+x.save();
+x.globalCompositeOperation = "lighter";
+const starN = Math.min(1900, Math.round(A/9500));
+for(let i=0;i<starN;i++){
+  const sx=Math.random()*w, sy=Math.random()*h, t=Math.random();
+  const tint = Math.random()<0.5 ? "255,252,245" : "205,220,255";   // warm-white / blue-white mix
+  if(t<0.74){
+    // pinprick stars — the dense background weave
+    x.fillStyle="rgba("+tint+","+rand(0.18,0.55).toFixed(2)+")";
+    x.fillRect(sx,sy,1,1);
+  } else if(t<0.95){
+    // medium stars with a small soft halo + hot core
+    const r=rand(2,4.5), g=x.createRadialGradient(sx,sy,0,sx,sy,r);
+    g.addColorStop(0,"rgba("+tint+",0.9)");
+    g.addColorStop(0.4,"rgba("+tint+",0.35)");
+    g.addColorStop(1,"rgba("+tint+",0)");
+    x.fillStyle=g; x.fillRect(sx-r,sy-r,r*2,r*2);
+    x.fillStyle="rgba(255,255,255,0.9)"; x.fillRect(sx-0.5,sy-0.5,1,1);
+  } else {
+    // bright beacon stars with a soft 4-point diffraction glint
+    const r=rand(3.5,6.5), g=x.createRadialGradient(sx,sy,0,sx,sy,r);
+    g.addColorStop(0,"rgba(255,255,255,1)");
+    g.addColorStop(0.35,"rgba("+tint+",0.45)");
+    g.addColorStop(1,"rgba("+tint+",0)");
+    x.fillStyle=g; x.fillRect(sx-r,sy-r,r*2,r*2);
+    const gl=rand(7,14);
+    const lh=x.createLinearGradient(sx-gl,sy,sx+gl,sy);
+    lh.addColorStop(0,"rgba(255,255,255,0)"); lh.addColorStop(0.5,"rgba(255,255,255,0.55)"); lh.addColorStop(1,"rgba(255,255,255,0)");
+    x.fillStyle=lh; x.fillRect(sx-gl,sy-0.5,gl*2,1);
+    const lv=x.createLinearGradient(sx,sy-gl,sx,sy+gl);
+    lv.addColorStop(0,"rgba(255,255,255,0)"); lv.addColorStop(0.5,"rgba(255,255,255,0.55)"); lv.addColorStop(1,"rgba(255,255,255,0)");
+    x.fillStyle=lv; x.fillRect(sx-0.5,sy-gl,1,gl*2);
+  }
+}
+x.restore();
+
+// ===== 4. DISTANT GALAXIES — a tiny tilted spiral or two, far off in the deep =====
+x.save();
+x.globalCompositeOperation = "lighter";
+const galN = A>7e6 ? 2 : 1;
+for(let i=0;i<galN;i++){
+  const cx=rand(w*0.1,w*0.9), cy=rand(h*0.1,h*0.9), rr=rand(CELL*1.1, CELL*2.0);
+  x.save();
+  x.translate(cx,cy); x.rotate(rand(0,TAU)); x.scale(1, rand(0.32,0.5));  // tilt the disk toward edge-on
+  const g=x.createRadialGradient(0,0,0,0,0,rr);
+  g.addColorStop(0,    "rgba(255,240,250,0.16)");   // warm bright core
+  g.addColorStop(0.25, "rgba(190,140,230,0.10)");   // violet inner disk
+  g.addColorStop(0.6,  "rgba(110,120,220,0.04)");   // cool blue outer haze
+  g.addColorStop(1,    "rgba(110,120,220,0)");
+  x.fillStyle=g; x.beginPath(); x.arc(0,0,rr,0,TAU); x.fill();
+  // faint spiral-arm hints sweeping out of the core
+  x.strokeStyle="rgba(210,200,255,0.06)"; x.lineWidth=rr*0.10;
+  for(let a=0;a<2;a++){
+    x.beginPath();
+    for(let s=0;s<=20;s++){
+      const th=s/20*Math.PI*1.6 + a*Math.PI, rad=rr*0.15 + s/20*rr*0.8;
+      const px=Math.cos(th)*rad, py=Math.sin(th)*rad;
+      s ? x.lineTo(px,py) : x.moveTo(px,py);
+    }
+    x.stroke();
+  }
+  // hot nucleus
+  x.fillStyle="rgba(255,250,255,0.5)"; x.beginPath(); x.arc(0,0,rr*0.08,0,TAU); x.fill();
+  x.restore();
+}
+x.restore();
+  };
+WORLD_GROUND["lava"]    = function(x,w,h,T){
+    x.save();
+  const R=Math.random, A=w*h;
+  x.lineCap="round"; x.lineJoin="round";
+  // ── ambient heat: the whole crust radiates a faint warmth (base tone lift) ──
+  let n=Math.min(24, Math.round(A/420000));
+  for(let i=0;i<n;i++){
+    const px=R()*w, py=R()*h, rad=CELL*(3+R()*5);
+    const g=x.createRadialGradient(px,py,0,px,py,rad);
+    g.addColorStop(0,"rgba(255,90,34,0.05)"); g.addColorStop(1,"rgba(255,90,34,0)");
+    x.fillStyle=g; x.fillRect(px-rad,py-rad,rad*2,rad*2);
+  }
+  // ── cooled-rock mottling: warm scorched patches + cooler basalt shade (soft, tonal only — never wall-dark) ──
+  n=Math.min(80, Math.round(A/160000));
+  for(let i=0;i<n;i++){
+    const px=R()*w, py=R()*h, rad=CELL*(1.4+R()*3.4), warm=R()<0.55;
+    const g=x.createRadialGradient(px,py,0,px,py,rad);
+    if(warm){ g.addColorStop(0,"rgba(96,46,28,0.24)"); g.addColorStop(1,"rgba(96,46,28,0)"); }
+    else    { g.addColorStop(0,"rgba(16,9,7,0.18)");   g.addColorStop(1,"rgba(16,9,7,0)"); }
+    x.fillStyle=g; x.fillRect(px-rad,py-rad,rad*2,rad*2);
+  }
+  // ── faint heat-scorch smudges (kept low-alpha so they read as scorch, never as pits) ──
+  n=Math.min(30, Math.round(A/350000));
+  for(let i=0;i<n;i++){
+    const px=R()*w, py=R()*h, rad=CELL*(2+R()*3);
+    const g=x.createRadialGradient(px,py,0,px,py,rad);
+    g.addColorStop(0,"rgba(8,4,3,0.12)"); g.addColorStop(1,"rgba(8,4,3,0)");
+    x.fillStyle=g; x.fillRect(px-rad,py-rad,rad*2,rad*2);
+  }
+  // ── volcanic grain: granular basalt flecks — warm highlight / dark grit / red scorch ──
+  n=Math.min(5000, Math.round(A/2600));
+  for(let i=0;i<n;i++){
+    const px=R()*w, py=R()*h, t=R(), s=0.6+R()*1.7;
+    x.fillStyle = t<0.4 ? "rgba(74,40,25,0.5)" : t<0.72 ? "rgba(14,8,6,0.42)" : "rgba(126,72,44,0.30)";
+    x.fillRect(px,py,s,s);
+  }
+  // ── obsidian glints: rare cold glassy reflections flashing off the crust plates ──
+  n=Math.min(140, Math.round(A/90000));
+  for(let i=0;i<n;i++){
+    const px=R()*w, py=R()*h, a=R()*TAU, len=3+R()*7;
+    x.strokeStyle="rgba(190,170,175,0.07)"; x.lineWidth=1;
+    x.beginPath(); x.moveTo(px,py); x.lineTo(px+Math.cos(a)*len,py+Math.sin(a)*len); x.stroke();
+  }
+  // ── GLOWING MOLTEN VEINS: cracked crust with hot orange→yellow seams threading the whole floor.
+  //    Each seam is a wandering crack drawn wide→thin: soft heat halo → molten edge → hot orange → yellow-white core. ──
+  n=Math.min(120, Math.round(A/95000));
+  for(let i=0;i<n;i++){
+    let cx=R()*w, cy=R()*h, ang=R()*TAU;
+    const steps=6+((R()*15)|0), pts=[[cx,cy]];
+    for(let s=0;s<steps;s++){
+      ang += (R()-0.5)*1.15;                        // organic wander (branch-free but forking-looking)
+      const len=CELL*(0.22+R()*0.5);
+      cx+=Math.cos(ang)*len; cy+=Math.sin(ang)*len;
+      pts.push([cx,cy]);
+    }
+    x.beginPath(); x.moveTo(pts[0][0],pts[0][1]);
+    for(let k=1;k<pts.length;k++) x.lineTo(pts[k][0],pts[k][1]);
+    x.strokeStyle="rgba("+T.glow+",0.09)"; x.lineWidth=12;  x.stroke();   // soft heat halo (theme-tied)
+    x.strokeStyle="rgba(255,110,36,0.16)"; x.lineWidth=6;   x.stroke();   // molten edge
+    x.strokeStyle="rgba(255,176,70,0.5)";  x.lineWidth=2.3; x.stroke();   // hot orange body
+    x.strokeStyle="rgba(255,244,168,0.7)"; x.lineWidth=0.9; x.stroke();   // yellow-white liquid core
+  }
+  // ── ember specks: tiny glowing motes drifting over the crust (fine sparkle) ──
+  n=Math.min(900, Math.round(A/16000));
+  for(let i=0;i<n;i++){
+    const px=R()*w, py=R()*h, rr=2.4+R()*4, hot=R()<0.5;
+    const g=x.createRadialGradient(px,py,0,px,py,rr);
+    g.addColorStop(0, hot?"rgba(255,232,150,0.9)":"rgba(255,146,52,0.85)");
+    g.addColorStop(0.45,"rgba(255,110,40,0.22)");
+    g.addColorStop(1,"rgba(255,96,32,0)");
+    x.fillStyle=g; x.fillRect(px-rr,py-rr,rr*2,rr*2);
+  }
+  x.restore();
+  };
+
 function prerenderGround(L){
   const w = game.cols*CELL, h = game.rows*CELL;
   // 📐 resolution cap: huge worlds (46x30 ≈ 16.7M px) exceed iOS canvas limits — render the
@@ -4256,6 +4837,7 @@ function prerenderGround(L){
     x.fillStyle = Math.random()<0.5 ? T.speck : "rgba(0,0,0,0.3)";
     x.fillRect(Math.random()*w, Math.random()*h, rand(1,3), rand(1,3));
   }
+  worldGroundDetail(x, w, h, T);   // 🎨 vivid per-world ground texture (under walls + overlays)
   // warm lamp pools on road
   for(const [c,r] of game.road){
     if((c*7+r*13)%9===0){
@@ -4345,7 +4927,12 @@ function prerenderGround(L){
     if(game.wells.some(v=>v.c===c && v.r===r)) continue;   // 🪐 a planet renders as a sprite over floor, not a brick pillar
     const px=c*CELL, py=r*CELL;
     x.fillStyle = T.wall; x.fillRect(px,py,CELL,CELL);
+    // 🧱 dimensional bevel: soft top-left light → deeper bottom-right shade (raised-block look)
+    let bev = x.createLinearGradient(px,py,px+CELL,py+CELL);
+    bev.addColorStop(0,"rgba(255,255,255,0.06)"); bev.addColorStop(0.5,"rgba(255,255,255,0)"); bev.addColorStop(1,"rgba(0,0,0,0.32)");
+    x.fillStyle = bev; x.fillRect(px,py,CELL,CELL);
     x.fillStyle = T.wallTop; x.fillRect(px,py,CELL,10);
+    x.fillStyle = "rgba(255,255,255,0.05)"; x.fillRect(px,py,CELL,2);   // crisp top-edge highlight
     // neon curb light on edges facing road
     x.fillStyle = L.hue; x.globalAlpha = 0.5;
     if(!isWallCell(c,r+1)) x.fillRect(px, py+CELL-4, CELL, 4);
@@ -5711,687 +6298,1653 @@ function drawNumDecal(vid){
   ctx.fillText(n, 0, 0.5);
   ctx.restore();
 }
+/* ---- 🎨 car-detailing toolkit — shared glossy-body helpers (used by every vehicle body) ----
+   `outline` is a fn that traces the car silhouette (nose = +x). Recipe per vehicle:
+   carPaint(color, outline) → gimmick (clipped to outline) → carRim(outline) →
+   carCanopy()/carHeadlights()/carSpecular(). Keeps every car lit consistently + readable small. */
+function carPaint(bodyCol, outline){
+  ctx.save(); outline(); ctx.clip();
+  ctx.fillStyle = bodyCol; ctx.fillRect(-24,-13,48,26);
+  let g = ctx.createLinearGradient(-13,-10,13,10);                 // curved surface: hot top-left → deep bottom-right
+  g.addColorStop(0,"rgba(255,255,255,0.44)"); g.addColorStop(0.34,"rgba(255,255,255,0.07)");
+  g.addColorStop(0.6,"rgba(0,0,0,0.06)"); g.addColorStop(1,"rgba(0,0,0,0.46)");
+  ctx.fillStyle = g; ctx.fillRect(-24,-13,48,26);
+  let spine = ctx.createLinearGradient(0,-11,0,0);                 // glossy spine sheen
+  spine.addColorStop(0,"rgba(255,255,255,0.40)"); spine.addColorStop(1,"rgba(255,255,255,0)");
+  ctx.fillStyle = spine; ctx.fillRect(-22,-11,44,11);
+  ctx.globalAlpha = 0.14; ctx.fillStyle = (game.lv && game.lv.hue) || "#5a6cff";   // world-colour bounce (shadow side)
+  ctx.fillRect(-22,4,44,9); ctx.globalAlpha = 1;
+  let ao = ctx.createLinearGradient(0,12,0,4);                     // ground-contact ambient occlusion
+  ao.addColorStop(0,"rgba(0,0,0,0.32)"); ao.addColorStop(1,"rgba(0,0,0,0)");
+  ctx.fillStyle = ao; ctx.fillRect(-22,4,44,8);
+  ctx.restore();
+}
+function carRim(outline){
+  let rim = ctx.createLinearGradient(-17,-9.5,17,9.5);
+  rim.addColorStop(0,"rgba(255,255,255,0.6)"); rim.addColorStop(0.5,"rgba(255,255,255,0.06)");
+  rim.addColorStop(0.55,"rgba(0,0,0,0.06)"); rim.addColorStop(1,"rgba(0,0,0,0.48)");
+  ctx.strokeStyle = rim; ctx.lineWidth = 1.1; outline(); ctx.stroke();
+}
+function carCanopy(w,h){ w=w||16; h=h||16; const r=Math.min(w,h)*0.34;
+  ctx.fillStyle = "#0f1626"; ctx.beginPath(); ctx.roundRect(-w/2,-h/2,w,h,r); ctx.fill();
+  let cg = ctx.createLinearGradient(-w/2,-h/2,w/2,h/2);
+  cg.addColorStop(0,"rgba(120,170,225,0.55)"); cg.addColorStop(0.5,"rgba(30,48,80,0.2)"); cg.addColorStop(1,"rgba(4,7,14,0.5)");
+  ctx.fillStyle = cg; ctx.beginPath(); ctx.roundRect(-w/2,-h/2,w,h,r); ctx.fill();
+  ctx.save(); ctx.beginPath(); ctx.roundRect(-w/2,-h/2,w,h,r); ctx.clip();
+  ctx.fillStyle = "rgba(255,255,255,0.22)";
+  ctx.beginPath(); ctx.moveTo(-w/2,-2); ctx.lineTo(-2,-h/2); ctx.lineTo(2,-h/2); ctx.lineTo(-4,-2); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+function carHeadlights(nx,dy){ nx=nx==null?12.2:nx; dy=dy==null?5:dy;
+  for(const ly of [-dy,dy]){
+    let hl = ctx.createRadialGradient(nx,ly,0.2, nx,ly,2.6);
+    hl.addColorStop(0,"rgba(255,252,225,0.95)"); hl.addColorStop(0.5,"rgba(255,238,170,0.7)"); hl.addColorStop(1,"rgba(255,220,120,0)");
+    ctx.fillStyle = hl; ctx.beginPath(); ctx.ellipse(nx,ly,2.3,1.8,0,0,TAU); ctx.fill();
+  }
+}
+function carSpecular(x,y){ x=x==null?-8:x; y=y==null?-6.5:y;
+  let sp = ctx.createRadialGradient(x,y,0, x,y,9);
+  sp.addColorStop(0,"rgba(255,255,255,0.55)"); sp.addColorStop(1,"rgba(255,255,255,0)");
+  ctx.fillStyle = sp; ctx.beginPath(); ctx.ellipse(x,y,7,4,-0.32,0,TAU); ctx.fill();
+}
 function drawVehicleBody(vid){
   if(vid==="taxi"){
-    // body — top-left lit gradient over the same rounded shape
-    const bg=ctx.createLinearGradient(-17,-9.5,17,9.5);
-    bg.addColorStop(0,"#ffe6a0"); bg.addColorStop(0.5,"#ffc93c"); bg.addColorStop(1,"#d18f1a");
-    ctx.fillStyle=bg; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,6); ctx.fill();
-    // contact / ground-seat darkening at the very bottom
-    ctx.fillStyle="rgba(0,0,0,0.14)"; ctx.beginPath(); ctx.roundRect(-15,7.4,30,2.4,2); ctx.fill();
-    // top sheen band fading down
-    const sh=ctx.createLinearGradient(0,-9.5,0,-1.5);
-    sh.addColorStop(0,"rgba(255,255,255,0.34)"); sh.addColorStop(1,"rgba(255,255,255,0)");
-    ctx.fillStyle=sh; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,8,6); ctx.fill();
-    // signature checker band (unchanged)
-    ctx.fillStyle="#12151f";
-    for(let i=0;i<8;i++){ const x=-15+i*4; ctx.fillRect(x, i%2? -9.5:-6.7, 4, 2.8); ctx.fillRect(x, i%2? 6.7:3.9, 4, 2.8); }
-    // specular shine dot near top-left
-    const sp=ctx.createRadialGradient(-9,-6,0,-9,-6,6.5);
-    sp.addColorStop(0,"rgba(255,255,255,0.55)"); sp.addColorStop(1,"rgba(255,255,255,0)");
-    ctx.fillStyle=sp; ctx.beginPath(); ctx.ellipse(-9,-6,6.5,3,0,0,TAU); ctx.fill();
-    // glossy cockpit: dark glass + diagonal reflections
-    ctx.fillStyle="#141a2b"; ctx.beginPath(); ctx.roundRect(-6,-6,12,12,4); ctx.fill();
-    ctx.save(); ctx.beginPath(); ctx.roundRect(-6,-6,12,12,4); ctx.clip();
-    ctx.fillStyle="rgba(150,180,225,0.5)"; ctx.beginPath(); ctx.moveTo(-6,-2); ctx.lineTo(-2,-6); ctx.lineTo(1,-6); ctx.lineTo(-6,1); ctx.closePath(); ctx.fill();
-    ctx.fillStyle="rgba(150,180,225,0.26)"; ctx.beginPath(); ctx.moveTo(-6,4); ctx.lineTo(2,-6); ctx.lineTo(4,-6); ctx.lineTo(-6,6); ctx.closePath(); ctx.fill();
+    const outline = () => {                                   // boxy sedan silhouette (nose = +x)
+      ctx.beginPath();
+      ctx.moveTo(17,0);
+      ctx.bezierCurveTo(16.8,-6, 15,-9, 11,-9.3);
+      ctx.lineTo(-13,-9.3); ctx.quadraticCurveTo(-17,-9, -17,-5.5);
+      ctx.lineTo(-17,5.5); ctx.quadraticCurveTo(-17,9, -13,9.3);
+      ctx.lineTo(11,9.3); ctx.bezierCurveTo(15,9, 16.8,6, 17,0);
+      ctx.closePath();
+    };
+    carPaint("#ffc93c", outline);
+    // ── signature: twin checker bands + chrome moldings (crisp NYC-cab, clipped to body) ──
+    ctx.save(); outline(); ctx.clip();
+    const cw=3.4;                                             // crisper, more-square 2-row checkerboard
+    for(let i=0;i<11;i++){ const x=-18.7+i*cw;
+      ctx.fillStyle="#141826";
+      ctx.fillRect(x, i%2?-9.4:-6.85, cw, 2.55);             // top band (hi/lo checker rows)
+      ctx.fillRect(x, i%2?4.3:6.85, cw, 2.55);              // bottom band (mirrored)
+    }
+    ctx.fillStyle="rgba(255,255,255,0.5)";                   // bright chrome moldings bounding the bands
+    ctx.fillRect(-18.7,-4.55,37.4,0.55); ctx.fillRect(-18.7,4,37.4,0.55);
+    ctx.fillStyle="rgba(255,255,255,0.16)";                  // faint outer chrome edges
+    ctx.fillRect(-18.7,-9.55,37.4,0.5); ctx.fillRect(-18.7,9.05,37.4,0.5);
     ctx.restore();
-    // amber roof light with a lit top edge
-    const rl=ctx.createLinearGradient(0,-2.5,0,2.5); rl.addColorStop(0,"#fff0b0"); rl.addColorStop(1,"#e0a520");
-    ctx.fillStyle=rl; ctx.fillRect(-1.5,-2.5,5,5);
-    ctx.fillStyle="rgba(255,255,255,0.5)"; ctx.fillRect(-1.5,-2.5,5,1);
-    // rim light: bright top+left, dark bottom+right to seat it
-    ctx.lineWidth=1;
-    ctx.strokeStyle="rgba(255,255,255,0.45)";
-    ctx.beginPath(); ctx.moveTo(-10,-9.2); ctx.lineTo(10,-9.2); ctx.moveTo(-16.7,-3); ctx.lineTo(-16.7,3); ctx.stroke();
-    ctx.strokeStyle="rgba(0,0,0,0.28)";
-    ctx.beginPath(); ctx.moveTo(-10,9.2); ctx.lineTo(10,9.2); ctx.moveTo(16.7,-3); ctx.lineTo(16.7,3); ctx.stroke();
+    carRim(outline);
+    carCanopy(15,15);
+    ctx.strokeStyle="rgba(205,218,240,0.55)"; ctx.lineWidth=1;   // clean chrome windshield frame around the number
+    ctx.beginPath(); ctx.roundRect(-7.5,-7.5,15,15,5.1); ctx.stroke();
+    carHeadlights(13,5);
+    carSpecular();
+    let pin=ctx.createRadialGradient(-4.6,-4.6,0, -4.6,-4.6,1.5);  // crisp hot pin-point glint (wet gloss)
+    pin.addColorStop(0,"rgba(255,255,255,0.95)"); pin.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=pin; ctx.beginPath(); ctx.arc(-4.6,-4.6,1.5,0,TAU); ctx.fill();
   }
   else if(vid==="banana"){
-    // body — lit yellow gradient over the same rounded shape
-    const bg=ctx.createLinearGradient(-17,-7,17,7);
-    bg.addColorStop(0,"#fff2a0"); bg.addColorStop(0.5,"#ffe135"); bg.addColorStop(1,"#d9b41c");
-    ctx.fillStyle=bg; ctx.beginPath(); ctx.roundRect(-17,-7,34,14,7); ctx.fill();
-    // rounded underside shading (belly) — replaces the flat #e8c92e band
-    ctx.save(); ctx.beginPath(); ctx.roundRect(-17,-7,34,14,7); ctx.clip();
-    const belly=ctx.createLinearGradient(0,0,0,7);
-    belly.addColorStop(0,"rgba(150,110,30,0)"); belly.addColorStop(1,"rgba(150,110,30,0.42)");
-    ctx.fillStyle=belly; ctx.fillRect(-17,0,34,7);
-    ctx.restore();
-    // top sheen fading down
-    const sh=ctx.createLinearGradient(0,-7,0,-0.5);
-    sh.addColorStop(0,"rgba(255,255,255,0.4)"); sh.addColorStop(1,"rgba(255,255,255,0)");
-    ctx.fillStyle=sh; ctx.beginPath(); ctx.roundRect(-16,-7,32,6,6); ctx.fill();
-    // ridge seams: original brown seam + a light highlight ridge above it
-    ctx.strokeStyle="rgba(120,84,40,0.28)"; ctx.lineWidth=1.2;
-    ctx.beginPath(); ctx.moveTo(-13,-2.6); ctx.lineTo(13,-2.6); ctx.stroke();
-    ctx.strokeStyle="rgba(255,255,255,0.3)"; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.moveTo(-12,-4.2); ctx.lineTo(12,-4.2); ctx.stroke();
-    // specular shine near top-left
-    const sp=ctx.createRadialGradient(-8,-4.2,0,-8,-4.2,6);
-    sp.addColorStop(0,"rgba(255,255,255,0.6)"); sp.addColorStop(1,"rgba(255,255,255,0)");
-    ctx.fillStyle=sp; ctx.beginPath(); ctx.ellipse(-8,-4.2,6,2.4,0,0,TAU); ctx.fill();
-    // brown stem (left) & tip (right) — now 3D nubs, lit top-left
-    for(const [nx,ny,nr] of [[-16.5,0,3],[16.5,0,2.4]]){
-      const ng=ctx.createRadialGradient(nx-nr*0.4,ny-nr*0.4,0,nx,ny,nr);
-      ng.addColorStop(0,"#8a6440"); ng.addColorStop(1,"#4f3620");
-      ctx.fillStyle=ng; ctx.beginPath(); ctx.arc(nx,ny,nr,0,TAU); ctx.fill();
-    }
-    // glossy cockpit
-    ctx.fillStyle="#141a2b"; ctx.beginPath(); ctx.roundRect(-5,-4,10,8,3); ctx.fill();
-    ctx.save(); ctx.beginPath(); ctx.roundRect(-5,-4,10,8,3); ctx.clip();
-    ctx.fillStyle="rgba(150,180,225,0.5)"; ctx.beginPath(); ctx.moveTo(-5,-1); ctx.lineTo(-1,-4); ctx.lineTo(1.5,-4); ctx.lineTo(-5,1.5); ctx.closePath(); ctx.fill();
-    ctx.restore();
-    // rim light
-    ctx.lineWidth=1;
-    ctx.strokeStyle="rgba(255,255,255,0.5)";
-    ctx.beginPath(); ctx.moveTo(-9,-6.7); ctx.lineTo(9,-6.7); ctx.stroke();
-    ctx.strokeStyle="rgba(0,0,0,0.25)";
-    ctx.beginPath(); ctx.moveTo(-9,6.7); ctx.lineTo(9,6.7); ctx.stroke();
+    // 🍌 BANANA — a confident ripe crescent (nose = +x): curled tips, fat hanging belly
+const outline = () => {
+  ctx.beginPath();
+  ctx.moveTo(17.6,-3.6);                                  // right tip — the blossom-end nose, curled up
+  ctx.bezierCurveTo(13.5,-9.4, 6,-10.4, 0,-10.4);         // outer back: shoulder up to the crown
+  ctx.bezierCurveTo(-6,-10.4, -13.5,-9.4, -17.6,-3.6);    // crown down to the left tip (stem end)
+  ctx.bezierCurveTo(-14.2,2, -8,9.3, 0,9.5);              // belly: left tip down to the low centre
+  ctx.bezierCurveTo(8,9.3, 14.2,2, 17.6,-3.6);            // belly back up to the nose
+  ctx.closePath();
+};
+carPaint("#ffe135", outline);                            // ripe banana yellow, lit & glossy
+
+// ── peel detailing: ripening tint, two lengthwise ridges, a few soft freckles (clipped) ──
+ctx.save(); outline(); ctx.clip();
+let ripen = ctx.createLinearGradient(-17,0, 17,0);       // green at the stem end → warm tan at the nose
+ripen.addColorStop(0,"rgba(150,205,70,0.24)"); ripen.addColorStop(0.24,"rgba(150,205,70,0)");
+ripen.addColorStop(0.78,"rgba(226,150,64,0)"); ripen.addColorStop(1,"rgba(220,138,52,0.22)");
+ctx.fillStyle=ripen; ctx.fillRect(-20,-12,40,24);
+ctx.lineCap="round";
+for(const [x0,y0,cx,cy,x1,y1] of [[-12.5,-4.6,0,-7.6,12.5,-4.6],[-12.5,2.4,0,6.6,12.5,2.4]]){
+  ctx.strokeStyle="rgba(120,84,40,0.28)"; ctx.lineWidth=1.3;                 // ridge seam
+  ctx.beginPath(); ctx.moveTo(x0,y0); ctx.quadraticCurveTo(cx,cy,x1,y1); ctx.stroke();
+  ctx.strokeStyle="rgba(255,255,255,0.38)"; ctx.lineWidth=0.9;              // crisp highlight riding the ridge
+  ctx.beginPath(); ctx.moveTo(x0,y0-1.2); ctx.quadraticCurveTo(cx,cy-1.2,x1,y1-1.2); ctx.stroke();
+}
+ctx.fillStyle="rgba(96,62,28,0.42)";                                        // subtle ripeness freckles (off the roundel)
+for(const [fx,fy,fr] of [[-10,-5.6,0.8],[-11.4,-1.4,0.6],[9.2,-6,0.7],[11,-2.2,0.55]]){
+  ctx.beginPath(); ctx.ellipse(fx,fy,fr,fr*0.78,0.5,0,TAU); ctx.fill();
+}
+ctx.restore();
+
+carRim(outline);
+carCanopy(14,13);                                        // dark glass framing the number roundel
+carHeadlights(12,4);                                     // twin lenses on the fatter nose shoulders
+carSpecular();                                           // broad glossy sheen on the lit crown
+let pin = ctx.createRadialGradient(-8.6,-7.4,0, -8.6,-7.4,1.9);   // one hot pin-point — a wet catchlight
+pin.addColorStop(0,"rgba(255,255,255,0.95)"); pin.addColorStop(0.5,"rgba(255,255,255,0.5)"); pin.addColorStop(1,"rgba(255,255,255,0)");
+ctx.fillStyle=pin; ctx.beginPath(); ctx.arc(-8.6,-7.4,1.9,0,TAU); ctx.fill();
+
+// ── stem nub sprouting up-out of the left tip (drawn on top) ──
+ctx.save();
+ctx.translate(-16.0,-4.2); ctx.rotate(-0.34);           // lean the nub up-&-out of the tip
+let stemG = ctx.createLinearGradient(-1.7,0, 1.7,0);    // cylindrical brown stub
+stemG.addColorStop(0,"#3f2913"); stemG.addColorStop(0.4,"#946a3c"); stemG.addColorStop(0.54,"#b58a54"); stemG.addColorStop(1,"#57391d");
+ctx.fillStyle=stemG; ctx.beginPath(); ctx.roundRect(-1.7,-5.8,3.4,6.4,1.5); ctx.fill();
+ctx.fillStyle="#33210f"; ctx.beginPath(); ctx.ellipse(0,-5.6,1.7,0.85,0,0,TAU); ctx.fill();   // dry cut end
+ctx.strokeStyle="rgba(255,232,196,0.5)"; ctx.lineWidth=0.7;                                    // lit edge streak
+ctx.beginPath(); ctx.moveTo(0.7,-5); ctx.lineTo(0.7,0.2); ctx.stroke();
+ctx.restore();
+
+// ── cute little leaf off the stem base ──
+let leafG = ctx.createLinearGradient(-15.5,-7.5, -9,-11.6);
+leafG.addColorStop(0,"#8fd94f"); leafG.addColorStop(1,"#3f8f22");
+ctx.fillStyle=leafG;
+ctx.beginPath();
+ctx.moveTo(-15.4,-7.2);
+ctx.quadraticCurveTo(-13.8,-11.8, -8.8,-11.2);          // upper edge out to the leaf tip
+ctx.quadraticCurveTo(-12,-8.8, -15.4,-7.2);             // lower edge back to the base
+ctx.closePath(); ctx.fill();
+ctx.strokeStyle="rgba(24,64,16,0.55)"; ctx.lineWidth=0.6;                                       // centre vein
+ctx.beginPath(); ctx.moveTo(-14.9,-7.6); ctx.quadraticCurveTo(-11.6,-10, -9,-11); ctx.stroke();
+ctx.strokeStyle="rgba(230,255,190,0.4)"; ctx.lineWidth=0.5;                                     // leaf sheen
+ctx.beginPath(); ctx.moveTo(-14.4,-8.4); ctx.quadraticCurveTo(-11.8,-10.4, -9.4,-11); ctx.stroke();
+
+// ── dark blossom cap on the nose tip ──
+let tipG = ctx.createRadialGradient(16.8,-3.6,0, 18.7,-3,2.7);
+tipG.addColorStop(0,"#9c7048"); tipG.addColorStop(1,"#3c2814");
+ctx.fillStyle=tipG;
+ctx.beginPath();
+ctx.moveTo(15.4,-4.8);
+ctx.quadraticCurveTo(19.1,-3.9, 18.7,-1.3);
+ctx.quadraticCurveTo(16.8,-1.9, 15.3,-2.1);
+ctx.closePath(); ctx.fill();
+ctx.strokeStyle="rgba(255,228,190,0.4)"; ctx.lineWidth=0.6;                                     // tiny lit edge
+ctx.beginPath(); ctx.moveTo(15.6,-4.4); ctx.quadraticCurveTo(18.4,-3.7, 18.6,-1.9); ctx.stroke();
   }
   else if(vid==="tractor"){
-    // tires — shaded rubber (top lighter) over the same rounded rects
-    for(const [tx,ty,tw,th,tr] of [[-16,-14,11,9,3],[-16,5,11,9,3],[8,-9.5,7,5,2],[8,4.5,7,5,2]]){
-      const tg=ctx.createLinearGradient(0,ty,0,ty+th);
-      tg.addColorStop(0,"#2b2f3d"); tg.addColorStop(1,"#0c0e15");
-      ctx.fillStyle=tg; ctx.beginPath(); ctx.roundRect(tx,ty,tw,th,tr); ctx.fill();
-      ctx.fillStyle="rgba(255,255,255,0.12)"; ctx.beginPath(); ctx.roundRect(tx+1,ty+0.6,tw-2,1.6,tr*0.5); ctx.fill();
+    // ── OWN WHEELS (ownWheels): BIG chevron-lug rear drive tires + small steer fronts on classic yellow rims ──
+    const rearTires=[[-17.5,-14.6,12.6,9.9],[-17.5,4.7,12.6,9.9]];
+    const frontTires=[[8,-11,7.6,6],[8,5,7.6,6]];
+    for(const [tx,ty,tw,th] of rearTires.concat(frontTires)){                     // dimensional rubber
+      let tg=ctx.createRadialGradient(tx+tw*0.34,ty+th*0.3,1, tx+tw*0.5,ty+th*0.5,tw*0.95);
+      tg.addColorStop(0,"#3d424f"); tg.addColorStop(0.6,"#1b1e26"); tg.addColorStop(1,"#0a0c11");
+      ctx.fillStyle=tg; ctx.beginPath(); ctx.roundRect(tx,ty,tw,th,3.2); ctx.fill();
+      ctx.strokeStyle="rgba(0,0,0,0.5)"; ctx.lineWidth=0.9; ctx.beginPath(); ctx.roundRect(tx,ty,tw,th,3.2); ctx.stroke();  // crisp sidewall
     }
-    // rear hubs — lit metal
-    for(const [hx,hy] of [[-10.5,-9.5],[-10.5,9.5]]){
-      const hg=ctx.createRadialGradient(hx-0.8,hy-0.8,0,hx,hy,2.4);
-      hg.addColorStop(0,"#ffe98a"); hg.addColorStop(1,"#d19b12");
-      ctx.fillStyle=hg; ctx.beginPath(); ctx.arc(hx,hy,2.2,0,TAU); ctx.fill();
+    ctx.lineCap="round"; ctx.lineJoin="round";                                    // CHUNKY agricultural chevron lugs (rear)
+    for(const [tx,ty,tw,th] of rearTires){ const cy=ty+th/2;
+      for(let k=0;k<5;k++){ const px=tx+1.9+k*(tw-3.6)/5;
+        ctx.strokeStyle="rgba(3,5,9,0.92)"; ctx.lineWidth=2.7;                     // deep lug groove
+        ctx.beginPath(); ctx.moveTo(px,ty+1.3); ctx.lineTo(px+3.2,cy); ctx.lineTo(px,ty+th-1.3); ctx.stroke();
+        ctx.strokeStyle="rgba(132,144,168,0.28)"; ctx.lineWidth=1.0;               // raised rubber crown (top-left lit)
+        ctx.beginPath(); ctx.moveTo(px-1.3,ty+1.3); ctx.lineTo(px+1.9,cy); ctx.lineTo(px-1.3,ty+th-1.3); ctx.stroke();
+      }
     }
-    // main body — green gradient, top-left lit
-    const bg=ctx.createLinearGradient(-13,-7.5,7,7.5);
-    bg.addColorStop(0,"#54c265"); bg.addColorStop(0.5,"#2f8f3e"); bg.addColorStop(1,"#1c5f28");
-    ctx.fillStyle=bg; ctx.beginPath(); ctx.roundRect(-13,-7.5,20,15,3); ctx.fill();
-    // body top sheen
-    const sh=ctx.createLinearGradient(0,-7.5,0,-1);
-    sh.addColorStop(0,"rgba(255,255,255,0.28)"); sh.addColorStop(1,"rgba(255,255,255,0)");
-    ctx.fillStyle=sh; ctx.beginPath(); ctx.roundRect(-13,-7.5,20,6,3); ctx.fill();
-    // hood — darker green gradient with a lit top
-    const hg2=ctx.createLinearGradient(3,-5,17,5);
-    hg2.addColorStop(0,"#3f9f4d"); hg2.addColorStop(1,"#1e6a2a");
-    ctx.fillStyle=hg2; ctx.beginPath(); ctx.roundRect(3,-5,14,10,3); ctx.fill();
-    ctx.fillStyle="rgba(255,255,255,0.18)"; ctx.beginPath(); ctx.roundRect(3,-5,14,3,3); ctx.fill();
-    // yellow hood stripe with sheen
-    const yg=ctx.createLinearGradient(0,-1.2,0,1.2);
-    yg.addColorStop(0,"#ffe87a"); yg.addColorStop(1,"#e0a814");
-    ctx.fillStyle=yg; ctx.fillRect(3,-1.2,14,2.4);
-    // specular on body
-    const sp=ctx.createRadialGradient(-8,-4.5,0,-8,-4.5,6);
-    sp.addColorStop(0,"rgba(255,255,255,0.5)"); sp.addColorStop(1,"rgba(255,255,255,0)");
-    ctx.fillStyle=sp; ctx.beginPath(); ctx.ellipse(-8,-4.5,6,2.6,0,0,TAU); ctx.fill();
-    // glossy cab window
-    ctx.fillStyle="#141a2b"; ctx.beginPath(); ctx.roundRect(-10,-4.5,9,9,2); ctx.fill();
-    ctx.save(); ctx.beginPath(); ctx.roundRect(-10,-4.5,9,9,2); ctx.clip();
-    ctx.fillStyle="rgba(150,180,225,0.5)"; ctx.beginPath(); ctx.moveTo(-10,-1); ctx.lineTo(-6,-4.5); ctx.lineTo(-3.5,-4.5); ctx.lineTo(-10,2); ctx.closePath(); ctx.fill();
+    ctx.lineCap="butt"; ctx.lineJoin="miter";
+    ctx.strokeStyle="rgba(8,10,14,0.7)"; ctx.lineWidth=1.1;                        // ribbed steer-tire grooves (front)
+    for(const [tx,ty,tw,th] of frontTires) for(let k=1;k<3;k++){ ctx.beginPath(); ctx.moveTo(tx+tw*k/3,ty+0.7); ctx.lineTo(tx+tw*k/3,ty+th-0.7); ctx.stroke(); }
+    for(const [tx,ty,tw,th] of rearTires.concat(frontTires)){                      // classic YELLOW cast rims
+      const hx=tx+tw/2, hy=ty+th/2, hr=Math.min(tw,th)*0.3;
+      ctx.fillStyle="#f2c02e"; ctx.beginPath(); ctx.arc(hx,hy,hr,0,TAU); ctx.fill();
+      ctx.strokeStyle="rgba(58,38,6,0.6)"; ctx.lineWidth=0.8; ctx.beginPath(); ctx.arc(hx,hy,hr,0,TAU); ctx.stroke();   // crisp rim edge
+      ctx.fillStyle="#c68812"; ctx.beginPath(); ctx.arc(hx,hy,hr*0.52,0,TAU); ctx.fill();                              // recessed hub
+      if(tw>10){ ctx.fillStyle="#7c5410";                                          // lug bolts (rear rims only)
+        for(let b=0;b<5;b++){ const a=b/5*TAU; ctx.beginPath(); ctx.arc(hx+Math.cos(a)*hr*0.72, hy+Math.sin(a)*hr*0.72, hr*0.13,0,TAU); ctx.fill(); } }
+      ctx.fillStyle="#6f4c0e"; ctx.beginPath(); ctx.arc(hx,hy,hr*0.22,0,TAU); ctx.fill();                              // center cap
+      ctx.fillStyle="rgba(255,255,255,0.72)"; ctx.beginPath(); ctx.arc(hx-hr*0.32,hy-hr*0.32,hr*0.2,0,TAU); ctx.fill(); // hub glint
+    }
+
+    // ── SCULPTED SILHOUETTE — narrow engine hood swelling to a wide, tall rear cab; blunt grille nose (nose=+x) ──
+    const outline = () => {
+      ctx.beginPath();
+      ctx.moveTo(15.2,-3.4);                               // flat blunt grille face (top)
+      ctx.quadraticCurveTo(15.4,-5.1, 13.4,-5.5);          // top nose corner → hood shoulder
+      ctx.lineTo(3.4,-6.5);                                // hood top (narrow)
+      ctx.quadraticCurveTo(1.7,-6.7, 1.5,-8.4);            // step up onto the cab
+      ctx.lineTo(-12.6,-8.7);                              // cab top (wide)
+      ctx.quadraticCurveTo(-14.8,-8.8, -14.8,-6.3);        // rear-top corner
+      ctx.lineTo(-14.8,6.3);                               // rear face
+      ctx.quadraticCurveTo(-14.8,8.8, -12.6,8.7);          // rear-bottom corner
+      ctx.lineTo(1.5,8.4);                                 // cab bottom
+      ctx.quadraticCurveTo(1.7,6.7, 3.4,6.5);              // step down to hood
+      ctx.lineTo(13.4,5.5);                                // hood bottom
+      ctx.quadraticCurveTo(15.4,5.1, 15.2,3.4);            // bottom nose corner
+      ctx.lineTo(15.2,-3.4);                               // up the flat grille face
+      ctx.closePath();
+    };
+    carPaint("#2f9e3f", outline);
+
+    // ── SIGNATURE FARM DETAILING (clipped to the body) ──
+    ctx.save(); outline(); ctx.clip();
+    ctx.fillStyle="rgba(0,32,6,0.26)"; ctx.fillRect(-14.8,-9,4.4,18);            // darker cast at the rear hitch
+    ctx.strokeStyle="rgba(0,0,0,0.32)"; ctx.lineWidth=1;                         // hood↔cab panel seam
+    ctx.beginPath(); ctx.moveTo(2,-7.8); ctx.lineTo(2,7.8); ctx.stroke();
+    ctx.strokeStyle="rgba(255,255,255,0.14)"; ctx.lineWidth=0.7;                 // seam highlight lip
+    ctx.beginPath(); ctx.moveTo(2.7,-7.6); ctx.lineTo(2.7,7.6); ctx.stroke();
+    ctx.strokeStyle="rgba(0,0,0,0.26)"; ctx.lineWidth=0.9;                       // engine hood louvers (flank the stripe)
+    for(let i=0;i<4;i++){ const lx=4.6+i*1.9; ctx.beginPath(); ctx.moveTo(lx,-4.8); ctx.lineTo(lx,4.8); ctx.stroke(); }
+    let yg=ctx.createLinearGradient(0,-1.9,0,1.9);                               // signature YELLOW hood stripe
+    yg.addColorStop(0,"#fff0a2"); yg.addColorStop(0.45,"#f6c724"); yg.addColorStop(1,"#cf8f10");
+    ctx.fillStyle=yg; ctx.fillRect(2,-1.8,8.4,3.6);
+    ctx.fillStyle="rgba(255,255,255,0.4)"; ctx.fillRect(2,-1.8,8.4,0.9);         // stripe top gloss
+    ctx.fillStyle="rgba(0,0,0,0.22)"; ctx.fillRect(2,1.3,8.4,0.5);               // stripe bottom shadow
+    let gr=ctx.createLinearGradient(10.4,-5,15.2,5);                             // crisp CHROME radiator grille at the nose
+    gr.addColorStop(0,"#f5f8fd"); gr.addColorStop(0.5,"#c2cad9"); gr.addColorStop(1,"#8992a6");
+    ctx.fillStyle=gr; ctx.beginPath(); ctx.roundRect(10.5,-5.0,4.4,10.0,1.8); ctx.fill();
+    ctx.strokeStyle="rgba(22,28,40,0.72)"; ctx.lineWidth=0.9; ctx.stroke();      // dark chrome bezel edge
+    ctx.strokeStyle="rgba(28,34,46,0.8)"; ctx.lineWidth=0.85;                    // horizontal grille slats
+    for(let i=0;i<5;i++){ const sy=-3.6+i*1.8; ctx.beginPath(); ctx.moveTo(10.9,sy); ctx.lineTo(14.5,sy); ctx.stroke(); }
+    ctx.fillStyle="rgba(255,255,255,0.92)"; ctx.beginPath(); ctx.ellipse(11.7,-3.1,0.95,0.55,-0.4,0,TAU); ctx.fill();  // hot pin-point specular
     ctx.restore();
-    // exhaust knob — metallic
-    const eg=ctx.createRadialGradient(4.3,-7.5,0,5,-6.8,1.9);
-    eg.addColorStop(0,"#c3ccde"); eg.addColorStop(1,"#5a6274");
-    ctx.fillStyle=eg; ctx.beginPath(); ctx.arc(5,-6.8,1.7,0,TAU); ctx.fill();
-    // faint contact darkening along body bottom
-    ctx.fillStyle="rgba(0,0,0,0.15)"; ctx.beginPath(); ctx.roundRect(-11,5.6,16,1.8,1.5); ctx.fill();
-    // rim light: bright top+left, dark bottom+right
-    ctx.lineWidth=1;
-    ctx.strokeStyle="rgba(255,255,255,0.4)";
-    ctx.beginPath(); ctx.moveTo(-10,-7.3); ctx.lineTo(4,-7.3); ctx.moveTo(-12.7,-4); ctx.lineTo(-12.7,4); ctx.stroke();
-    ctx.strokeStyle="rgba(0,0,0,0.28)";
-    ctx.beginPath(); ctx.moveTo(-10,7.3); ctx.lineTo(4,7.3); ctx.stroke();
+
+    carRim(outline);
+    carCanopy(13,12);                          // operator cab glass — frames the number roundel
+    carHeadlights(13.6,4.6);                   // front work lamps flanking the grille
+    carSpecular();
+
+    // ── HERO: tall chrome EXHAUST STACK on the hood, coughing an animated diesel puff (top-down) ──
+    const ex=8.0, ey=-6.7;
+    for(let i=0;i<3;i++){                                                        // drifting diesel smoke, up-forward
+      const ph=(game.t*0.85+i*0.34)%1;
+      ctx.fillStyle="rgba(70,74,82,"+(0.32*(1-ph)).toFixed(3)+")";
+      ctx.beginPath(); ctx.arc(ex+ph*3, ey-1.6-ph*6.4, 1+ph*2.7, 0, TAU); ctx.fill();
+    }
+    let stg=ctx.createRadialGradient(ex-0.7,ey-0.7,0.2, ex,ey,2.4);             // chrome stack cylinder (top-down)
+    stg.addColorStop(0,"#f7fafe"); stg.addColorStop(0.5,"#aeb7c8"); stg.addColorStop(1,"#454d5d");
+    ctx.fillStyle=stg; ctx.beginPath(); ctx.arc(ex,ey,2.15,0,TAU); ctx.fill();
+    ctx.strokeStyle="rgba(230,238,250,0.65)"; ctx.lineWidth=0.7; ctx.beginPath(); ctx.arc(ex,ey,1.65,0,TAU); ctx.stroke();  // polished cap ring
+    ctx.strokeStyle="rgba(16,20,28,0.65)"; ctx.lineWidth=0.8; ctx.beginPath(); ctx.arc(ex,ey,2.15,0,TAU); ctx.stroke();     // dark base ring
+    ctx.fillStyle="#12161d"; ctx.beginPath(); ctx.arc(ex,ey,0.9,0,TAU); ctx.fill();                                         // dark pipe mouth
   }
   else if(vid==="hotdog"){
-    // bun body — warm top-left-lit gradient (replaces flat #e8b06a fill)
-    const g=ctx.createLinearGradient(-14,-9,14,9);
-    g.addColorStop(0,"#f3d3a2"); g.addColorStop(0.5,"#e8b06a"); g.addColorStop(1,"#b0824a");
-    ctx.fillStyle=g; ctx.beginPath(); ctx.roundRect(-16,-9,32,18,9); ctx.fill();
-    // top sheen band, fades down
-    const sh=ctx.createLinearGradient(0,-9,0,-1);
-    sh.addColorStop(0,"rgba(255,246,225,0.5)"); sh.addColorStop(1,"rgba(255,246,225,0)");
-    ctx.fillStyle=sh; ctx.beginPath(); ctx.roundRect(-14,-8.5,28,8,7); ctx.fill();
-    // lower bun crease shade
-    ctx.fillStyle="#c9924c"; ctx.beginPath(); ctx.roundRect(-13,3.6,26,4.4,3); ctx.fill();
-    // sausage — its own rounded gradient (replaces flat #c14b32)
-    const s=ctx.createLinearGradient(0,-4,0,4);
-    s.addColorStop(0,"#d76a4f"); s.addColorStop(0.5,"#c14b32"); s.addColorStop(1,"#8f3822");
-    ctx.fillStyle=s; ctx.beginPath(); ctx.roundRect(-19,-4,38,8,4); ctx.fill();
-    ctx.fillStyle="rgba(255,200,170,0.35)"; ctx.beginPath(); ctx.roundRect(-17,-3.4,34,2,2); ctx.fill();
-    // mustard zigzag: dark cast shadow, base stroke, bright top edge
-    ctx.lineCap="round";
-    ctx.strokeStyle="rgba(120,80,0,0.35)"; ctx.lineWidth=2.4; ctx.beginPath();
-    for(let i=0;i<=6;i++) ctx.lineTo(-15+i*5,(i%2?-2:2)+0.9); ctx.stroke();
-    ctx.strokeStyle="#ffd93b"; ctx.lineWidth=2; ctx.beginPath();
-    for(let i=0;i<=6;i++) ctx.lineTo(-15+i*5, i%2?-2:2); ctx.stroke();
-    ctx.strokeStyle="rgba(255,248,190,0.7)"; ctx.lineWidth=0.8; ctx.beginPath();
-    for(let i=0;i<=6;i++) ctx.lineTo(-15+i*5,(i%2?-2:2)-0.7); ctx.stroke();
-    ctx.lineCap="butt";
-    // specular shine dot, top-left of bun
-    const sp=ctx.createRadialGradient(-8,-5,0,-8,-5,7);
-    sp.addColorStop(0,"rgba(255,255,255,0.55)"); sp.addColorStop(1,"rgba(255,255,255,0)");
-    ctx.fillStyle=sp; ctx.beginPath(); ctx.ellipse(-8,-5,7,4,-0.3,0,TAU); ctx.fill();
-    // rim light (top/left bright) + contact seat (bottom dark)
-    ctx.strokeStyle="rgba(255,255,255,0.4)"; ctx.lineWidth=1; ctx.beginPath(); ctx.roundRect(-15.5,-8.5,31,17,8.5); ctx.stroke();
-    ctx.fillStyle="rgba(0,0,0,0.16)"; ctx.beginPath(); ctx.ellipse(0,8.4,12,2,0,0,TAU); ctx.fill();
+    // 🌭 GLIZZY GT — a plump grilled sausage bedded in a sesame bun, loaded with a bold mustard-&-ketchup squeeze (nose = +x)
+const tw = 0.4 + 0.6*Math.sin(game.t*5);                 // idle grease-glisten twinkle
+const outline = () => {                                   // sculpted bun: tapered ends, bulged belly
+  ctx.beginPath();
+  ctx.moveTo(17.8,0);
+  ctx.bezierCurveTo(17.4,-6, 14,-9.4, 8.5,-9.6);
+  ctx.bezierCurveTo(1,-9.9, -7,-9.9, -12,-9.4);
+  ctx.bezierCurveTo(-15.6,-9, -17.4,-6, -17.4,0);
+  ctx.bezierCurveTo(-17.4,6, -15.6,9, -12,9.4);
+  ctx.bezierCurveTo(-7,9.9, 1,9.9, 8.5,9.6);
+  ctx.bezierCurveTo(14,9.4, 17.4,6, 17.8,0);
+  ctx.closePath();
+};
+carPaint("#e8b06a", outline);                             // golden bun base + shared glossy shading
+
+// ── bun interior + sausage + condiments (all clipped to the bun) ──
+ctx.save(); outline(); ctx.clip();
+
+// two baked crowns catch the light along their crests → the classic "buns hugging the sausage" read
+for(const dir of [-1,1]){
+  const a = dir<0 ? 0.46 : 0.32;                          // top crown brighter (light = top-left)
+  const cg = ctx.createLinearGradient(0,dir*9.6,0,dir*5.4);
+  cg.addColorStop(0,"rgba(120,68,28,0.28)");              // toasted outer rim
+  cg.addColorStop(0.5,"rgba(255,228,170,"+a+")");         // sun-baked crest
+  cg.addColorStop(1,"rgba(255,228,170,0)");
+  ctx.fillStyle = cg; ctx.fillRect(-18, dir<0?-9.6:5.4, 36, 4.2);
+}
+
+// sunken channel bed that seats the sausage
+ctx.fillStyle = "rgba(48,20,8,0.5)";
+ctx.beginPath(); ctx.roundRect(-18.5,-6.2,37,12.4,6); ctx.fill();
+
+// ── the sausage: plump, grilled, glossy ──
+const sausage = () => { ctx.beginPath(); ctx.roundRect(-18.5,-5.4,37,10.8,5.4); };
+const sg = ctx.createLinearGradient(0,-5.4,0,5.4);
+sg.addColorStop(0,"#e58058"); sg.addColorStop(0.45,"#c74c30"); sg.addColorStop(1,"#832d1a");
+ctx.fillStyle = sg; sausage(); ctx.fill();
+
+ctx.save(); sausage(); ctx.clip();
+const ssh = ctx.createLinearGradient(0,-5.4,0,0.8);       // juicy top sheen band
+ssh.addColorStop(0,"rgba(255,222,198,0.62)"); ssh.addColorStop(1,"rgba(255,222,198,0)");
+ctx.fillStyle = ssh; ctx.fillRect(-18.5,-5.4,37,6.2);
+ctx.strokeStyle = "rgba(64,22,8,0.34)"; ctx.lineWidth = 1.6; ctx.lineCap = "round";  // char grill marks
+for(const gx of [-12,-5,2,9]){ ctx.beginPath(); ctx.moveTo(gx-2.6,-4.8); ctx.lineTo(gx+2.6,4.8); ctx.stroke(); }
+const js = ctx.createLinearGradient(0,-3.6,0,-1.2);       // long wet specular streak riding the crown (twinkles)
+js.addColorStop(0,"rgba(255,255,255,"+(0.5*tw+0.14).toFixed(3)+")"); js.addColorStop(1,"rgba(255,255,255,0)");
+ctx.fillStyle = js; ctx.beginPath(); ctx.roundRect(-15,-3.6,30,2.2,1.1); ctx.fill();
+ctx.restore();
+
+// mustard zigzag — bold 3-layer squeeze (cast shadow · bright base · hot top edge)
+ctx.lineJoin = "round"; ctx.lineCap = "round";
+ctx.strokeStyle = "rgba(120,74,0,0.45)"; ctx.lineWidth = 3.0;
+ctx.beginPath(); for(let i=0;i<=7;i++) ctx.lineTo(-16+i*4.6,(i%2?-2.6:2.6)+1.0); ctx.stroke();
+ctx.strokeStyle = "#ffcf2e"; ctx.lineWidth = 2.5;
+ctx.beginPath(); for(let i=0;i<=7;i++) ctx.lineTo(-16+i*4.6, i%2?-2.6:2.6); ctx.stroke();
+ctx.strokeStyle = "rgba(255,252,206,0.82)"; ctx.lineWidth = 1.0;
+ctx.beginPath(); for(let i=0;i<=7;i++) ctx.lineTo(-16+i*4.6,(i%2?-2.6:2.6)-0.9); ctx.stroke();
+// ketchup drizzle — thinner, opposite phase, interlocks with the mustard
+ctx.strokeStyle = "rgba(96,4,0,0.4)"; ctx.lineWidth = 1.9;
+ctx.beginPath(); for(let i=0;i<=7;i++) ctx.lineTo(-14+i*4.6,(i%2?1.9:-1.9)+0.8); ctx.stroke();
+ctx.strokeStyle = "#e5361b"; ctx.lineWidth = 1.5;
+ctx.beginPath(); for(let i=0;i<=7;i++) ctx.lineTo(-14+i*4.6, i%2?1.9:-1.9); ctx.stroke();
+ctx.lineCap = "butt"; ctx.lineJoin = "miter";
+ctx.restore();
+
+carRim(outline);                                          // bun rim light
+
+// ── sesame seeds on the crowns — a shadow + a lit face makes each read 3-D ──
+ctx.save(); outline(); ctx.clip();
+for(const [sx,sy,rot] of [[-9,-7.7,0.35],[-2,-8.2,-0.2],[5,-7.8,0.45],[11,-7,-0.3],[-11,7.1,0.1],[-5,8,-0.3],[3,8.2,0.25],[10,7.2,0.4]]){
+  ctx.save(); ctx.translate(sx,sy); ctx.rotate(rot);
+  ctx.fillStyle = "rgba(120,72,30,0.4)";                  // seed drop shadow
+  ctx.beginPath(); ctx.ellipse(0.2,0.45,1.35,0.72,0,0,TAU); ctx.fill();
+  ctx.fillStyle = "rgba(255,246,214,0.95)";               // seed body
+  ctx.beginPath(); ctx.ellipse(0,0,1.3,0.68,0,0,TAU); ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.9)";                // tiny lit face
+  ctx.beginPath(); ctx.ellipse(-0.32,-0.22,0.5,0.28,0,0,TAU); ctx.fill();
+  ctx.restore();
+}
+ctx.restore();
+
+// ── grilled sausage tips poking out both ends ──
+for(const [nx,dir] of [[17.4,1],[-16.9,-1]]){
+  const ng = ctx.createRadialGradient(nx-dir*0.9,-1.4,0.3, nx,0,5.2);
+  ng.addColorStop(0,"#e6805c"); ng.addColorStop(0.6,"#bf4a30"); ng.addColorStop(1,"#7a2c1a");
+  ctx.fillStyle = ng; ctx.beginPath(); ctx.ellipse(nx,0,2.1,4.7,0,0,TAU); ctx.fill();
+  ctx.strokeStyle = "rgba(50,18,8,0.35)"; ctx.lineWidth = 0.8;   // seared cap ring
+  ctx.beginPath(); ctx.ellipse(nx,0,2.1,4.7,0,0,TAU); ctx.stroke();
+}
+
+carCanopy(13,13);                                         // dark glass seat framing the number roundel
+carHeadlights(12,7);                                      // friendly twin lights on the bun shoulders
+carSpecular(-8,-6);                                       // soft top-left bun highlight
+ctx.fillStyle = "rgba(255,255,255,0.95)";                // crisp hot pin-point — a wet grease bead on the sausage
+ctx.beginPath(); ctx.ellipse(-12,-3.1,0.75,0.45,-0.4,0,TAU); ctx.fill();
   }
   else if(vid==="cart"){
-    // metal basket body — cool top-left-lit gradient (replaces flat #b8c1d8)
-    const g=ctx.createLinearGradient(-13,-9,16,9);
-    g.addColorStop(0,"#e2e6f2"); g.addColorStop(0.5,"#b8c1d8"); g.addColorStop(1,"#828aa6");
-    ctx.fillStyle=g; ctx.beginPath(); ctx.roundRect(-13,-9,29,18,3); ctx.fill();
-    // top sheen
-    const sh=ctx.createLinearGradient(0,-9,0,-2);
-    sh.addColorStop(0,"rgba(255,255,255,0.45)"); sh.addColorStop(1,"rgba(255,255,255,0)");
-    ctx.fillStyle=sh; ctx.beginPath(); ctx.roundRect(-12,-8.5,27,7,2.5); ctx.fill();
-    // wire mesh: dark grooves + light-catch highlight = embossed wires
-    ctx.strokeStyle="rgba(20,25,40,0.28)"; ctx.lineWidth=1;
-    for(let x=-9;x<=13;x+=4.5){ ctx.beginPath(); ctx.moveTo(x,-9); ctx.lineTo(x,9); ctx.stroke(); }
-    for(const y of [-4,1]){ ctx.beginPath(); ctx.moveTo(-13,y); ctx.lineTo(16,y); ctx.stroke(); }
-    ctx.strokeStyle="rgba(255,255,255,0.3)"; ctx.lineWidth=0.7;
-    for(let x=-9;x<=13;x+=4.5){ ctx.beginPath(); ctx.moveTo(x-0.8,-9); ctx.lineTo(x-0.8,9); ctx.stroke(); }
-    for(const y of [-4,1]){ ctx.beginPath(); ctx.moveTo(-13,y-0.8); ctx.lineTo(16,y-0.8); ctx.stroke(); }
-    // handle post — brushed-metal gradient (replaces flat #8b93ad)
-    const p=ctx.createLinearGradient(-18,0,-14,0);
-    p.addColorStop(0,"#aab2c8"); p.addColorStop(1,"#6f768e");
-    ctx.fillStyle=p; ctx.fillRect(-18,-9,4,18);
-    ctx.fillStyle="rgba(255,255,255,0.4)"; ctx.fillRect(-18,-9,1,18);
-    // red grip — sheen + shade (replaces flat #e34a4a)
-    const r=ctx.createLinearGradient(-18,-3.5,-15,3.5);
-    r.addColorStop(0,"#ff7a6a"); r.addColorStop(0.5,"#e34a4a"); r.addColorStop(1,"#b02f2f");
-    ctx.fillStyle=r; ctx.beginPath(); ctx.roundRect(-18,-3.5,3,7,1.4); ctx.fill();
-    ctx.fillStyle="rgba(255,255,255,0.5)"; ctx.fillRect(-17.8,-3,0.8,3);
-    // specular shine dot, top-left
-    const sp=ctx.createRadialGradient(-6,-5,0,-6,-5,7);
-    sp.addColorStop(0,"rgba(255,255,255,0.5)"); sp.addColorStop(1,"rgba(255,255,255,0)");
-    ctx.fillStyle=sp; ctx.beginPath(); ctx.ellipse(-6,-5,7,4,-0.3,0,TAU); ctx.fill();
-    // rim light + contact seat
-    ctx.strokeStyle="rgba(255,255,255,0.4)"; ctx.lineWidth=1; ctx.beginPath(); ctx.roundRect(-12.5,-8.5,28,17,2.5); ctx.stroke();
-    ctx.fillStyle="rgba(0,0,0,0.16)"; ctx.beginPath(); ctx.roundRect(-12,7.6,28,1.4,1.4); ctx.fill();
+    // 🛒 CART RACER — a chrome wire basket bolted onto a racing go-kart chassis (nose = +x)
+    const glint = 0.5 + 0.5*Math.sin(game.t*6);                 // travelling chrome sparkle for idle life
+
+    const outline = () => {                                     // racy basket: pointed front lip → wide open rear
+      ctx.beginPath();
+      ctx.moveTo(17,0);
+      ctx.quadraticCurveTo(16,-4.6, 13,-5.6);
+      ctx.lineTo(-11,-9.4);
+      ctx.quadraticCurveTo(-14,-9.6, -14,-6.6);
+      ctx.lineTo(-14,6.6);
+      ctx.quadraticCurveTo(-14,9.6, -11,9.4);
+      ctx.lineTo(13,5.6);
+      ctx.quadraticCurveTo(16,4.6, 17,0);
+      ctx.closePath();
+    };
+
+    // ── rear frame arms + bright chrome push-handle w/ glossy red rubber grip (drawn behind the basket) ──
+    for(const ay of [-6,6]){
+      const arm = ctx.createLinearGradient(0,ay-1.4,0,ay+1.4);
+      arm.addColorStop(0,"#f2f5ff"); arm.addColorStop(0.5,"#c2cadf"); arm.addColorStop(1,"#666e86");
+      ctx.fillStyle=arm; ctx.beginPath(); ctx.roundRect(-16.5,ay-1.2,4,2.4,1.2); ctx.fill();
+    }
+    const post = ctx.createLinearGradient(-18.6,0,-14.4,0);     // rolled chrome tube (lit top-left, mirror core)
+    post.addColorStop(0,"#8b93ac"); post.addColorStop(0.36,"#f8faff"); post.addColorStop(0.6,"#c0c8de"); post.addColorStop(1,"#5a6280");
+    ctx.fillStyle=post; ctx.beginPath(); ctx.roundRect(-18.6,-9.4,4.2,18.8,2.1); ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,0.7)"; ctx.beginPath(); ctx.roundRect(-18.2,-9,0.85,18,0.42); ctx.fill();
+    const grip = ctx.createLinearGradient(-18.7,-4,-14.4,4);    // glossy red rubber grip (the pop of colour)
+    grip.addColorStop(0,"#ff9585"); grip.addColorStop(0.5,"#e34a4a"); grip.addColorStop(1,"#9d2727");
+    ctx.fillStyle=grip; ctx.beginPath(); ctx.roundRect(-18.7,-4.2,4.4,8.4,2); ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,0.6)"; ctx.beginPath(); ctx.roundRect(-18.2,-3.6,0.9,3.2,0.45); ctx.fill();
+
+    // ── polished silver basket shell ──
+    carPaint("#c4cee2", outline);
+
+    // ── SIGNATURE: chrome mirror-horizon band + embossed diagonal wire-mesh (dark holes, top-left light-catch) ──
+    ctx.save(); outline(); ctx.clip();
+    const chrome = ctx.createLinearGradient(0,-9.4,0,9.4);      // the polished-metal tell: sky glint over a dark horizon
+    chrome.addColorStop(0.00,"rgba(255,255,255,0.46)");
+    chrome.addColorStop(0.30,"rgba(206,220,244,0.08)");
+    chrome.addColorStop(0.45,"rgba(255,255,255,0.40)");
+    chrome.addColorStop(0.51,"rgba(24,34,56,0.34)");
+    chrome.addColorStop(0.58,"rgba(206,222,248,0.30)");
+    chrome.addColorStop(1.00,"rgba(140,160,200,0.30)");
+    ctx.fillStyle=chrome; ctx.fillRect(-20,-10,40,20);
+    ctx.lineCap="round";
+    ctx.strokeStyle="rgba(12,18,34,0.44)"; ctx.lineWidth=1.05;                    // deep grooves = the gaps between wires
+    for(let c=-30;c<=24;c+=4){ ctx.beginPath(); ctx.moveTo(-22,-22+c); ctx.lineTo(20,20+c); ctx.stroke(); }
+    for(let c=-24;c<=30;c+=4){ ctx.beginPath(); ctx.moveTo(-22,22+c); ctx.lineTo(20,-20+c); ctx.stroke(); }
+    ctx.strokeStyle="rgba(255,255,255,0.42)"; ctx.lineWidth=0.7;                   // light catches the upper-left of each wire
+    for(let c=-30;c<=24;c+=4){ ctx.beginPath(); ctx.moveTo(-22.8,-22.8+c); ctx.lineTo(19.2,19.2+c); ctx.stroke(); }
+    for(let c=-24;c<=30;c+=4){ ctx.beginPath(); ctx.moveTo(-22.8,21.2+c); ctx.lineTo(19.2,-20.8+c); ctx.stroke(); }
+    ctx.lineCap="butt";
+    ctx.restore();
+
+    // ── rim light + a rolled tubular top-rail highlight (bright chrome frame) ──
+    carRim(outline);
+    let tr=ctx.createLinearGradient(0,-10,0,-2);
+    tr.addColorStop(0,"rgba(255,255,255,0.82)"); tr.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.strokeStyle=tr; ctx.lineWidth=1.4; outline(); ctx.stroke();
+
+    // ── chrome cage-post caps at the four basket corners ──
+    for(const [px,py] of [[13,-5.4],[13,5.4],[-13.2,-8.4],[-13.2,8.4]]){
+      const cp=ctx.createRadialGradient(px-0.6,py-0.7,0.15,px,py,2.2);
+      cp.addColorStop(0,"#ffffff"); cp.addColorStop(0.45,"#cfd7ea"); cp.addColorStop(1,"#6a7290");
+      ctx.fillStyle=cp; ctx.beginPath(); ctx.ellipse(px,py,1.7,1.7,0,0,TAU); ctx.fill();
+    }
+
+    // ── front chrome bumper bar with a travelling sparkle ──
+    const bp=ctx.createLinearGradient(0,-6,0,6);
+    bp.addColorStop(0,"#ffffff"); bp.addColorStop(0.5,"#c8d0e2"); bp.addColorStop(1,"#828aa6");
+    ctx.fillStyle=bp; ctx.beginPath(); ctx.roundRect(12.4,-5.4,2.6,10.8,1.3); ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,"+(0.35+0.5*glint).toFixed(3)+")";
+    ctx.beginPath(); ctx.ellipse(13.7,-3.4+6.8*glint,0.95,0.7,0,0,TAU); ctx.fill();
+
+    // ── driver pocket (frames the number roundel) + lights + speculars ──
+    carCanopy(14,13);
+    carHeadlights(13.5,4);
+    carSpecular();
+    ctx.fillStyle="rgba(255,255,255,0.9)"; ctx.beginPath(); ctx.ellipse(10.4,-6.2,1.4,0.85,-0.42,0,TAU); ctx.fill();
+    ctx.fillStyle="#ffffff"; ctx.beginPath(); ctx.arc(9.9,-6.7,0.5,0,TAU); ctx.fill();   // crisp hot pin-point (wet chrome)
   }
   else if(vid==="toilet"){
-    // tank/cistern — porcelain gradient (replaces flat #eef1fa)
-    const tg=ctx.createLinearGradient(-18,-8,-7,8);
-    tg.addColorStop(0,"#ffffff"); tg.addColorStop(0.55,"#eef1fa"); tg.addColorStop(1,"#c6cddf");
-    ctx.fillStyle=tg; ctx.beginPath(); ctx.roundRect(-18,-8,11,16,3); ctx.fill();
-    // tank lid highlight band (replaces flat #d5dbeb)
-    const lid=ctx.createLinearGradient(0,-8,0,-4);
-    lid.addColorStop(0,"rgba(255,255,255,0.85)"); lid.addColorStop(1,"rgba(213,219,235,0.2)");
-    ctx.fillStyle=lid; ctx.beginPath(); ctx.roundRect(-18,-8,11,3.8,3); ctx.fill();
-    // flush button, with its own tiny highlight
-    ctx.fillStyle="#b7c0d8"; ctx.beginPath(); ctx.ellipse(-12.5,-6,1.7,1.1,0,0,TAU); ctx.fill();
-    ctx.fillStyle="rgba(255,255,255,0.6)"; ctx.beginPath(); ctx.ellipse(-13,-6.4,0.7,0.5,0,0,TAU); ctx.fill();
-    // bowl — radial porcelain, lit from top-left (replaces flat #f4f6ff)
-    const bg=ctx.createRadialGradient(-1,-4,1,3,0,15);
-    bg.addColorStop(0,"#ffffff"); bg.addColorStop(0.6,"#f0f3fb"); bg.addColorStop(1,"#cdd4e6");
-    ctx.fillStyle=bg; ctx.beginPath(); ctx.ellipse(3,0,14,10,0,0,TAU); ctx.fill();
-    // seat rim groove (dark) + upper-edge highlight
-    ctx.strokeStyle="rgba(150,160,190,0.5)"; ctx.lineWidth=2.5; ctx.beginPath(); ctx.ellipse(3,0,10,7,0,0,TAU); ctx.stroke();
-    ctx.strokeStyle="rgba(255,255,255,0.6)"; ctx.lineWidth=1; ctx.beginPath(); ctx.ellipse(3,-0.6,10,6.6,0,Math.PI,TAU); ctx.stroke();
-    // water — glossy blue with depth + bright reflection streak (the gloss element)
-    const wg=ctx.createRadialGradient(3,-1,0,4,0,6);
-    wg.addColorStop(0,"#bfe6ff"); wg.addColorStop(0.5,"#7ec9ff"); wg.addColorStop(1,"#3f8fd6");
-    ctx.fillStyle=wg; ctx.beginPath(); ctx.ellipse(4,0,5,3.5,0,0,TAU); ctx.fill();
-    ctx.fillStyle="rgba(255,255,255,0.55)"; ctx.beginPath(); ctx.ellipse(2.6,-1,1.6,0.9,-0.3,0,TAU); ctx.fill();
-    // specular shine on bowl front-left
-    const sp=ctx.createRadialGradient(-3,-5,0,-3,-5,7);
-    sp.addColorStop(0,"rgba(255,255,255,0.6)"); sp.addColorStop(1,"rgba(255,255,255,0)");
-    ctx.fillStyle=sp; ctx.beginPath(); ctx.ellipse(-3,-5,6,3.5,-0.3,0,TAU); ctx.fill();
-    // rim light (upper arc) + contact seat (lower arc)
-    ctx.strokeStyle="rgba(255,255,255,0.45)"; ctx.lineWidth=1; ctx.beginPath(); ctx.ellipse(3,0,14,10,0,Math.PI*1.05,Math.PI*1.95); ctx.stroke();
-    ctx.strokeStyle="rgba(0,0,0,0.15)"; ctx.lineWidth=1.4; ctx.beginPath(); ctx.ellipse(3,0.4,13.6,9.6,0,0.15,Math.PI-0.15); ctx.stroke();
+    // 🚽 SKIBIDI GT — glossy porcelain throne: boxy flush tank + chrome lever at the tail, egg-shaped seat + dark bowl at the nose
+const outline = () => {
+  ctx.beginPath();
+  ctx.moveTo(18,0);
+  ctx.bezierCurveTo(17.8,-6.2, 13.5,-10, 5,-10.2);     // bowl nose rounds up to its widest
+  ctx.bezierCurveTo(-2,-10.4, -6.6,-9.4, -8.6,-8);     // bowl necks down into the tank
+  ctx.lineTo(-15,-8);                                   // tank top edge
+  ctx.quadraticCurveTo(-18,-8, -18,-4.8);               // rounded back-left corner
+  ctx.lineTo(-18,4.8);                                  // tank rear wall
+  ctx.quadraticCurveTo(-18,8, -15,8);                   // rounded back-right corner
+  ctx.lineTo(-8.6,8);                                   // tank bottom edge
+  ctx.bezierCurveTo(-6.6,9.4, -2,10.4, 5,10.2);         // neck back out to the bowl
+  ctx.bezierCurveTo(13.5,10, 17.8,6.2, 18,0);           // bowl back around to the nose
+  ctx.closePath();
+};
+carPaint("#eef2fb", outline);                           // bright white porcelain
+
+// ── porcelain furniture (clipped to the body) ──
+ctx.save(); outline(); ctx.clip();
+
+// FLUSH TANK — top-lit box with a recessed, raised lid slab
+let tg=ctx.createLinearGradient(0,-8,0,8);
+tg.addColorStop(0,"rgba(255,255,255,0.5)"); tg.addColorStop(0.45,"rgba(255,255,255,0)"); tg.addColorStop(1,"rgba(96,110,146,0.22)");
+ctx.fillStyle=tg; ctx.fillRect(-18,-8,9.4,16);
+ctx.strokeStyle="rgba(110,124,158,0.34)"; ctx.lineWidth=0.8;                 // recessed lid outline
+ctx.beginPath(); ctx.roundRect(-16.8,-6.4,7.7,12.8,2.2); ctx.stroke();
+let lb=ctx.createLinearGradient(0,-6.4,0,-0.6);                              // bright lid top-band
+lb.addColorStop(0,"rgba(255,255,255,0.92)"); lb.addColorStop(1,"rgba(255,255,255,0)");
+ctx.fillStyle=lb; ctx.beginPath(); ctx.roundRect(-16.8,-6.4,7.7,6,2.2); ctx.fill();
+
+// tank/bowl parting seam
+ctx.strokeStyle="rgba(110,124,158,0.5)"; ctx.lineWidth=1.1;
+ctx.beginPath(); ctx.moveTo(-8.6,-7.2); ctx.lineTo(-8.6,7.2); ctx.stroke();
+
+// DARK BOWL opening — deep water-shadow that frames the white number roundel
+let op=ctx.createRadialGradient(-1.6,-2.4,1, 1,0.6,10.5);
+op.addColorStop(0,"#2c3345"); op.addColorStop(0.55,"#1b2130"); op.addColorStop(1,"#0d121b");
+ctx.fillStyle=op; ctx.beginPath(); ctx.ellipse(1,0,9.2,8.2,0,0,TAU); ctx.fill();
+
+// glossy WATER pooled at the front of the bowl (a tall blue sliver on the nose side, clear of the number)
+const rip=Math.sin(game.t*3)*0.4;                       // idle ripple
+let wg=ctx.createRadialGradient(6.6,-1.6,0.3, 7,0,5);
+wg.addColorStop(0,"#e2f3ff"); wg.addColorStop(0.45,"#84cbff"); wg.addColorStop(1,"rgba(44,118,188,0.05)");
+ctx.fillStyle=wg; ctx.beginPath(); ctx.ellipse(7,0,2.5,4.9,0,0,TAU); ctx.fill();
+ctx.fillStyle="rgba(255,255,255,0.6)"; ctx.beginPath(); ctx.ellipse(6.9+rip,-2.1,1,0.6,-0.3,0,TAU); ctx.fill();
+
+// RAISED SEAT lip — fat porcelain ring around the hole: bright lit edge (top) + shadowed underside (bottom)
+ctx.lineCap="round";
+ctx.lineWidth=1.5; ctx.strokeStyle="rgba(255,255,255,0.85)";
+ctx.beginPath(); ctx.ellipse(1,-0.25,9.2,8.2,0,Math.PI*1.02,Math.PI*1.99); ctx.stroke();
+ctx.lineWidth=1.6; ctx.strokeStyle="rgba(66,76,100,0.5)";
+ctx.beginPath(); ctx.ellipse(1,0.35,9.2,8.2,0,0.11,Math.PI-0.11); ctx.stroke();
+ctx.lineWidth=2.6; ctx.strokeStyle="rgba(120,132,164,0.22)";                 // soft outer seat groove (defines the raised ring)
+ctx.beginPath(); ctx.ellipse(1,0,10.6,9.4,0,Math.PI*0.86,Math.PI*2.14); ctx.stroke();
+
+ctx.restore();
+
+// ── rim light along the porcelain silhouette ──
+carRim(outline);
+
+// broad soft gloss + crisp hot pin-points (wet porcelain)
+carSpecular(-3.5,-6.4);
+ctx.fillStyle="rgba(255,255,255,0.95)"; ctx.beginPath(); ctx.ellipse(-5.4,-7.4,1.6,0.7,-0.42,0,TAU); ctx.fill();   // hot dot on the seat lip
+ctx.fillStyle="rgba(255,255,255,0.9)";  ctx.beginPath(); ctx.arc(14,-4.2,0.85,0,TAU); ctx.fill();                  // pin glint on the bowl nose
+
+// headlights tucked on the bowl's front shoulders
+carHeadlights(13.6,5.6);
+
+// CHROME FLUSH HANDLE — the unmistakable lever, mounted on the tank lid
+let mb=ctx.createRadialGradient(-14.9,-5.7,0.3, -14.4,-5,2.7);
+mb.addColorStop(0,"#ffffff"); mb.addColorStop(0.5,"#c9d1e2"); mb.addColorStop(1,"#7e879e");
+ctx.fillStyle=mb; ctx.beginPath(); ctx.arc(-14.4,-5,2.4,0,TAU); ctx.fill();
+ctx.save(); ctx.translate(-14.4,-5); ctx.rotate(-0.12);
+let lv=ctx.createLinearGradient(0,-1.5,0,1.5);
+lv.addColorStop(0,"#ffffff"); lv.addColorStop(0.44,"#d4dbe9"); lv.addColorStop(0.56,"#a7b0c6"); lv.addColorStop(1,"#868fa5");
+ctx.fillStyle=lv; ctx.beginPath(); ctx.roundRect(1,-1.4,4.6,2.8,1.4); ctx.fill();
+ctx.strokeStyle="rgba(58,68,90,0.4)"; ctx.lineWidth=0.5; ctx.beginPath(); ctx.roundRect(1,-1.4,4.6,2.8,1.4); ctx.stroke();
+ctx.fillStyle="rgba(255,255,255,0.92)"; ctx.beginPath(); ctx.ellipse(3.1,-0.7,1.4,0.5,-0.08,0,TAU); ctx.fill();     // hot glint down the lever
+ctx.restore();
+ctx.fillStyle="rgba(70,80,102,0.5)"; ctx.beginPath(); ctx.arc(-14.4,-5,0.7,0,TAU); ctx.fill();                     // hub bolt
+ctx.fillStyle="rgba(255,255,255,0.85)"; ctx.beginPath(); ctx.ellipse(-15.1,-5.7,0.8,0.6,0,0,TAU); ctx.fill();      // chrome catchlight
   }
   else if(vid==="ufo"){
-    // 🛸 metallic saucer, top-left light
-    // underside rim (hull thickness + contact shade)
-    const rimG = ctx.createLinearGradient(0,-9,0,13);
-    rimG.addColorStop(0,"#838ba0"); rimG.addColorStop(1,"#363b49");
-    ctx.fillStyle=rimG; ctx.beginPath(); ctx.ellipse(0,0,17,13,0,0,TAU); ctx.fill();
-    // main hull
-    const hullG = ctx.createLinearGradient(-14,-11,14,10);
-    hullG.addColorStop(0,"#c4cade"); hullG.addColorStop(0.5,"#8892ab"); hullG.addColorStop(1,"#565d73");
-    ctx.fillStyle=hullG; ctx.beginPath(); ctx.ellipse(0,-1,16,11.5,0,0,TAU); ctx.fill();
-    // top sheen band
-    const ufSh = ctx.createLinearGradient(0,-12,0,-2);
-    ufSh.addColorStop(0,"rgba(255,255,255,0.30)"); ufSh.addColorStop(1,"rgba(255,255,255,0)");
-    ctx.fillStyle=ufSh; ctx.beginPath(); ctx.ellipse(0,-5,12,5,0,0,TAU); ctx.fill();
-    // rim light (double-offset stroke: white up-left, dark down-right)
-    ctx.save(); ctx.strokeStyle="rgba(255,255,255,0.4)"; ctx.lineWidth=1; ctx.translate(-0.5,-0.6); ctx.beginPath(); ctx.ellipse(0,-1,16,11.5,0,0,TAU); ctx.stroke(); ctx.restore();
-    ctx.save(); ctx.strokeStyle="rgba(0,0,0,0.28)"; ctx.lineWidth=1; ctx.translate(0.5,0.7); ctx.beginPath(); ctx.ellipse(0,-1,16,11.5,0,0,TAU); ctx.stroke(); ctx.restore();
-    // rotating running lights: soft glow + hot core
-    for(let i=0;i<6;i++){
-      const a = game.t*2.5 + i*TAU/6;
-      const lx=Math.cos(a)*12.5, ly=Math.sin(a)*9;
-      ctx.fillStyle = ["#ff6a5e","#ffd76a","#9ae64a","#53e0ff","#ff8fe0","#b98cff"][i];
-      ctx.globalAlpha=0.45; ctx.beginPath(); ctx.arc(lx,ly,3.2,0,TAU); ctx.fill();
-      ctx.globalAlpha=1;    ctx.beginPath(); ctx.arc(lx,ly,1.8,0,TAU); ctx.fill();
-      ctx.fillStyle="rgba(255,255,255,0.85)"; ctx.beginPath(); ctx.arc(lx-0.5,ly-0.6,0.7,0,TAU); ctx.fill();
-    }
-    ctx.globalAlpha=1;
-    // glass dome (glossy radial)
-    const domeG = ctx.createRadialGradient(-2.5,-4,0.5,0,-1,7.5);
-    domeG.addColorStop(0,"#eef1f8"); domeG.addColorStop(0.55,"#c3cce0"); domeG.addColorStop(1,"#7f88a0");
-    ctx.fillStyle=domeG; ctx.beginPath(); ctx.arc(0,-1,7,0,TAU); ctx.fill();
-    ctx.strokeStyle="rgba(30,36,52,0.35)"; ctx.lineWidth=0.8; ctx.beginPath(); ctx.arc(0,-1,7,0,TAU); ctx.stroke();
-    // specular shine dot
-    ctx.fillStyle="rgba(255,255,255,0.75)"; ctx.beginPath(); ctx.ellipse(-2.5,-3.5,2.4,1.6,-0.5,0,TAU); ctx.fill();
+    // 🛸 THE SAUCER — crisp metallic disc, energized glass dome, bold orbiting running lights.
+// ownWheels + noLights: no wheels / headlights — it floats on a pulsing cyan hover cushion.
+const pulse = 0.5 + 0.5*Math.sin(game.t*3);
+const outline = () => { ctx.beginPath(); ctx.ellipse(0,-1,17,12,0,0,TAU); ctx.closePath(); };
+
+// ── hover cushion (replaces wheels): soft cyan glow the disc floats on, with a hot jet core ──
+const hg = ctx.createRadialGradient(0,6,1, 0,6,22);
+hg.addColorStop(0,   "rgba(190,240,255,"+(0.58+0.22*pulse).toFixed(3)+")");
+hg.addColorStop(0.4, "rgba(95,210,255," +(0.28+0.14*pulse).toFixed(3)+")");
+hg.addColorStop(1,   "rgba(70,190,255,0)");
+ctx.fillStyle = hg; ctx.beginPath(); ctx.ellipse(0,6,20,10.5,0,0,TAU); ctx.fill();
+const hc = ctx.createRadialGradient(0,9,0.4, 0,9,10);          // brighter hot centre of the visible cushion
+hc.addColorStop(0, "rgba(235,250,255,"+(0.45+0.25*pulse).toFixed(3)+")");
+hc.addColorStop(1, "rgba(150,230,255,0)");
+ctx.fillStyle = hc; ctx.beginPath(); ctx.ellipse(0,9,11,5,0,0,TAU); ctx.fill();
+
+// ── metallic hull: curved-surface lit + world-colour bounce (clipped to the disc) ──
+carPaint("#9aa3bb", outline);
+
+// ── saucer sculpt: brim groove + raised inner tier + fine panel ring (clipped) ──
+ctx.save(); outline(); ctx.clip();
+ctx.strokeStyle = "rgba(18,24,38,0.45)"; ctx.lineWidth = 1.4;
+ctx.beginPath(); ctx.ellipse(0,-1,13.6,9.4,0,0,TAU); ctx.stroke();
+const mid = ctx.createLinearGradient(-11,-10,11,7);
+mid.addColorStop(0,"#e2e7f3"); mid.addColorStop(0.45,"#b3bbd0"); mid.addColorStop(1,"#666f8c");
+ctx.fillStyle = mid; ctx.beginPath(); ctx.ellipse(0,-2.2,12.2,8.4,0,0,TAU); ctx.fill();
+ctx.fillStyle = "rgba(255,255,255,0.32)";                      // broad tier sheen (top-left)
+ctx.beginPath(); ctx.ellipse(-3,-5.6,7,3,-0.26,0,TAU); ctx.fill();
+ctx.strokeStyle = "rgba(255,255,255,0.14)"; ctx.lineWidth = 0.6;   // fine concentric panel line
+ctx.beginPath(); ctx.ellipse(0,-1.6,10.4,7,0,0,TAU); ctx.stroke();
+ctx.restore();
+
+// ── rim light + broad hull gloss, then crisp chrome edges on the brim ──
+carRim(outline);
+carSpecular(-9,-7);
+ctx.lineCap = "round";
+ctx.strokeStyle = "rgba(255,255,255,0.85)"; ctx.lineWidth = 1.2;   // lit chrome arc (top-left brim)
+ctx.beginPath(); ctx.ellipse(0,-1,16,11.1,0,TAU*0.51,TAU*0.75); ctx.stroke();
+ctx.strokeStyle = "rgba(10,16,30,0.4)";  ctx.lineWidth = 1.2;      // far-edge shadow arc (lower-right)
+ctx.beginPath(); ctx.ellipse(0,-1,16,11.1,0,TAU*0.01,TAU*0.24); ctx.stroke();
+ctx.lineCap = "butt";
+
+// ── orbiting running lights on the brim (the saucer's signature — bold + pulsing) ──
+const cols = ["#ff6a5e","#ffd76a","#9ae64a","#53e0ff","#ff8fe0","#b98cff"];
+for(let i=0;i<6;i++){
+  const a  = game.t*2.2 + i*TAU/6;
+  const lx = Math.cos(a)*13.4, ly = -1 + Math.sin(a)*9.1;
+  const bl = 0.55 + 0.45*Math.sin(game.t*6 + i);              // per-light twinkle
+  ctx.fillStyle = cols[i];
+  ctx.globalAlpha = 0.5*bl; ctx.beginPath(); ctx.arc(lx,ly,4.2,0,TAU); ctx.fill();   // bold glow halo
+  ctx.globalAlpha = 0.9;    ctx.beginPath(); ctx.arc(lx,ly,2.1,0,TAU); ctx.fill();   // saturated core
+  ctx.globalAlpha = 1; ctx.fillStyle = "rgba(255,255,255,0.95)";
+  ctx.beginPath(); ctx.arc(lx-0.5,ly-0.6,0.75,0,TAU); ctx.fill();                    // hot pinpoint
+}
+ctx.globalAlpha = 1;
+
+// ── glass dome (frames the number roundel): steel bezel + bright glass + cyan core glow ──
+const bez = ctx.createRadialGradient(-3,-4,1, 0,-1,9);
+bez.addColorStop(0,"#d2d8e8"); bez.addColorStop(0.65,"#8b93ab"); bez.addColorStop(1,"#454d61");
+ctx.fillStyle = bez; ctx.beginPath(); ctx.ellipse(0,-1,8.6,8.1,0,0,TAU); ctx.fill();
+ctx.save(); ctx.strokeStyle="rgba(255,255,255,0.55)"; ctx.lineWidth=0.9; ctx.translate(-0.5,-0.6);
+ctx.beginPath(); ctx.ellipse(0,-1,8.6,8.1,0,0,TAU); ctx.stroke(); ctx.restore();     // bezel top-left rim
+const dome = ctx.createRadialGradient(-2.6,-4,0.5, 0,-1,7.4);
+dome.addColorStop(0,"#f5f8ff"); dome.addColorStop(0.5,"#d8dfef"); dome.addColorStop(1,"#98a1bd");
+ctx.fillStyle = dome; ctx.beginPath(); ctx.arc(0,-1,7,0,TAU); ctx.fill();
+const core = ctx.createRadialGradient(0,-1,0.5, 0,-1,7);       // ring-shaped: centre stays clear for the number
+core.addColorStop(0,   "rgba(150,235,255,"+(0.05+0.06*pulse).toFixed(3)+")");
+core.addColorStop(0.5, "rgba(120,215,255,"+(0.30+0.28*pulse).toFixed(3)+")");
+core.addColorStop(1,   "rgba(120,215,255,0)");
+ctx.fillStyle = core; ctx.beginPath(); ctx.arc(0,-1,7,0,TAU); ctx.fill();
+ctx.strokeStyle = "rgba(28,34,50,0.42)"; ctx.lineWidth=0.8; ctx.beginPath(); ctx.arc(0,-1,7,0,TAU); ctx.stroke();
+ctx.fillStyle = "rgba(255,255,255,0.85)"; ctx.beginPath(); ctx.ellipse(-2.6,-3.6,2.6,1.6,-0.5,0,TAU); ctx.fill();
+ctx.fillStyle = "rgba(255,255,255,0.5)";  ctx.beginPath(); ctx.ellipse(2.4,1.6,1.3,0.8,-0.4,0,TAU); ctx.fill();
+ctx.fillStyle = "rgba(255,255,255,0.98)"; ctx.beginPath(); ctx.arc(-3.4,-4.6,0.75,0,TAU); ctx.fill();   // crisp hot pin-point (wet-look)
   }
   else if(vid==="supra"){
-    // the orange legend with the big wing — top-left light
-    // ground contact sliver (behind body)
-    ctx.fillStyle="rgba(0,0,0,0.18)"; ctx.beginPath(); ctx.ellipse(0,9,14,1.6,0,0,TAU); ctx.fill();
-    // body gradient
-    const spBody = ctx.createLinearGradient(-16,-9,15,9);
-    spBody.addColorStop(0,"#ffb066"); spBody.addColorStop(0.5,"#ff7a1a"); spBody.addColorStop(1,"#c9530a");
-    ctx.fillStyle=spBody; ctx.beginPath(); ctx.roundRect(-16,-9,33,18,8); ctx.fill();
-    // top sheen (fades down)
-    const spSh = ctx.createLinearGradient(0,-9,0,-0.5);
-    spSh.addColorStop(0,"rgba(255,255,255,0.34)"); spSh.addColorStop(1,"rgba(255,255,255,0)");
-    ctx.fillStyle=spSh; ctx.beginPath(); ctx.roundRect(-16,-9,33,8,8); ctx.fill();
-    // specular shine
-    ctx.fillStyle="rgba(255,255,255,0.5)"; ctx.beginPath(); ctx.ellipse(-8,-5.5,4.5,1.8,-0.3,0,TAU); ctx.fill();
-    // twin curved lines: dark shadow under, bright over
-    ctx.strokeStyle="rgba(110,44,6,0.45)"; ctx.lineWidth=2.4; ctx.beginPath();
-    ctx.moveTo(-12,-7.4); ctx.quadraticCurveTo(2,-3.4,14,-6.8);
-    ctx.moveTo(-12,9);    ctx.quadraticCurveTo(2,5,14,8.4);
-    ctx.stroke();
-    ctx.strokeStyle="#eef1f8"; ctx.lineWidth=2.2; ctx.beginPath();
-    ctx.moveTo(-12,-8.2); ctx.quadraticCurveTo(2,-4.2,14,-7.6);
-    ctx.moveTo(-12,8.2);  ctx.quadraticCurveTo(2,4.2,14,7.6);
-    ctx.stroke();
-    // cockpit glass
-    const spGlass = ctx.createLinearGradient(-4,-6,7,6);
-    spGlass.addColorStop(0,"#2b3854"); spGlass.addColorStop(1,"#0d1220");
-    ctx.fillStyle=spGlass; ctx.beginPath(); ctx.roundRect(-4,-6,11,12,4); ctx.fill();
-    ctx.fillStyle="rgba(150,192,240,0.34)"; ctx.beginPath();
-    ctx.moveTo(-1.5,-6); ctx.lineTo(2,-6); ctx.lineTo(-3,6); ctx.lineTo(-4,3.5); ctx.closePath(); ctx.fill();
-    // rim light (double-offset stroke)
-    ctx.save(); ctx.strokeStyle="rgba(255,255,255,0.4)"; ctx.lineWidth=1; ctx.translate(-0.5,-0.6); ctx.beginPath(); ctx.roundRect(-16,-9,33,18,8); ctx.stroke(); ctx.restore();
-    ctx.save(); ctx.strokeStyle="rgba(0,0,0,0.3)"; ctx.lineWidth=1; ctx.translate(0.5,0.7); ctx.beginPath(); ctx.roundRect(-16,-9,33,18,8); ctx.stroke(); ctx.restore();
-    // wing struts
-    ctx.fillStyle="#8b93ad"; ctx.fillRect(-17,-9,2,3.2); ctx.fillRect(-17,5.8,2,3.2);
-    ctx.fillStyle="rgba(255,255,255,0.35)"; ctx.fillRect(-17,-9,2,0.9); ctx.fillRect(-17,5.8,2,0.9);
-    // THE wing (on top) — dimensional slab
-    const spWing = ctx.createLinearGradient(0,-11.5,0,11.5);
-    spWing.addColorStop(0,"#f4f6fb"); spWing.addColorStop(0.5,"#d3d8e4"); spWing.addColorStop(1,"#969db0");
-    ctx.fillStyle=spWing; ctx.beginPath(); ctx.roundRect(-20.5,-11.5,4,23,1.2); ctx.fill();
-    ctx.strokeStyle="rgba(255,255,255,0.5)"; ctx.lineWidth=0.8;
-    ctx.beginPath(); ctx.moveTo(-20.2,-11); ctx.lineTo(-16.8,-11); ctx.stroke();
-    ctx.strokeStyle="rgba(0,0,0,0.3)";
-    ctx.beginPath(); ctx.moveTo(-20.2,11); ctx.lineTo(-16.8,11); ctx.stroke();
+    // 🟠 2FAST — sleek JDM sports-wedge (nose = +x): sharp pinched nose, wide haunches, big GT wing
+const outline = () => {                                    // low aggressive wedge: long sharp taper up front, muscular squared tail
+  ctx.beginPath();
+  ctx.moveTo(19,0);
+  ctx.bezierCurveTo(18.4,-4.2, 14.6,-7.1, 8,-8.4);
+  ctx.bezierCurveTo(2,-9.4, -4,-9.9, -10,-10);
+  ctx.lineTo(-15.5,-10);
+  ctx.quadraticCurveTo(-18.2,-9.7, -18.2,-6.4);
+  ctx.lineTo(-18.2,6.4);
+  ctx.quadraticCurveTo(-18.2,9.7, -15.5,10);
+  ctx.lineTo(-10,10);
+  ctx.bezierCurveTo(-4,9.9, 2,9.4, 8,8.4);
+  ctx.bezierCurveTo(14.6,7.1, 18.4,4.2, 19,0);
+  ctx.closePath();
+};
+
+// ── THE big GT rear wing (behind the body; the deck overlaps the pylon roots) ──
+ctx.fillStyle="#363c50";                                   // twin support pylons
+ctx.beginPath(); ctx.roundRect(-20.8,-6.6,5.4,2.9,1.0); ctx.fill();
+ctx.beginPath(); ctx.roundRect(-20.8,3.7,5.4,2.9,1.0); ctx.fill();
+ctx.fillStyle="rgba(255,255,255,0.35)";                    // lit pylon tops
+ctx.fillRect(-20.8,-6.6,5.4,0.8); ctx.fillRect(-20.8,3.7,5.4,0.8);
+const spWing=ctx.createLinearGradient(0,-12,0,12);         // wing blade: lit top edge → shadowed bottom
+spWing.addColorStop(0,"#f7f9fd"); spWing.addColorStop(0.5,"#ccd1df"); spWing.addColorStop(1,"#858ca1");
+ctx.fillStyle=spWing; ctx.beginPath(); ctx.roundRect(-22.6,-12.2,4.4,24.4,1.6); ctx.fill();
+ctx.fillStyle="#1c2233"; ctx.beginPath(); ctx.roundRect(-22.9,-12.6,5.0,2.6,1.1); ctx.fill();   // dark endplate caps at the blade tips
+ctx.beginPath(); ctx.roundRect(-22.9,10,5.0,2.6,1.1); ctx.fill();
+ctx.strokeStyle="rgba(255,255,255,0.6)"; ctx.lineWidth=0.9;    // crisp leading-edge highlight
+ctx.beginPath(); ctx.moveTo(-18.4,-11.4); ctx.lineTo(-18.4,11.4); ctx.stroke();
+ctx.strokeStyle="rgba(0,0,0,0.32)"; ctx.lineWidth=0.9;        // trailing-edge shadow
+ctx.beginPath(); ctx.moveTo(-22.1,-11.2); ctx.lineTo(-22.1,11.2); ctx.stroke();
+
+// ── glossy orange bodywork ──
+carPaint("#ff7a1a", outline);
+
+// ── signature livery, hood shutlines + JDM louvered side vents (clipped to the wedge) ──
+ctx.save(); outline(); ctx.clip();
+ctx.strokeStyle="rgba(0,0,0,0.22)"; ctx.lineWidth=0.6;     // hood shutlines + rear-deck seam for panel depth
+ctx.beginPath();
+ctx.moveTo(15,-3.0); ctx.lineTo(7,-3.4);
+ctx.moveTo(15,3.0);  ctx.lineTo(7,3.4);
+ctx.moveTo(-9,-8.5); ctx.lineTo(-9,8.5);
+ctx.stroke();
+ctx.lineCap="round";                                       // twin racing pinstripes sweeping to the pinched nose
+ctx.strokeStyle="rgba(120,44,6,0.5)"; ctx.lineWidth=2.3;
+ctx.beginPath();
+ctx.moveTo(-15,-6.8); ctx.quadraticCurveTo(2,-3.2,16,-5.6);
+ctx.moveTo(-15,6.8);  ctx.quadraticCurveTo(2,3.2,16,5.6);
+ctx.stroke();
+ctx.strokeStyle="#f4f6fb"; ctx.lineWidth=1.9;
+ctx.beginPath();
+ctx.moveTo(-15,-7.5); ctx.quadraticCurveTo(2,-3.9,16,-6.3);
+ctx.moveTo(-15,7.5);  ctx.quadraticCurveTo(2,3.9,16,6.3);
+ctx.stroke();
+for(const s of [-1,1]){                                     // crisp JDM louvered side vents recessed into the front fenders
+  ctx.save(); ctx.translate(6.5, s*5.4); ctx.rotate(s*0.42);
+  ctx.fillStyle="rgba(10,5,2,0.5)"; ctx.beginPath(); ctx.roundRect(-3.4,-2.6,7.2,5.2,1.3); ctx.fill();  // vent housing
+  for(let i=0;i<3;i++){ const gx=-2.3+i*2.1;
+    ctx.fillStyle="rgba(10,5,2,0.82)";      ctx.beginPath(); ctx.roundRect(gx,-2,1.4,4,0.6); ctx.fill();       // louver blade
+    ctx.fillStyle="rgba(255,255,255,0.45)"; ctx.beginPath(); ctx.roundRect(gx,-2,0.5,4,0.5); ctx.fill();       // chrome edge
+  }
+  ctx.restore();
+}
+const glow = 0.72 + 0.28*Math.sin(game.t*6);               // tail-light bar across the rear deck (idle pulse)
+let tl = ctx.createLinearGradient(0,-7,0,7);
+tl.addColorStop(0,"rgba(210,26,18,"+(0.9*glow).toFixed(3)+")");
+tl.addColorStop(0.5,"rgba(255,120,60,"+glow.toFixed(3)+")");
+tl.addColorStop(1,"rgba(210,26,18,"+(0.9*glow).toFixed(3)+")");
+ctx.fillStyle=tl; ctx.beginPath(); ctx.roundRect(-17,-7,2.3,14,1); ctx.fill();
+ctx.fillStyle="rgba(255,235,190,0.5)"; ctx.beginPath(); ctx.roundRect(-16.7,-6.6,0.9,13.2,0.5); ctx.fill();
+ctx.restore();
+
+// ── rim light, cockpit, headlights, gloss ──
+carRim(outline);
+carCanopy(13,14);
+carHeadlights(12,6);
+carSpecular();
+let nz = ctx.createLinearGradient(15,0,19,0);              // chrome splitter lip wrapping the sharp nose
+nz.addColorStop(0,"rgba(255,255,255,0.15)"); nz.addColorStop(0.6,"#f2f5fb"); nz.addColorStop(1,"#b3bccd");
+ctx.strokeStyle=nz; ctx.lineWidth=1.2;
+ctx.beginPath(); ctx.moveTo(15.8,-4.4); ctx.quadraticCurveTo(18.9,0,15.8,4.4); ctx.stroke();
+ctx.fillStyle="rgba(255,255,255,0.85)";                    // hot glint sliding down the hood
+ctx.beginPath(); ctx.ellipse(9.5,-6,1.6,0.9,-0.4,0,TAU); ctx.fill();
+ctx.fillStyle="rgba(255,255,255,0.95)";                    // hot pin-point specular (wet clear-coat)
+ctx.beginPath(); ctx.arc(11.6,-6.7,0.7,0,TAU); ctx.fill();
   }
   else if(vid==="beast"){
-    // matte black muscle, blower through the hood — top-left light
-    // fat tires: rounded rubber, top-lit (rear pair bigger)
-    for(const [tx,ty,tw,th] of [[-13,-11.5,10,7],[-13,4.5,10,7],[8,-10,7,5.5],[8,4.5,7,5.5]]){
-      ctx.fillStyle="#0d0f16"; ctx.beginPath(); ctx.roundRect(tx,ty,tw,th,2); ctx.fill();
-      ctx.fillStyle="rgba(255,255,255,0.12)"; ctx.beginPath(); ctx.roundRect(tx,ty,tw,2.2,2); ctx.fill();
-      ctx.fillStyle="rgba(0,0,0,0.4)"; ctx.beginPath(); ctx.roundRect(tx,ty+th-2,tw,2,2); ctx.fill();
-    }
-    // body gradient (matte, but dimensional)
-    const bsBody = ctx.createLinearGradient(-18,-10,16,10);
-    bsBody.addColorStop(0,"#3b3f4b"); bsBody.addColorStop(0.5,"#23262e"); bsBody.addColorStop(1,"#101218");
-    ctx.fillStyle=bsBody; ctx.beginPath(); ctx.roundRect(-18,-10,36,20,5); ctx.fill();
-    // subtle top sheen (matte)
-    const bsSh = ctx.createLinearGradient(0,-10,0,-1);
-    bsSh.addColorStop(0,"rgba(255,255,255,0.14)"); bsSh.addColorStop(1,"rgba(255,255,255,0)");
-    ctx.fillStyle=bsSh; ctx.beginPath(); ctx.roundRect(-18,-10,36,8,5); ctx.fill();
-    ctx.fillStyle="rgba(255,255,255,0.16)"; ctx.beginPath(); ctx.ellipse(-9,-6,5,1.8,-0.3,0,TAU); ctx.fill();
-    // cockpit glass
-    const bsGlass = ctx.createLinearGradient(-6,-7,6,7);
-    bsGlass.addColorStop(0,"#20242e"); bsGlass.addColorStop(1,"#0a0b10");
-    ctx.fillStyle=bsGlass; ctx.beginPath(); ctx.roundRect(-6,-7,12,14,3); ctx.fill();
-    ctx.fillStyle="rgba(120,150,190,0.22)"; ctx.beginPath();
-    ctx.moveTo(-3.5,-7); ctx.lineTo(0,-7); ctx.lineTo(-5,7); ctx.lineTo(-6,4); ctx.closePath(); ctx.fill();
-    // rim light (double-offset stroke)
-    ctx.save(); ctx.strokeStyle="rgba(255,255,255,0.28)"; ctx.lineWidth=1; ctx.translate(-0.5,-0.6); ctx.beginPath(); ctx.roundRect(-18,-10,36,20,5); ctx.stroke(); ctx.restore();
-    ctx.save(); ctx.strokeStyle="rgba(0,0,0,0.35)"; ctx.lineWidth=1; ctx.translate(0.5,0.7); ctx.beginPath(); ctx.roundRect(-18,-10,36,20,5); ctx.stroke(); ctx.restore();
-    // chrome blower through the hood
-    const bsBlow = ctx.createLinearGradient(0,-3.5,0,3.5);
-    bsBlow.addColorStop(0,"#eef2f8"); bsBlow.addColorStop(0.5,"#aab4c8"); bsBlow.addColorStop(1,"#5e6070");
-    ctx.fillStyle=bsBlow; ctx.beginPath(); ctx.roundRect(7,-3.5,7,7,2); ctx.fill();
-    ctx.fillStyle="#565f74"; ctx.fillRect(8.4,-3.5,1.6,7); ctx.fillRect(11.4,-3.5,1.6,7);   // intake stacks
-    ctx.fillStyle="rgba(255,255,255,0.5)"; ctx.fillRect(7,-3.5,7,1.1);                      // chrome top glint
-    // chrome side pipes
-    for(const py of [-6.5,3.1]){
-      const bsPipe=ctx.createLinearGradient(0,py,0,py+3.4);
-      bsPipe.addColorStop(0,"#d7dce6"); bsPipe.addColorStop(0.5,"#8b93ad"); bsPipe.addColorStop(1,"#494f5e");
-      ctx.fillStyle=bsPipe; ctx.fillRect(-20,py,2.4,3.4);
-    }
+    // 🐺 THE BEAST — sculpted gunmetal muscle brute (nose = +x): wide hunched haunches,
+// fat exposed drag-mag wheels, a bold bug-catcher blower punching through the hood, twin exhaust tips.
+const idle = 0.5 + 0.5*Math.sin(game.t*16);                    // engine idle for exhaust heat
+
+// ── twin chrome exhaust tips out the tail (behind the body) ──
+for(const ey of [-4.6,4.6]){
+  let eg = ctx.createLinearGradient(-21,ey,-16.5,ey);
+  eg.addColorStop(0,"#454b5a"); eg.addColorStop(0.5,"#c8d0df"); eg.addColorStop(1,"#f1f5fb");
+  ctx.fillStyle=eg; ctx.beginPath(); ctx.roundRect(-21,ey-1.8,5.2,3.6,1.4); ctx.fill();
+  ctx.fillStyle="#08090f"; ctx.beginPath(); ctx.ellipse(-20.4,ey,1.05,1.45,0,0,TAU); ctx.fill();
+  ctx.fillStyle="rgba(255,255,255,0.7)"; ctx.beginPath(); ctx.roundRect(-20.9,ey-1.6,4.9,0.8,0.8); ctx.fill();
+  let hg = ctx.createRadialGradient(-21.4,ey,0.2,-21.4,ey,3.4);
+  hg.addColorStop(0,"rgba(150,190,255,"+(0.55*idle).toFixed(3)+")"); hg.addColorStop(1,"rgba(150,190,255,0)");
+  ctx.fillStyle=hg; ctx.beginPath(); ctx.ellipse(-21.7,ey,2.8,1.9,0,0,TAU); ctx.fill();
+}
+
+// ── fat exposed drag mags (ownWheels; rear slicks bigger, pushed outboard for stance) ──
+for(const [tx,ty,tw,th] of [[-15.4,-15,11.4,9.2],[-15.4,5.8,11.4,9.2],[3,-13.2,9.2,7],[3,6.2,9.2,7]]){
+  const hx=tx+tw*0.5, hy=ty+th*0.5, hr=Math.min(tw,th)*0.36;
+  let tg=ctx.createRadialGradient(hx-1.6,hy-1.8,1, hx,hy,tw*0.62);                    // round rubber slick
+  tg.addColorStop(0,"#3c414f"); tg.addColorStop(0.55,"#181b23"); tg.addColorStop(1,"#070910");
+  ctx.fillStyle=tg; ctx.beginPath(); ctx.roundRect(tx,ty,tw,th,th*0.34); ctx.fill();
+  ctx.fillStyle="rgba(255,255,255,0.14)"; ctx.beginPath(); ctx.roundRect(tx+1.3,ty+0.8,tw-2.6,1.5,0.8); ctx.fill();  // sidewall sheen
+  let mg=ctx.createRadialGradient(hx-hr*0.4,hy-hr*0.45,0.4, hx,hy,hr*1.15);           // dimensional chrome mag
+  mg.addColorStop(0,"#ffffff"); mg.addColorStop(0.45,"#cdd4e0"); mg.addColorStop(0.8,"#8b93a3"); mg.addColorStop(1,"#3c414f");
+  ctx.fillStyle=mg; ctx.beginPath(); ctx.arc(hx,hy,hr,0,TAU); ctx.fill();
+  ctx.strokeStyle="rgba(44,50,64,0.65)"; ctx.lineWidth=0.8;                           // 5 spokes
+  for(let k=0;k<5;k++){ const a=k/5*TAU+0.5; ctx.beginPath(); ctx.moveTo(hx,hy); ctx.lineTo(hx+Math.cos(a)*hr*0.92,hy+Math.sin(a)*hr*0.92); ctx.stroke(); }
+  ctx.fillStyle="#20242f"; ctx.beginPath(); ctx.arc(hx,hy,hr*0.34,0,TAU); ctx.fill(); // center cap
+  ctx.fillStyle="rgba(255,255,255,0.9)"; ctx.beginPath(); ctx.arc(hx-hr*0.14,hy-hr*0.16,hr*0.14,0,TAU); ctx.fill();  // hot pin
+}
+
+// ── sculpted muscle silhouette: chiseled shark nose, fat flared fenders, tight waist, squared aggressive tail ──
+const outline = () => {
+  ctx.beginPath();
+  ctx.moveTo(18.6,0);
+  ctx.bezierCurveTo(18.3,-3.8, 16.2,-5.8, 12.2,-6.9);           // nose → front shoulder
+  ctx.bezierCurveTo(10,-7.8, 9,-9.0, 6.6,-9.0);                 // fat front fender crest
+  ctx.bezierCurveTo(4.4,-9.0, 3.4,-7.0, 0,-7.0);                // tight waist over the cockpit
+  ctx.bezierCurveTo(-4.2,-7.0, -6.4,-9.2, -9.6,-9.2);           // wide rear haunch crest
+  ctx.bezierCurveTo(-13.2,-9.2, -15.8,-8.0, -17.2,-6.6);        // → tail shoulder
+  ctx.quadraticCurveTo(-18.6,-5.6, -18.6,-3.2);                 // squared aggressive tail
+  ctx.lineTo(-18.6,3.2);
+  ctx.quadraticCurveTo(-18.6,5.6, -17.2,6.6);
+  ctx.bezierCurveTo(-15.8,8.0, -13.2,9.2, -9.6,9.2);
+  ctx.bezierCurveTo(-6.4,9.2, -4.2,7.0, 0,7.0);
+  ctx.bezierCurveTo(3.4,7.0, 4.4,9.0, 6.6,9.0);
+  ctx.bezierCurveTo(9,9.0, 10,7.8, 12.2,6.9);
+  ctx.bezierCurveTo(16.2,5.8, 18.3,3.8, 18.6,0);
+  ctx.closePath();
+};
+carPaint("#5b6170", outline);
+
+// ── surface detailing (clipped to the body) ──
+ctx.save(); outline(); ctx.clip();
+let gm=ctx.createLinearGradient(0,-9,0,-1);                                                 // cool gunmetal top-half sheen
+gm.addColorStop(0,"rgba(158,178,212,0.32)"); gm.addColorStop(1,"rgba(158,178,212,0)");
+ctx.fillStyle=gm; ctx.fillRect(-20,-11,40,10);
+ctx.fillStyle="#080a10"; ctx.beginPath(); ctx.roundRect(14,-4.4,3.8,8.8,1.4); ctx.fill();   // aggressive grille recess
+ctx.strokeStyle="rgba(178,188,208,0.82)"; ctx.lineWidth=0.7;                                // chrome slats
+for(const gy of [-2.7,-0.9,0.9,2.7]){ ctx.beginPath(); ctx.moveTo(14.3,gy); ctx.lineTo(17.3,gy); ctx.stroke(); }
+ctx.strokeStyle="rgba(0,0,0,0.24)"; ctx.lineWidth=0.6;                                      // long muscle character seams
+ctx.beginPath(); ctx.moveTo(13,-6.8); ctx.lineTo(-16,-6.2); ctx.moveTo(13,6.8); ctx.lineTo(-16,6.2); ctx.stroke();
+ctx.strokeStyle="rgba(255,255,255,0.22)"; ctx.lineWidth=0.6;                                // top crease catch-light
+ctx.beginPath(); ctx.moveTo(12,-7.8); ctx.lineTo(-15.5,-7.2); ctx.stroke();
+ctx.restore();
+
+carRim(outline);
+carCanopy(13,13);                                                                           // greenhouse framing the number
+carHeadlights(13.6,6);
+carSpecular();
+
+// ── HERO: bold chrome bug-catcher supercharger punching through the hood ──
+let blc=ctx.createLinearGradient(0,-6,0,6);                                                 // gunmetal-chrome blower case
+blc.addColorStop(0,"#f4f8fe"); blc.addColorStop(0.34,"#c6d0df"); blc.addColorStop(0.52,"#98a2b4"); blc.addColorStop(1,"#484e5e");
+ctx.fillStyle=blc; ctx.beginPath(); ctx.roundRect(6.4,-5.8,7.2,11.6,2.4); ctx.fill();
+ctx.strokeStyle="rgba(38,44,58,0.5)"; ctx.lineWidth=0.7;                                    // supercharger case fins
+for(const rx of [7.7,9.2,10.7]){ ctx.beginPath(); ctx.moveTo(rx,-5.2); ctx.lineTo(rx,5.2); ctx.stroke(); }
+let scr=ctx.createLinearGradient(0,-4.8,0,4.8);                                             // bright bug-catcher scoop hat
+scr.addColorStop(0,"#ffffff"); scr.addColorStop(0.46,"#d6deec"); scr.addColorStop(1,"#7f8899");
+ctx.fillStyle=scr; ctx.beginPath(); ctx.roundRect(8.8,-4.8,5.4,9.6,2); ctx.fill();
+ctx.fillStyle="#06080e"; ctx.beginPath(); ctx.roundRect(9.7,-3.7,4,7.4,1.4); ctx.fill();    // gaping intake maw
+ctx.strokeStyle="rgba(196,206,226,0.85)"; ctx.lineWidth=0.85;                               // throttle butterfly bars
+ctx.beginPath(); ctx.moveTo(9.9,-1.2); ctx.lineTo(13.5,-1.2); ctx.moveTo(9.9,1.2); ctx.lineTo(13.5,1.2); ctx.stroke();
+ctx.fillStyle="rgba(255,255,255,0.82)"; ctx.beginPath(); ctx.roundRect(6.4,-5.8,7.2,1.4,1.4); ctx.fill();  // chrome top glint
+ctx.fillStyle="rgba(255,255,255,0.98)"; ctx.beginPath(); ctx.ellipse(9.1,-4.1,1.3,0.55,-0.4,0,TAU); ctx.fill();  // crisp hot pin-point specular
   }
   else if(vid==="goat"){
-    // 🐐 GOAT — golden rocket, dimensional re-shade (keeps drawRocketBody silhouette inline)
-    const g=ctx.createLinearGradient(-14,-9,14,9);
-    g.addColorStop(0,"#fff1c2"); g.addColorStop(0.5,"#ffd76a"); g.addColorStop(1,"#d8a636");
-    ctx.fillStyle=g; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,7); ctx.fill();
-    // top sheen fading down
-    const sh=ctx.createLinearGradient(0,-9.5,0,-1);
-    sh.addColorStop(0,"rgba(255,255,255,0.5)"); sh.addColorStop(1,"rgba(255,255,255,0)");
-    ctx.fillStyle=sh; ctx.beginPath(); ctx.roundRect(-16,-9,32,8,6); ctx.fill();
-    // cream centre stripe with soft shade
-    const st=ctx.createLinearGradient(0,-2.4,0,2.4);
-    st.addColorStop(0,"#fffdf3"); st.addColorStop(1,"#e9d9a8");
-    ctx.fillStyle=st; ctx.fillRect(-17,-2.4,34,4.8);
-    // rear nozzle
-    ctx.fillStyle="#20283c"; ctx.fillRect(-19,-8,4,16);
-    ctx.fillStyle="rgba(255,255,255,0.12)"; ctx.fillRect(-19,-8,4,3);
-    // glossy cockpit + diagonal glass reflection
-    ctx.fillStyle="#161d2c"; ctx.beginPath(); ctx.roundRect(-6,-6.5,12,13,4); ctx.fill();
-    const gl=ctx.createLinearGradient(-5,-6,5,6);
-    gl.addColorStop(0,"rgba(150,205,255,0.55)"); gl.addColorStop(0.5,"rgba(150,205,255,0.06)"); gl.addColorStop(1,"rgba(150,205,255,0)");
-    ctx.fillStyle=gl; ctx.beginPath(); ctx.roundRect(-5.2,-5.8,10.4,11.6,3.4); ctx.fill();
-    ctx.fillStyle="rgba(200,230,255,0.5)"; ctx.beginPath(); ctx.roundRect(3,-5.5,3,11,1.5); ctx.fill();
-    // specular shine dot (top-left)
-    ctx.save(); const sp=ctx.createRadialGradient(-9,-6,0,-9,-6,7);
-    sp.addColorStop(0,"rgba(255,255,255,0.6)"); sp.addColorStop(1,"rgba(255,255,255,0)");
-    ctx.fillStyle=sp; ctx.beginPath(); ctx.ellipse(-9,-6,7,4,-0.3,0,TAU); ctx.fill(); ctx.restore();
-    // rim light (top/left bright) + seat (bottom/right dark)
-    ctx.lineWidth=1; ctx.strokeStyle="rgba(255,255,255,0.4)";
-    ctx.beginPath(); ctx.moveTo(-13,-9); ctx.lineTo(13,-9); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-16.5,-6); ctx.lineTo(-16.5,5); ctx.stroke();
-    ctx.strokeStyle="rgba(0,0,0,0.32)";
-    ctx.beginPath(); ctx.moveTo(-13,9); ctx.lineTo(14,9); ctx.stroke();
-    // ground contact AO sliver
-    ctx.fillStyle="rgba(0,0,0,0.14)"; ctx.beginPath(); ctx.roundRect(-14,8,28,1.6,1.5); ctx.fill();
-    // goat accent
-    ctx.fillStyle="#3a2a10"; ctx.font="10px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-    fillTextC("🐐", 11, 0);
-  }
-  else if(vid==="blaze"){                                    // 🏁 World 1 reward — flame hot rod
-    const g=ctx.createLinearGradient(-14,-9,14,9);
-    g.addColorStop(0,"#f4604d"); g.addColorStop(0.5,"#d93b2b"); g.addColorStop(1,"#9a2317");
-    ctx.fillStyle=g; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,7); ctx.fill();
-    // top sheen
-    const sh=ctx.createLinearGradient(0,-9.5,0,-1.5);
-    sh.addColorStop(0,"rgba(255,255,255,0.28)"); sh.addColorStop(1,"rgba(255,255,255,0)");
-    ctx.fillStyle=sh; ctx.beginPath(); ctx.roundRect(-16,-9,32,8,6); ctx.fill();
-    // orange flame band (glowing gradient)
-    const fb=ctx.createLinearGradient(0,-3.4,0,3.4);
-    fb.addColorStop(0,"#ffb04a"); fb.addColorStop(0.5,"#ff8a1a"); fb.addColorStop(1,"#e5680a");
-    ctx.fillStyle=fb; ctx.fillRect(-17,-3.4,30,6.8);
-    // yellow core
-    const yc=ctx.createLinearGradient(0,-1.6,0,1.6);
-    yc.addColorStop(0,"#fff0a0"); yc.addColorStop(1,"#ffcf2e");
-    ctx.fillStyle=yc; ctx.fillRect(-17,-1.6,26,3.2);
-    // flame tip with hot inner core
-    ctx.fillStyle="#ffd23b"; ctx.beginPath(); ctx.moveTo(13,-3.6); ctx.lineTo(19,0); ctx.lineTo(13,3.6); ctx.closePath(); ctx.fill();
-    ctx.fillStyle="rgba(255,244,170,0.85)"; ctx.beginPath(); ctx.moveTo(13,-2.2); ctx.lineTo(17,0); ctx.lineTo(13,2.2); ctx.closePath(); ctx.fill();
-    // glossy cockpit + diagonal reflection
-    ctx.fillStyle="#141a28"; ctx.beginPath(); ctx.roundRect(-6,-6,12,12,4); ctx.fill();
-    const gl=ctx.createLinearGradient(-5,-5.5,5,5.5);
-    gl.addColorStop(0,"rgba(150,205,255,0.5)"); gl.addColorStop(0.5,"rgba(150,205,255,0.05)"); gl.addColorStop(1,"rgba(150,205,255,0)");
-    ctx.fillStyle=gl; ctx.beginPath(); ctx.roundRect(-5.4,-5.4,10.8,10.8,3.4); ctx.fill();
-    // twin pipes with chrome highlight
-    ctx.fillStyle="#9aa3b8"; ctx.fillRect(-19,-6,2.4,3.2); ctx.fillRect(-19,2.8,2.4,3.2);
-    ctx.fillStyle="rgba(255,255,255,0.4)"; ctx.fillRect(-19,-6,2.4,1); ctx.fillRect(-19,2.8,2.4,1);
-    // specular shine dot (top-left)
-    ctx.save(); const sp=ctx.createRadialGradient(-9,-6,0,-9,-6,7);
-    sp.addColorStop(0,"rgba(255,255,255,0.45)"); sp.addColorStop(1,"rgba(255,255,255,0)");
-    ctx.fillStyle=sp; ctx.beginPath(); ctx.ellipse(-9,-6,7,4,-0.3,0,TAU); ctx.fill(); ctx.restore();
-    // rim light + seat
-    ctx.lineWidth=1; ctx.strokeStyle="rgba(255,255,255,0.4)";
-    ctx.beginPath(); ctx.moveTo(-13,-9); ctx.lineTo(13,-9); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-16.5,-6); ctx.lineTo(-16.5,5); ctx.stroke();
-    ctx.strokeStyle="rgba(0,0,0,0.32)";
-    ctx.beginPath(); ctx.moveTo(-13,9); ctx.lineTo(13,9); ctx.stroke();
-    ctx.fillStyle="rgba(0,0,0,0.14)"; ctx.beginPath(); ctx.roundRect(-14,8,28,1.6,1.5); ctx.fill();
-  }
-  else if(vid==="frost"){                                    // 🧊 World 2 reward — icy racer
-    const g=ctx.createLinearGradient(-14,-9,14,9);
-    g.addColorStop(0,"#bfe9ff"); g.addColorStop(0.45,"#4aa8d8"); g.addColorStop(1,"#2a6f95");
-    ctx.fillStyle=g; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,8); ctx.fill();
-    // frosty sheen
-    const sh=ctx.createLinearGradient(0,-9.5,0,-1);
-    sh.addColorStop(0,"rgba(255,255,255,0.55)"); sh.addColorStop(1,"rgba(255,255,255,0)");
-    ctx.fillStyle=sh; ctx.beginPath(); ctx.roundRect(-16,-9,32,8,7); ctx.fill();
-    // ice shards with facet shade (drawn before skirt, as original)
-    ctx.fillStyle="#eaf7ff"; ctx.beginPath(); ctx.moveTo(8,-8); ctx.lineTo(12,-3); ctx.lineTo(9,-1); ctx.lineTo(5,-4); ctx.closePath(); ctx.fill();
-    ctx.fillStyle="rgba(120,180,220,0.5)"; ctx.beginPath(); ctx.moveTo(9,-1); ctx.lineTo(12,-3); ctx.lineTo(10.5,-2); ctx.closePath(); ctx.fill();
-    ctx.fillStyle="#eaf7ff"; ctx.beginPath(); ctx.moveTo(11,2); ctx.lineTo(15,6); ctx.lineTo(11,8); ctx.lineTo(8,5); ctx.closePath(); ctx.fill();
-    ctx.fillStyle="rgba(120,180,220,0.5)"; ctx.beginPath(); ctx.moveTo(11,8); ctx.lineTo(15,6); ctx.lineTo(13,7); ctx.closePath(); ctx.fill();
-    // frost skirt (bottom band)
-    const sk=ctx.createLinearGradient(0,3.8,0,6.8);
-    sk.addColorStop(0,"#eaf7ff"); sk.addColorStop(1,"#c2e2f2");
-    ctx.fillStyle=sk; ctx.beginPath(); ctx.roundRect(-16,3.8,26,3,1.5); ctx.fill();
-    // glossy tinted cockpit + diagonal reflection
-    ctx.fillStyle="#0e2735"; ctx.beginPath(); ctx.roundRect(-6,-6,12,12,4); ctx.fill();
-    const gl=ctx.createLinearGradient(-5,-5.5,5,5.5);
-    gl.addColorStop(0,"rgba(190,233,255,0.6)"); gl.addColorStop(0.5,"rgba(190,233,255,0.08)"); gl.addColorStop(1,"rgba(190,233,255,0)");
-    ctx.fillStyle=gl; ctx.beginPath(); ctx.roundRect(-5.4,-5.4,10.8,10.8,3.4); ctx.fill();
-    ctx.fillStyle="#bfe9ff"; ctx.beginPath(); ctx.roundRect(-3,-4.5,3,9,1.5); ctx.fill();     // icy glint
-    // specular shine dot (top-left)
-    ctx.save(); const sp=ctx.createRadialGradient(-9,-6,0,-9,-6,7);
-    sp.addColorStop(0,"rgba(255,255,255,0.6)"); sp.addColorStop(1,"rgba(255,255,255,0)");
-    ctx.fillStyle=sp; ctx.beginPath(); ctx.ellipse(-9,-6,7,4,-0.3,0,TAU); ctx.fill(); ctx.restore();
-    // rim light + seat
-    ctx.lineWidth=1; ctx.strokeStyle="rgba(255,255,255,0.5)";
-    ctx.beginPath(); ctx.moveTo(-13,-9); ctx.lineTo(13,-9); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-16.5,-6); ctx.lineTo(-16.5,5); ctx.stroke();
-    ctx.strokeStyle="rgba(0,0,0,0.26)";
-    ctx.beginPath(); ctx.moveTo(-13,9); ctx.lineTo(13,9); ctx.stroke();
-    ctx.fillStyle="rgba(0,0,0,0.12)"; ctx.beginPath(); ctx.roundRect(-14,8,28,1.6,1.5); ctx.fill();
-  }
-  else if(vid==="glitch"){                                   // 🌀 World 3 reward — neon glitch racer
-    ctx.save(); ctx.shadowColor="#c56cff"; ctx.shadowBlur=8;                       // neon glow halo (identity)
-    ctx.fillStyle="#2a1c46"; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,7); ctx.fill();
+    // 🐐 GOLDEN GOAT — secret all-gold legendary trophy car (nose = +x)
+    const outline = () => {                                   // sleek premium GT wedge
+      ctx.beginPath();
+      ctx.moveTo(18,0);
+      ctx.bezierCurveTo(17.6,-5, 14,-8.4, 9,-9);
+      ctx.bezierCurveTo(2,-9.8, -6,-10, -12,-8.8);
+      ctx.quadraticCurveTo(-17.6,-7.2, -18,-2.6);
+      ctx.quadraticCurveTo(-18.3,0, -18,2.6);
+      ctx.quadraticCurveTo(-17.6,7.2, -12,8.8);
+      ctx.bezierCurveTo(-6,10, 2,9.8, 9,9);
+      ctx.bezierCurveTo(14,8.4, 17.6,5, 18,0);
+      ctx.closePath();
+    };
+    carPaint("#f0bf3a", outline);
+
+    // ── rich metallic-gold depth + cream trophy stripe + legendary sparkle (clipped) ──
+    ctx.save(); outline(); ctx.clip();
+    let mt = ctx.createLinearGradient(0,-10,0,10);            // pale-gold crown → deep amber belly
+    mt.addColorStop(0,"rgba(255,247,205,0.6)"); mt.addColorStop(0.4,"rgba(240,190,60,0)");
+    mt.addColorStop(0.7,"rgba(150,96,20,0.3)"); mt.addColorStop(1,"rgba(104,60,8,0.52)");
+    ctx.fillStyle=mt; ctx.fillRect(-20,-11,40,22);
+    let hz=ctx.createLinearGradient(0,-8.5,0,-2);             // crisp horizon reflection = polished metal
+    hz.addColorStop(0,"rgba(255,250,228,0)"); hz.addColorStop(0.55,"rgba(255,252,236,0.6)"); hz.addColorStop(1,"rgba(255,248,216,0)");
+    ctx.fillStyle=hz; ctx.fillRect(-17,-8.5,34,6.5);
+    ctx.globalAlpha=0.5;                                      // warm amber flank glow (legendary)
+    let fl=ctx.createLinearGradient(-18,0,-4,0);
+    fl.addColorStop(0,"rgba(255,170,40,0.42)"); fl.addColorStop(1,"rgba(255,170,40,0)");
+    ctx.fillStyle=fl; ctx.fillRect(-18,-9,16,18); ctx.globalAlpha=1;
+    ctx.strokeStyle="rgba(70,44,8,0.34)"; ctx.lineWidth=0.6;  // shoulder panel seams (depth)
+    ctx.beginPath(); ctx.moveTo(13,-6.4); ctx.lineTo(-14,-6); ctx.moveTo(13,6.4); ctx.lineTo(-14,6); ctx.stroke();
+    ctx.strokeStyle="rgba(255,246,214,0.3)"; ctx.lineWidth=0.5;
+    ctx.beginPath(); ctx.moveTo(13,-6.9); ctx.lineTo(-14,-6.5); ctx.stroke();
+    ctx.fillStyle="#a9781c"; ctx.fillRect(-17,-3.2,34,6.4);   // gold pinstripe border
+    let cs=ctx.createLinearGradient(0,-2.4,0,2.4);            // cream trophy centre stripe
+    cs.addColorStop(0,"#fffdf3"); cs.addColorStop(0.5,"#f6ecc8"); cs.addColorStop(1,"#e2cf94");
+    ctx.fillStyle=cs; ctx.fillRect(-17,-2.4,34,4.8);
+    let csg=ctx.createLinearGradient(0,-2.4,0,2.4);
+    csg.addColorStop(0,"rgba(255,255,255,0.42)"); csg.addColorStop(0.5,"rgba(255,255,255,0)"); csg.addColorStop(1,"rgba(0,0,0,0.22)");
+    ctx.fillStyle=csg; ctx.fillRect(-17,-2.4,34,4.8);
+    const twk=(px,py,ph)=>{                                   // twinkling 4-point sparkle
+      const t=0.4+0.6*Math.abs(Math.sin(game.t*3+ph)), r=1.2+0.95*t;
+      ctx.fillStyle="rgba(255,252,228,"+(0.85*t).toFixed(3)+")";
+      ctx.beginPath();
+      ctx.moveTo(px,py-r); ctx.lineTo(px+r*0.26,py-r*0.26); ctx.lineTo(px+r,py); ctx.lineTo(px+r*0.26,py+r*0.26);
+      ctx.lineTo(px,py+r); ctx.lineTo(px-r*0.26,py+r*0.26); ctx.lineTo(px-r,py); ctx.lineTo(px-r*0.26,py-r*0.26);
+      ctx.closePath(); ctx.fill();
+    };
+    twk(-14,-4,0); twk(-9,5,2.1); twk(-4,-6,4.0); twk(1,5,1.0); twk(4,-3,5.5);
     ctx.restore();
-    let g=ctx.createLinearGradient(-17,-9.5,17,9.5);                              // dimensional body
-    g.addColorStop(0,"#4a3576"); g.addColorStop(0.5,"#2a1c46"); g.addColorStop(1,"#160e28");
-    ctx.fillStyle=g; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,7); ctx.fill();
-    let sh=ctx.createLinearGradient(0,-9.5,0,-1);                                 // top sheen fading down
-    sh.addColorStop(0,"rgba(150,110,220,0.5)"); sh.addColorStop(1,"rgba(150,110,220,0)");
-    ctx.fillStyle=sh; ctx.beginPath(); ctx.roundRect(-16,-9,32,8,6); ctx.fill();
-    let sp=ctx.createRadialGradient(-9,-6,0,-9,-6,7);                             // specular shine dot
-    sp.addColorStop(0,"rgba(255,255,255,0.5)"); sp.addColorStop(1,"rgba(255,255,255,0)");
-    ctx.fillStyle=sp; ctx.beginPath(); ctx.ellipse(-9,-6,7,4,-0.3,0,TAU); ctx.fill();
-    ctx.fillStyle="rgba(0,0,0,0.22)"; ctx.beginPath(); ctx.roundRect(-15,7.6,30,1.8,1); ctx.fill();  // ground seat
-    ctx.strokeStyle="#c56cff"; ctx.lineWidth=1.8; ctx.beginPath(); ctx.roundRect(-16,-8.7,32,17.4,6); ctx.stroke();   // neon outline
-    let ne=ctx.createLinearGradient(0,-1.4,0,1.4);                                // neon centerline
-    ne.addColorStop(0,"#e0a0ff"); ne.addColorStop(0.5,"#c56cff"); ne.addColorStop(1,"#8a3fd0");
-    ctx.fillStyle=ne; ctx.fillRect(-15,-1.4,28,2.8);
-    ctx.fillStyle="#ff5db1"; ctx.fillRect(-15,-1,20,2);                           // magenta core
-    ctx.fillStyle="rgba(255,190,230,0.7)"; ctx.fillRect(-15,-1,20,0.7);           // core hi-light
-    ctx.fillStyle="rgba(126,201,255,0.7)"; ctx.fillRect(-10,-7,5,2); ctx.fillRect(2,5.2,6,2);   // glitch blocks
-    ctx.fillStyle="rgba(200,240,255,0.85)"; ctx.fillRect(-10,-7,5,0.7); ctx.fillRect(2,5.2,6,0.7);  // lit top edge
-    ctx.fillStyle="#0e0a1a"; ctx.beginPath(); ctx.roundRect(-6,-6,12,12,4); ctx.fill();          // glossy cockpit
-    ctx.fillStyle="rgba(140,90,200,0.55)"; ctx.beginPath(); ctx.moveTo(-6,-2); ctx.lineTo(-1,-6); ctx.lineTo(2,-6); ctx.lineTo(-6,1); ctx.closePath(); ctx.fill();  // reflection streak
-    ctx.fillStyle="#c56cff"; ctx.beginPath(); ctx.roundRect(-3,-4.5,3,9,1.5); ctx.fill();        // glowing slit
-    ctx.fillStyle="rgba(230,200,255,0.85)"; ctx.fillRect(-3,-4.5,1.2,9);                          // slit hi-light
-    ctx.lineWidth=1; ctx.strokeStyle="rgba(255,255,255,0.4)";                     // rim light: top+left
-    ctx.beginPath(); ctx.moveTo(-10,-9.5); ctx.lineTo(10,-9.5); ctx.moveTo(-17,-2.5); ctx.lineTo(-17,2.5); ctx.stroke();
-    ctx.strokeStyle="rgba(0,0,0,0.32)";                                           // rim shade: bottom+right
-    ctx.beginPath(); ctx.moveTo(-10,9.5); ctx.lineTo(10,9.5); ctx.moveTo(17,-2.5); ctx.lineTo(17,2.5); ctx.stroke();
-  }
-  else if(vid==="monster"){                                  // 🏭 World 4 reward — CRUSHER monster truck (ownWheels)
-    const tires=[[-15,-13,12,9],[-15,4,12,9],[6,-12,10,8],[6,4,10,8]];
-    for(const [tx,ty,tw,th] of tires){                                            // dimensional rubber
-      let tg=ctx.createRadialGradient(tx+tw*0.35,ty+th*0.3,1,tx+tw*0.5,ty+th*0.5,tw*0.95);
-      tg.addColorStop(0,"#3a3f4c"); tg.addColorStop(0.6,"#1c1f27"); tg.addColorStop(1,"#0c0e13");
-      ctx.fillStyle=tg; ctx.beginPath(); ctx.roundRect(tx,ty,tw,th,3); ctx.fill();
+
+    carRim(outline);
+
+    // ── chrome-gold nose trim ──
+    let nz=ctx.createLinearGradient(12,0,18,0);
+    nz.addColorStop(0,"rgba(255,255,255,0.1)"); nz.addColorStop(0.55,"#fff4c8"); nz.addColorStop(1,"#c99a2c");
+    ctx.fillStyle=nz; ctx.beginPath();
+    ctx.moveTo(12.5,-4.2); ctx.quadraticCurveTo(18,-2,18,0); ctx.quadraticCurveTo(18,2,12.5,4.2);
+    ctx.quadraticCurveTo(15,0,12.5,-4.2); ctx.closePath(); ctx.fill();
+
+    // ── gold-tinted canopy framing the number, headlights, glossy specular ──
+    carCanopy(15,15);
+    carHeadlights(13,5);
+    carSpecular();
+
+    // ── LEGENDARY golden goat horns curling forward over the cowl (identity) ──
+    for(const s of [-1,1]){
+      ctx.fillStyle="rgba(44,28,6,0.45)";                    // dark root seats the horn on the cowl
+      ctx.beginPath(); ctx.ellipse(6.8,s*2.7,1.8,1.3,s*0.5,0,TAU); ctx.fill();
+      let hg=ctx.createLinearGradient(6,s*2,14,s*6.4);       // deep gold base → bright chrome tip
+      hg.addColorStop(0,"#6f4a0e"); hg.addColorStop(0.42,"#e8bd36"); hg.addColorStop(0.8,"#fff0bf"); hg.addColorStop(1,"#fffdf4");
+      ctx.fillStyle=hg;
+      ctx.beginPath();
+      ctx.moveTo(6.2,s*1.8);
+      ctx.quadraticCurveTo(11.6,s*2.2, 14.2,s*5.8);
+      ctx.quadraticCurveTo(13.4,s*6.7, 12.3,s*6.2);
+      ctx.quadraticCurveTo(10.6,s*3.7, 6.7,s*3.6);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle="rgba(92,58,12,0.42)"; ctx.lineWidth=0.5;  // ridge grooves
+      ctx.beginPath();
+      ctx.moveTo(8.7,s*2.7); ctx.lineTo(9.0,s*3.6);
+      ctx.moveTo(10.3,s*3.3); ctx.lineTo(10.8,s*4.3);
+      ctx.moveTo(11.8,s*4.3); ctx.lineTo(12.5,s*5.3);
+      ctx.stroke();
+      ctx.strokeStyle="rgba(255,255,255,0.6)"; ctx.lineWidth=0.6;  // chrome crest highlight
+      ctx.beginPath(); ctx.moveTo(7.1,s*2.4); ctx.quadraticCurveTo(11.4,s*2.7, 13.7,s*5.6); ctx.stroke();
+      ctx.fillStyle="rgba(255,255,255,0.95)";                     // hot pin-point at the horn tip
+      ctx.beginPath(); ctx.arc(13.5,s*5.6,0.7,0,TAU); ctx.fill();
     }
-    ctx.strokeStyle="rgba(8,10,14,0.8)"; ctx.lineWidth=1.4;                        // tread grooves
-    for(const [tx,ty,tw,th] of tires)
-      for(let k=1;k<3;k++){ ctx.beginPath(); ctx.moveTo(tx+tw*k/3,ty); ctx.lineTo(tx+tw*k/3,ty+th); ctx.stroke(); }
-    ctx.strokeStyle="rgba(120,132,155,0.35)"; ctx.lineWidth=1;                     // tread top highlight
-    for(const [tx,ty,tw,th] of tires){ ctx.beginPath(); ctx.moveTo(tx+1.5,ty+1); ctx.lineTo(tx+tw-1.5,ty+1); ctx.stroke(); }
-    ctx.fillStyle="#e8a930"; for(const [wx,wy] of [[-9,-8.5],[-9,8.5],[11,-8],[11,8]]){ ctx.beginPath(); ctx.arc(wx,wy,2,0,TAU); ctx.fill(); }  // hubs
-    ctx.fillStyle="#fff0c0"; for(const [wx,wy] of [[-9,-8.5],[-9,8.5],[11,-8],[11,8]]){ ctx.beginPath(); ctx.arc(wx-0.6,wy-0.6,0.8,0,TAU); ctx.fill(); }  // bolt shine
-    let g=ctx.createLinearGradient(-13,-8,15,8);                                  // raised orange body
-    g.addColorStop(0,"#f0954a"); g.addColorStop(0.5,"#c96a2a"); g.addColorStop(1,"#8f4718");
-    ctx.fillStyle=g; ctx.beginPath(); ctx.roundRect(-13,-8,28,16,4); ctx.fill();
-    let sh=ctx.createLinearGradient(0,-8,0,0);                                    // top sheen
-    sh.addColorStop(0,"rgba(255,235,200,0.5)"); sh.addColorStop(1,"rgba(255,235,200,0)");
-    ctx.fillStyle=sh; ctx.beginPath(); ctx.roundRect(-12,-7.5,26,7,3); ctx.fill();
-    let sp=ctx.createRadialGradient(-8,-5,0,-8,-5,6);                             // specular
-    sp.addColorStop(0,"rgba(255,255,255,0.55)"); sp.addColorStop(1,"rgba(255,255,255,0)");
-    ctx.fillStyle=sp; ctx.beginPath(); ctx.ellipse(-8,-5,6,3.4,-0.3,0,TAU); ctx.fill();
-    let bg=ctx.createLinearGradient(0,-1.6,0,1.6);                                // steel band
-    bg.addColorStop(0,"#b89a68"); bg.addColorStop(0.5,"#8b6a3a"); bg.addColorStop(1,"#5e4826");
-    ctx.fillStyle=bg; ctx.fillRect(-13,-1.6,28,3.2);
-    ctx.fillStyle="#141a26"; ctx.beginPath(); ctx.roundRect(-6,-6,11,12,3); ctx.fill();          // glossy cab window
-    ctx.fillStyle="rgba(120,150,190,0.5)"; ctx.beginPath(); ctx.moveTo(-6,-1); ctx.lineTo(0,-6); ctx.lineTo(3,-6); ctx.lineTo(-6,2); ctx.closePath(); ctx.fill();  // reflection
-    let scg=ctx.createLinearGradient(14,0,18,0);                                  // steel bull-bar scoop
-    scg.addColorStop(0,"#d8e0ee"); scg.addColorStop(1,"#7c8496");
-    ctx.fillStyle=scg; ctx.beginPath(); ctx.roundRect(14,-9,4,18,2); ctx.fill();
-    ctx.fillStyle="#6d7690"; ctx.fillRect(15,-7,2,3); ctx.fillRect(15,4,2,3);
-    ctx.fillStyle="rgba(255,255,255,0.5)"; ctx.fillRect(14,-9,4,0.8);              // scoop top glint
-    ctx.strokeStyle="rgba(255,255,255,0.4)"; ctx.lineWidth=1;                      // rim light: top+left
-    ctx.beginPath(); ctx.moveTo(-9,-8); ctx.lineTo(11,-8); ctx.moveTo(-13,-4); ctx.lineTo(-13,4); ctx.stroke();
-    ctx.strokeStyle="rgba(0,0,0,0.3)";                                            // rim shade: bottom
-    ctx.beginPath(); ctx.moveTo(-9,8); ctx.lineTo(11,8); ctx.stroke();
+
+    // ── hero flourishes: crown chrome glint + crisp hot pin-point + rear golden crest badge ──
+    ctx.fillStyle="rgba(255,255,255,0.92)"; ctx.beginPath(); ctx.ellipse(9.5,-6,1.5,0.9,-0.4,0,TAU); ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,0.98)"; ctx.beginPath(); ctx.arc(-8.5,-7,0.8,0,TAU); ctx.fill();
+    ctx.fillStyle="#171008"; ctx.beginPath(); ctx.arc(-11.6,0,3.6,0,TAU); ctx.fill();     // rear crest badge disc
+    ctx.strokeStyle="#e8c24a"; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(-11.6,0,3.6,0,TAU); ctx.stroke();
+    ctx.strokeStyle="rgba(255,246,210,0.6)"; ctx.lineWidth=0.5; ctx.beginPath(); ctx.arc(-11.6,-0.3,3.05,Math.PI*1.05,Math.PI*1.72); ctx.stroke();
+    ctx.font="5px sans-serif"; ctx.textBaseline="middle";
+    fillTextC("🐐", -11.6, 0.3);
   }
-  else if(vid==="wave"){                                     // 🌊 World 5 reward — cresting-wave racer
-    let g=ctx.createLinearGradient(-17,-9.5,17,9.5);                              // dimensional teal body
-    g.addColorStop(0,"#5cd6ea"); g.addColorStop(0.5,"#12a6c4"); g.addColorStop(1,"#08657c");
-    ctx.fillStyle=g; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,8); ctx.fill();
-    let sh=ctx.createLinearGradient(0,-9.5,0,-1);                                 // top sheen
-    sh.addColorStop(0,"rgba(230,252,255,0.55)"); sh.addColorStop(1,"rgba(230,252,255,0)");
-    ctx.fillStyle=sh; ctx.beginPath(); ctx.roundRect(-16,-9,32,7.5,7); ctx.fill();
-    let wg=ctx.createLinearGradient(0,-2,0,8);                                    // foam wave sweep
-    wg.addColorStop(0,"#bff4ff"); wg.addColorStop(1,"#6fd8ee");
-    ctx.fillStyle=wg;
+  else if(vid==="blaze"){
+    // 🔥 BLAZE — sculpted hot-rod wedge: sharp nose, fat rear haunch, crisp flame-lick flanks, glowing side-pipes
+    const flick  = 0.6 + 0.4*Math.sin(game.t*16);            // idle exhaust / flame flicker
+    const flick2 = 0.5 + 0.5*Math.sin(game.t*16 + 1.9);      // offset flicker for the white-hot cores
+    const outline = () => {                                   // hot-rod wedge (nose = +x): pointed front, muscular rear
+      ctx.beginPath();
+      ctx.moveTo(18,0);
+      ctx.bezierCurveTo(17.6,-4.4, 14,-7, 10,-7.6);
+      ctx.bezierCurveTo(5.5,-8.2, 1.5,-8.1, -3,-9);
+      ctx.bezierCurveTo(-9,-10, -13,-10.2, -15.6,-9.4);
+      ctx.quadraticCurveTo(-18,-8.4, -18,0);
+      ctx.quadraticCurveTo(-18,8.4, -15.6,9.4);
+      ctx.bezierCurveTo(-13,10.2, -9,10, -3,9);
+      ctx.bezierCurveTo(1.5,8.1, 5.5,8.2, 10,7.6);
+      ctx.bezierCurveTo(14,7, 17.6,4.4, 18,0);
+      ctx.closePath();
+    };
+
+    // ── twin chrome side-pipes with a white-hot exhaust bloom (drawn first so the body overlaps them) ──
+    for(const py of [-4.6, 4.6]){
+      ctx.fillStyle="#9aa2b4"; ctx.beginPath(); ctx.roundRect(-20.8,py-1.6,6.4,3.2,1.4); ctx.fill();
+      ctx.fillStyle="rgba(255,255,255,0.5)"; ctx.beginPath(); ctx.roundRect(-20.6,py-1.5,6,0.85,1.2); ctx.fill();   // chrome hi-light
+      ctx.fillStyle="rgba(0,0,0,0.32)";      ctx.beginPath(); ctx.roundRect(-20.6,py+0.7,6,0.85,1.2); ctx.fill();   // underside shadow
+      let ex=ctx.createRadialGradient(-20.6,py,0.3, -20.6,py,5.2);
+      ex.addColorStop(0,   "rgba(255,250,220,"+(0.98*flick).toFixed(3)+")");
+      ex.addColorStop(0.32,"rgba(255,152,42,"+(0.85*flick).toFixed(3)+")");
+      ex.addColorStop(0.68,"rgba(255,72,16,"+(0.42*flick).toFixed(3)+")");
+      ex.addColorStop(1,   "rgba(255,50,10,0)");
+      ctx.fillStyle=ex; ctx.beginPath(); ctx.ellipse(-21,py,3.7,2.7,0,0,TAU); ctx.fill();
+      ctx.fillStyle="rgba(255,255,246,"+(0.9*flick).toFixed(3)+")";        // white-hot pin in the pipe mouth
+      ctx.beginPath(); ctx.ellipse(-20.5,py,1,0.85,0,0,TAU); ctx.fill();
+    }
+
+    // ── glossy DEEP CANDY-RED hot-rod body ──
+    carPaint("#bf1f18", outline);
+    ctx.save(); outline(); ctx.clip();                       // candy coat: cherry sheen up top, crimson pooling low
+    let candy=ctx.createLinearGradient(0,-11,0,11);
+    candy.addColorStop(0,"rgba(255,116,86,0.30)"); candy.addColorStop(0.5,"rgba(255,255,255,0)"); candy.addColorStop(1,"rgba(112,0,0,0.42)");
+    ctx.fillStyle=candy; ctx.fillRect(-20,-12,42,24);
+    ctx.restore();
+
+    // ── SIGNATURE: crisp flame licks along both flanks (clipped to the silhouette) ──
+    ctx.save(); outline(); ctx.clip();
+    const flameOuter=(s)=>{
+      ctx.beginPath();
+      ctx.moveTo(14,   s*2.4);
+      ctx.lineTo(14.4, s*6.6);
+      ctx.quadraticCurveTo(12,   s*9.4,  9.4, s*7.4);
+      ctx.quadraticCurveTo(8.2,  s*4.4,  6.6, s*4.2);
+      ctx.quadraticCurveTo(6,    s*9.2,  2.6, s*8);
+      ctx.quadraticCurveTo(1.4,  s*4.6, -0.2, s*4.2);
+      ctx.quadraticCurveTo(-1.6, s*9,   -5.2, s*7.6);
+      ctx.quadraticCurveTo(-7.4, s*5,   -9.4, s*3.2);
+      ctx.lineTo(-9.8, s*2.2);
+      ctx.closePath();
+    };
+    const flameInner=(s)=>{
+      ctx.beginPath();
+      ctx.moveTo(13.4, s*2.4);
+      ctx.lineTo(13.6, s*5);
+      ctx.quadraticCurveTo(11.6, s*6.8, 9.4, s*5.4);
+      ctx.quadraticCurveTo(8.4,  s*3.6, 7,   s*3.4);
+      ctx.quadraticCurveTo(6.4,  s*6.6, 3.4, s*5.7);
+      ctx.quadraticCurveTo(2.2,  s*3.6, 0.6, s*3.3);
+      ctx.quadraticCurveTo(-0.6, s*6.4, -3.8, s*5.3);
+      ctx.quadraticCurveTo(-5.6, s*4,  -7.2, s*2.9);
+      ctx.lineTo(-7.6, s*2.2);
+      ctx.closePath();
+    };
+    let fo=ctx.createLinearGradient(14.4,0,-10,0);           // hotter ramp: white-gold base → ember tips
+    fo.addColorStop(0,"#ffe98a"); fo.addColorStop(0.32,"#ffb121"); fo.addColorStop(0.62,"#ff6a12"); fo.addColorStop(0.85,"#f6360a"); fo.addColorStop(1,"rgba(150,14,6,0.92)");
+    let fi=ctx.createLinearGradient(13.4,0,-8,0);            // molten inner core
+    fi.addColorStop(0,"#fffdf0"); fi.addColorStop(0.45,"#ffde46"); fi.addColorStop(1,"rgba(255,120,26,0.12)");
+    for(const s of [-1,1]){
+      ctx.fillStyle=fo; flameOuter(s); ctx.fill();
+      ctx.strokeStyle="rgba(104,14,4,0.42)"; ctx.lineWidth=0.5; flameOuter(s); ctx.stroke();      // ember edge separates flame from candy body
+      ctx.globalAlpha=flick; ctx.fillStyle=fi; flameInner(s); ctx.fill(); ctx.globalAlpha=1;
+      ctx.strokeStyle="rgba(255,250,224,"+(0.5*flick2).toFixed(3)+")"; ctx.lineWidth=0.45; flameInner(s); ctx.stroke();  // flickering white-hot rim = crisp lick
+    }
+    ctx.fillStyle="rgba(255,250,220,"+(0.85*flick2).toFixed(3)+")";   // hot spark tips on the leading tongues
+    for(const s of [-1,1]){ ctx.beginPath(); ctx.arc(11.4,s*8.4,0.9,0,TAU); ctx.arc(4.6,s*8.2,0.8,0,TAU); ctx.fill(); }
+    ctx.strokeStyle="rgba(0,0,0,0.3)"; ctx.lineWidth=0.6;             // rear-deck shut-line for panel depth
+    ctx.beginPath(); ctx.moveTo(-9.4,-7.2); ctx.quadraticCurveTo(-13,-4.6, -14.4,0); ctx.quadraticCurveTo(-13,4.6, -9.4,7.2); ctx.stroke();
+    ctx.restore();
+
+    // ── rim light along the silhouette ──
+    carRim(outline);
+
+    // ── chrome supercharger blower poking up on the hood (hero flourish) ──
+    let bl=ctx.createLinearGradient(7,-4,11.5,4);
+    bl.addColorStop(0,"#f6f8fc"); bl.addColorStop(0.45,"#c2cad9"); bl.addColorStop(1,"#727b91");
+    ctx.fillStyle=bl; ctx.beginPath(); ctx.roundRect(7.4,-3.8,4.2,7.6,1.3); ctx.fill();
+    ctx.fillStyle="rgba(10,14,22,0.85)";                     // dark intake slots
+    ctx.beginPath(); ctx.roundRect(8,-2.9,3,1.05,0.5); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(8,-0.55,3,1.05,0.5); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(8,1.8,3,1.05,0.5); ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,0.62)"; ctx.beginPath(); ctx.roundRect(7.4,-3.8,4.2,1,1); ctx.fill();   // chrome cap hi-light
+    ctx.strokeStyle="rgba(0,0,0,0.3)"; ctx.lineWidth=0.6; ctx.beginPath(); ctx.roundRect(7.4,-3.8,4.2,7.6,1.3); ctx.stroke();
+
+    // ── chrome nose tip ──
+    let nz=ctx.createLinearGradient(13,0,18,0);
+    nz.addColorStop(0,"rgba(255,255,255,0.1)"); nz.addColorStop(0.6,"#f2f5fb"); nz.addColorStop(1,"#b4bccd");
+    ctx.fillStyle=nz; ctx.beginPath();
+    ctx.moveTo(13.5,-3.4); ctx.quadraticCurveTo(18,-1.6, 18,0); ctx.quadraticCurveTo(18,1.6, 13.5,3.4);
+    ctx.quadraticCurveTo(15.6,0, 13.5,-3.4); ctx.closePath(); ctx.fill();
+
+    // ── cockpit (frames the number) + lights + speculars ──
+    carCanopy(15,15);
+    carHeadlights(12.4,5);
+    carSpecular();
+    ctx.fillStyle="rgba(255,255,255,0.95)"; ctx.beginPath(); ctx.arc(8.7,-3.1,0.7,0,TAU); ctx.fill();            // crisp wet pin-point on the blower chrome
+    ctx.fillStyle="rgba(255,255,255,0.8)";  ctx.beginPath(); ctx.ellipse(16,-1.1,0.8,0.5,-0.4,0,TAU); ctx.fill(); // glint on the chrome nose
+  }
+  else if(vid==="frost"){
+    // 🧊 FROST GT — cut-glass crystalline wedge (nose = +x): faceted crystal nose, haunched flanks, rounded tail
+const outline = () => {
+  ctx.beginPath();
+  ctx.moveTo(18.6,0);
+  ctx.lineTo(12.6,-6.2);                                // sharp faceted crystal nose shoulder
+  ctx.quadraticCurveTo(10.6,-8.6, 5.6,-9.3);
+  ctx.bezierCurveTo(-2,-10, -11,-9.6, -15.6,-8);
+  ctx.quadraticCurveTo(-18.4,-6.2, -18,0);              // rounded crystal tail
+  ctx.quadraticCurveTo(-18.4,6.2, -15.6,8);
+  ctx.bezierCurveTo(-11,9.6, -2,10, 5.6,9.3);
+  ctx.quadraticCurveTo(10.6,8.6, 12.6,6.2);
+  ctx.lineTo(18.6,0);
+  ctx.closePath();
+};
+const twk = game.t*3.4;                                 // idle sparkle twinkle
+
+// ── cold cyan glow halo (the FROST GT signature) ──
+ctx.save();
+ctx.shadowColor = "rgba(120,224,255,0.95)"; ctx.shadowBlur = 8;
+ctx.fillStyle = "#26718f"; outline(); ctx.fill();
+ctx.restore();
+
+// ── icy pale-blue glossy body ──
+carPaint("#8ccfec", outline);
+
+// ── cut-glass crystalline shell (clipped): clean facets tiling to a bright center crown ridge ──
+ctx.save(); outline(); ctx.clip();
+// upper half — three lit facets (nose / mid flank / tail), lit from top-left
+ctx.fillStyle = "rgba(240,251,255,0.55)";
+ctx.beginPath(); ctx.moveTo(18.6,0); ctx.lineTo(12.6,-6.2); ctx.lineTo(4.5,-1.6); ctx.closePath(); ctx.fill();
+ctx.fillStyle = "rgba(255,255,255,0.24)";
+ctx.beginPath(); ctx.moveTo(12.6,-6.2); ctx.lineTo(5.6,-9.3); ctx.lineTo(-6,-9.2); ctx.lineTo(-9,-1); ctx.lineTo(4.5,-1.6); ctx.closePath(); ctx.fill();
+ctx.fillStyle = "rgba(206,238,253,0.30)";
+ctx.beginPath(); ctx.moveTo(-6,-9.2); ctx.lineTo(-16,-6); ctx.lineTo(-18,0); ctx.lineTo(-9,-1); ctx.closePath(); ctx.fill();
+// lower half — three cool shadow facets (mirror)
+ctx.fillStyle = "rgba(120,182,216,0.42)";
+ctx.beginPath(); ctx.moveTo(18.6,0); ctx.lineTo(12.6,6.2); ctx.lineTo(4.5,1.6); ctx.closePath(); ctx.fill();
+ctx.fillStyle = "rgba(20,76,112,0.40)";
+ctx.beginPath(); ctx.moveTo(12.6,6.2); ctx.lineTo(5.6,9.3); ctx.lineTo(-6,9.2); ctx.lineTo(-9,1); ctx.lineTo(4.5,1.6); ctx.closePath(); ctx.fill();
+ctx.fillStyle = "rgba(30,92,128,0.30)";
+ctx.beginPath(); ctx.moveTo(-6,9.2); ctx.lineTo(-16,6); ctx.lineTo(-18,0); ctx.lineTo(-9,1); ctx.closePath(); ctx.fill();
+// crisp frosted facet edges + bright center crown ridge (nose → tail)
+ctx.strokeStyle = "rgba(230,249,255,0.72)"; ctx.lineWidth = 0.8; ctx.lineJoin = "round"; ctx.lineCap = "round";
+ctx.beginPath();
+ctx.moveTo(18.6,0); ctx.lineTo(4.5,-1.6); ctx.lineTo(-9,-1); ctx.lineTo(-18,0);       // center crown ridge
+ctx.moveTo(12.6,-6.2); ctx.lineTo(4.5,-1.6); ctx.moveTo(-6,-9.2); ctx.lineTo(-9,-1);  // upper facet seams
+ctx.moveTo(12.6,6.2); ctx.lineTo(4.5,1.6); ctx.moveTo(-6,9.2); ctx.lineTo(-9,1);      // lower facet seams
+ctx.stroke();
+// ── sharp raised ice-shards — bright lit face + dark side face + crisp lit & shadow ridges ──
+// shard A (nose flank, points up toward the nose)
+ctx.fillStyle = "#f1fbff";
+ctx.beginPath(); ctx.moveTo(10.6,-8.3); ctx.lineTo(6.0,-2.5); ctx.lineTo(8.4,-2.9); ctx.closePath(); ctx.fill();
+ctx.fillStyle = "rgba(74,134,180,0.66)";
+ctx.beginPath(); ctx.moveTo(10.6,-8.3); ctx.lineTo(10.8,-3.3); ctx.lineTo(8.4,-2.9); ctx.closePath(); ctx.fill();
+ctx.strokeStyle = "rgba(255,255,255,0.92)"; ctx.lineWidth = 0.7; ctx.lineCap = "round";
+ctx.beginPath(); ctx.moveTo(10.6,-8.3); ctx.lineTo(6.0,-2.5); ctx.stroke();
+ctx.strokeStyle = "rgba(34,74,112,0.5)"; ctx.lineWidth = 0.6;
+ctx.beginPath(); ctx.moveTo(10.6,-8.3); ctx.lineTo(10.8,-3.3); ctx.stroke();
+// shard B (tail flank, points down toward the tail)
+ctx.fillStyle = "#f1fbff";
+ctx.beginPath(); ctx.moveTo(-12.2,8.5); ctx.lineTo(-13.2,4.4); ctx.lineTo(-10.6,3.9); ctx.closePath(); ctx.fill();
+ctx.fillStyle = "rgba(74,134,180,0.66)";
+ctx.beginPath(); ctx.moveTo(-12.2,8.5); ctx.lineTo(-8.0,3.4); ctx.lineTo(-10.6,3.9); ctx.closePath(); ctx.fill();
+ctx.strokeStyle = "rgba(255,255,255,0.92)"; ctx.lineWidth = 0.7;
+ctx.beginPath(); ctx.moveTo(-12.2,8.5); ctx.lineTo(-13.2,4.4); ctx.stroke();
+ctx.strokeStyle = "rgba(34,74,112,0.5)"; ctx.lineWidth = 0.6;
+ctx.beginPath(); ctx.moveTo(-12.2,8.5); ctx.lineTo(-8.0,3.4); ctx.stroke();
+// frost rime crusting the top edge — tiny crystals
+ctx.fillStyle = "rgba(255,255,255,0.6)";
+for(let i=0;i<6;i++){ const rx=-13+i*4.4; ctx.beginPath(); ctx.arc(rx,-8.4+Math.sin(i*1.7)*0.6,0.95,0,TAU); ctx.fill(); }
+ctx.restore();
+
+// ── base metallic rim light ──
+carRim(outline);
+
+// ── cold cyan rim glow — crisp icy edge light concentrated on the lit (top-left) side ──
+ctx.save(); ctx.globalCompositeOperation = "lighter";
+let crg = ctx.createLinearGradient(-13,-9, 13,9);
+crg.addColorStop(0,"rgba(176,240,255,0.72)"); crg.addColorStop(0.42,"rgba(122,216,255,0.13)"); crg.addColorStop(1,"rgba(122,216,255,0)");
+ctx.strokeStyle = crg; ctx.lineWidth = 1.3; ctx.lineJoin = "round"; outline(); ctx.stroke();
+ctx.restore();
+
+// ── icy chrome nose tip ──
+let nz = ctx.createLinearGradient(11,0, 19,0);
+nz.addColorStop(0,"rgba(255,255,255,0.10)"); nz.addColorStop(0.55,"#eaf7ff"); nz.addColorStop(1,"#b6dbef");
+ctx.fillStyle = nz; ctx.beginPath();
+ctx.moveTo(12.6,-4.4); ctx.quadraticCurveTo(18.6,-2, 18.6,0); ctx.quadraticCurveTo(18.6,2, 12.6,4.4);
+ctx.quadraticCurveTo(15,0, 12.6,-4.4); ctx.closePath(); ctx.fill();
+
+// ── cold cyan headlight lenses on the nose shoulders (icy identity, not warm) ──
+for(const ly of [-5,5]){
+  let hl = ctx.createRadialGradient(11.6,ly,0.2, 11.6,ly,2.6);
+  hl.addColorStop(0,"rgba(236,252,255,0.95)"); hl.addColorStop(0.5,"rgba(150,226,255,0.7)"); hl.addColorStop(1,"rgba(90,190,255,0)");
+  ctx.fillStyle = hl; ctx.beginPath(); ctx.ellipse(11.6,ly,2.3,1.8,0,0,TAU); ctx.fill();
+}
+
+// ── cockpit canopy (frames the number roundel) + frosty corner glint ──
+carCanopy(15,15);
+ctx.strokeStyle = "rgba(186,240,255,0.6)"; ctx.lineWidth = 1.3; ctx.lineCap = "round";
+ctx.beginPath(); ctx.moveTo(-6.4,-4); ctx.lineTo(-4,-6.4); ctx.stroke();
+ctx.lineCap = "butt";
+
+// ── broad specular + one crisp hot pin-point glint (wet look) ──
+carSpecular();
+ctx.fillStyle = "rgba(255,255,255,0.96)";
+ctx.beginPath(); ctx.ellipse(-6.4,-6.2,1.1,0.75,-0.3,0,TAU); ctx.fill();
+
+// ── twinkling frost sparkles (idle animation) ──
+for(const [sx,sy,ph] of [[14,-3,0],[-12,-5,1.6],[-4,7,3.0],[9,6,4.5]]){
+  const a = 0.28 + 0.5*Math.max(0,Math.sin(twk+ph));
+  ctx.strokeStyle = "rgba(220,246,255,"+a.toFixed(3)+")"; ctx.lineWidth = 0.8; ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(sx-1.7,sy); ctx.lineTo(sx+1.7,sy);
+  ctx.moveTo(sx,sy-1.7); ctx.lineTo(sx,sy+1.7);
+  ctx.stroke();
+}
+ctx.lineCap = "butt";
+  }
+  else if(vid==="glitch"){
+    // 🌀 GLITCH GT — faceted neon digital racer (nose = +x): chromatic-split edges + CRT scan sweep
+const flick = 0.5 + 0.5*Math.sin(game.t*22);              // fast pixel flicker
+const glow  = 0.55 + 0.45*Math.sin(game.t*6.1);           // slow neon breathe
+const jit   = Math.sin(game.t*13)*0.7;                    // horizontal glitch jitter
+const split = 1.1 + 0.55*flick;                           // pulsing chromatic-aberration width
+const burst = Math.max(0, Math.sin(game.t*2.3)-0.8)*5;    // intermittent datamosh burst (0 most of the time)
+const sweepY = -9.6 + ((game.t*0.9)%1)*19.2;              // CRT scan band sweeping down the body
+const outline = () => {                                    // low-poly digital wedge, angular tail
+  ctx.beginPath();
+  ctx.moveTo(18,0);
+  ctx.lineTo(13,-5.5); ctx.lineTo(8.5,-9); ctx.lineTo(-8,-9.6);
+  ctx.lineTo(-14,-8.8); ctx.lineTo(-17.5,-4.5);
+  ctx.lineTo(-17.5,4.5);
+  ctx.lineTo(-14,8.8); ctx.lineTo(-8,9.6); ctx.lineTo(8.5,9); ctx.lineTo(13,5.5);
+  ctx.closePath();
+};
+
+// ── neon bloom halo (identity glow behind the body, breathing) ──
+ctx.save(); ctx.shadowColor="#c56cff"; ctx.shadowBlur=6+4*glow;
+ctx.fillStyle="#2a1c46"; outline(); ctx.fill();
+ctx.restore();
+
+carPaint("#3d2568", outline);                             // neon-purple base + shared curved-surface lighting
+
+// ── signature interior: CRT scanlines + sweeping scan band + neon data rail (clipped) ──
+ctx.save(); outline(); ctx.clip();
+ctx.globalAlpha = 0.10 + 0.07*flick; ctx.fillStyle="#c69cff";        // static CRT scanlines
+for(let y=-9;y<9;y+=2) ctx.fillRect(-18,y,36,0.8);
+ctx.globalAlpha = 1;
+ctx.globalCompositeOperation="lighter";                             // bright scan band sweeping down (game.t)
+let sw=ctx.createLinearGradient(0,sweepY-2.4,0,sweepY+2.4);
+sw.addColorStop(0,"rgba(120,235,255,0)"); sw.addColorStop(0.5,"rgba(160,245,255,0.4)"); sw.addColorStop(1,"rgba(120,235,255,0)");
+ctx.fillStyle=sw; ctx.fillRect(-18,sweepY-2.4,36,4.8);
+ctx.globalCompositeOperation="source-over";
+let ne=ctx.createLinearGradient(-16,0,16,0);                        // cyan → violet → magenta data rail
+ne.addColorStop(0,"#3fe0ff"); ne.addColorStop(0.5,"#e0a0ff"); ne.addColorStop(1,"#ff5db1");
+ctx.fillStyle=ne; ctx.fillRect(-16,-1.6,32,3.2);
+ctx.fillStyle="#ff5db1"; ctx.fillRect(-13+jit,-1.1,17,2.2);         // magenta core (jittered)
+ctx.fillStyle="rgba(255,205,238,0.75)"; ctx.fillRect(-13+jit,-1.1,17,0.7);  // core hi-light
+ctx.fillStyle="rgba(63,224,255,"+(0.5+0.35*flick).toFixed(3)+")";  // glitch pixel blocks (cyan lit)
+ctx.fillRect(-11+jit,-7.6,6,2); ctx.fillRect(2.5-jit,5.2,7,2);
+ctx.fillStyle="rgba(255,93,177,0.55)";                             // magenta ghost of the blocks
+ctx.fillRect(-11-jit,-7.1,6,1.2); ctx.fillRect(2.5+jit,5.7,7,1.2);
+ctx.fillStyle="rgba(215,246,255,0.85)"; ctx.fillRect(-11+jit,-7.6,6,0.6);   // lit pixel top edge
+if(burst>0.03){                                                    // intermittent datamosh slice — RGB-split flash that jumps rows
+  const by=-6.5+((game.t*37|0)%9); ctx.globalAlpha=Math.min(1,burst); ctx.globalCompositeOperation="lighter";
+  ctx.fillStyle="#3fe0ff"; ctx.fillRect(-20+3,by,40,2.3);
+  ctx.fillStyle="#ff5db1"; ctx.fillRect(-20-3,by+0.6,40,2.3);
+  ctx.globalCompositeOperation="source-over"; ctx.globalAlpha=1;
+}
+ctx.restore();
+
+carRim(outline);
+
+// ── crisp RGB-split neon edges (chromatic aberration, additive) + hot white core wire ──
+ctx.globalCompositeOperation="lighter"; ctx.lineJoin="round";
+ctx.lineWidth=1.1;
+ctx.strokeStyle="rgba(63,224,255,"+(0.5+0.4*flick).toFixed(3)+")";      // cyan ghost, pulsing offset
+ctx.save(); ctx.translate(split,-0.5); outline(); ctx.stroke(); ctx.restore();
+ctx.strokeStyle="rgba(255,93,177,"+(0.5+0.4*(1-flick)).toFixed(3)+")";  // magenta ghost, counter-phase
+ctx.save(); ctx.translate(-split,0.5); outline(); ctx.stroke(); ctx.restore();
+ctx.lineWidth=0.8; ctx.strokeStyle="rgba(228,244,255,0.7)"; outline(); ctx.stroke();  // hot white core edge between the splits
+ctx.globalCompositeOperation="source-over";
+
+// ── cockpit canopy (frames the number roundel) + breathing neon underglow ring ──
+carCanopy(14,14);
+ctx.strokeStyle="rgba(197,108,255,"+(0.55+0.3*glow).toFixed(3)+")"; ctx.lineWidth=1;
+ctx.beginPath(); ctx.roundRect(-7,-7,14,14,4.7); ctx.stroke();
+
+// ── neon cyan headlight lenses (digital, cool) ──
+for(const ly of [-5,5]){
+  let hl=ctx.createRadialGradient(13,ly,0.2,13,ly,2.6);
+  hl.addColorStop(0,"rgba(224,250,255,0.95)"); hl.addColorStop(0.5,"rgba(63,224,255,0.7)"); hl.addColorStop(1,"rgba(63,224,255,0)");
+  ctx.fillStyle=hl; ctx.beginPath(); ctx.ellipse(13,ly,2.2,1.7,0,0,TAU); ctx.fill();
+}
+carSpecular(-9,-6);
+ctx.fillStyle="rgba(255,255,255,0.95)"; ctx.beginPath(); ctx.arc(-10,-7.4,0.85,0,TAU); ctx.fill();  // hot pin-point wet-gloss dot
+  }
+  else if(vid==="monster"){
+    // 🏭 CRUSHER — bold-orange monster truck (ownWheels): HUGE knobby tires, chrome roll cage + supercharger blower
+    const idle = 0.5 + 0.5*Math.sin(game.t*6);                                       // idle engine shimmer
+
+    // ── FOUR HUGE KNOBBY TIRES (drawn behind the body) ──
+    const wheels=[[9.7,-9.7],[9.7,9.7],[-9.7,-9.7],[-9.7,9.7]], TW=13.6, TH=11;
+    for(const [cx,cy] of wheels){
+      let tg=ctx.createRadialGradient(cx-3.6,cy-3.6,1, cx,cy, TW*0.66);              // fat rubber, lit top-left
+      tg.addColorStop(0,"#454b5c"); tg.addColorStop(0.55,"#191c25"); tg.addColorStop(1,"#05070d");
+      ctx.fillStyle=tg; ctx.beginPath(); ctx.roundRect(cx-TW/2,cy-TH/2,TW,TH,4.8); ctx.fill();
+      ctx.save(); ctx.beginPath(); ctx.roundRect(cx-TW/2,cy-TH/2,TW,TH,4.8); ctx.clip();
+      for(let row=0;row<2;row++){                                                    // aggressive staggered lugs — reads knobby even tiny
+        const ry = cy + (row? 1.2 : -TH*0.5);                                        // upper + lower tread rows, deep center groove between
+        const off = row? 2.1 : 0;                                                    // stagger the lower row
+        for(let k=0;k<3;k++){ const lx=cx-TW/2+2.6+off+k*4.3;
+          ctx.fillStyle="rgba(0,0,0,0.6)";        ctx.beginPath(); ctx.roundRect(lx-1.9,ry+0.7,3.8,TH*0.32,1); ctx.fill();  // knob drop-shadow (3D pop)
+          ctx.fillStyle="rgba(130,141,164,0.52)"; ctx.beginPath(); ctx.roundRect(lx-1.9,ry,    3.8,TH*0.32,1); ctx.fill();  // lit knob face
+        }
+      }
+      ctx.restore();
+      ctx.strokeStyle="rgba(170,182,208,0.42)"; ctx.lineWidth=1;                      // wet top rim-light on tire
+      ctx.beginPath(); ctx.moveTo(cx-TW/2+2,cy-TH/2+0.9); ctx.lineTo(cx+TW/2-2,cy-TH/2+0.9); ctx.stroke();
+      let hg=ctx.createRadialGradient(cx-1.4,cy-1.4,0.3, cx,cy,3.9);                  // chrome-orange hub (identity)
+      hg.addColorStop(0,"#fff0bc"); hg.addColorStop(0.5,"#eeb23a"); hg.addColorStop(1,"#7a4d0f");
+      ctx.fillStyle=hg; ctx.beginPath(); ctx.arc(cx,cy,3.7,0,TAU); ctx.fill();
+      ctx.strokeStyle="rgba(40,26,6,0.6)"; ctx.lineWidth=0.8;                         // crisp hub-ring definition
+      ctx.beginPath(); ctx.arc(cx,cy,3.7,0,TAU); ctx.stroke();
+      ctx.fillStyle="#3a2a0c";                                                        // lug-bolt ring
+      for(let b=0;b<5;b++){ const a=b/5*TAU-0.5; ctx.beginPath(); ctx.arc(cx+Math.cos(a)*2.2, cy+Math.sin(a)*2.2, 0.58,0,TAU); ctx.fill(); }
+      ctx.fillStyle="rgba(255,255,255,0.95)"; ctx.beginPath(); ctx.arc(cx-0.8,cy-0.9,0.9,0,TAU); ctx.fill();  // hot hub pin-specular (wet)
+    }
+
+    // ── SCULPTED BEEFY TRUCK SILHOUETTE (nose = +x): rounded snout, flared shoulders, tailgate ──
+    const outline=()=>{
+      ctx.beginPath();
+      ctx.moveTo(17.6,-3.4);
+      ctx.quadraticCurveTo(18.4,0, 17.6,3.4);          // rounded snout
+      ctx.lineTo(15,6.6);
+      ctx.quadraticCurveTo(13.6,8.2, 11,8.3);           // front fender shoulder
+      ctx.lineTo(-11,8.3);
+      ctx.quadraticCurveTo(-14,8.1, -15,5.6);           // rear-bottom corner
+      ctx.lineTo(-15.6,2.6);
+      ctx.quadraticCurveTo(-16,0, -15.6,-2.6);          // tailgate bulge
+      ctx.lineTo(-15,-5.6);
+      ctx.quadraticCurveTo(-14,-8.1, -11,-8.3);         // rear-top corner
+      ctx.lineTo(11,-8.3);
+      ctx.quadraticCurveTo(13.6,-8.2, 15,-6.6);         // front fender shoulder
+      ctx.lineTo(17.6,-3.4);
+      ctx.closePath();
+    };
+    carPaint("#ef7d1e", outline);                                                     // bold-orange body, lit + glossy
+
+    // ── body detailing (clipped to the shell) ──
+    ctx.save(); outline(); ctx.clip();
+    let band=ctx.createLinearGradient(0,3.4,0,8.3);                                   // low steel skid band
+    band.addColorStop(0,"#7c4e26"); band.addColorStop(0.5,"#5a3818"); band.addColorStop(1,"#38220e");
+    ctx.fillStyle=band; ctx.fillRect(-16,3.4,34,5);
+    ctx.fillStyle="rgba(220,190,150,0.24)";                                           // diamond-plate glints
+    for(let i=0;i<12;i++){ ctx.fillRect(-15+i*3, 4.3, 1.4, 1.1); ctx.fillRect(-13.5+i*3, 6.1, 1.4, 1.1); }
+    ctx.fillStyle="rgba(255,201,130,0.22)"; ctx.fillRect(-15,-8.3,30,3);              // warm fender-top sheen (orange identity)
+    ctx.strokeStyle="rgba(30,18,8,0.4)"; ctx.lineWidth=0.75; ctx.lineCap="round";     // hood contour seams flanking the blower
+    ctx.beginPath(); ctx.moveTo(15,-4.6); ctx.lineTo(4.2,-5); ctx.moveTo(15,4.6); ctx.lineTo(4.2,5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(3.6,-8); ctx.lineTo(3.6,8); ctx.stroke();             // cowl seam (hood ↔ cab)
+    ctx.fillStyle="rgba(20,12,4,0.45)";                                              // twin hood louvers on the front deck
+    for(const vy of [-2.6,2.6]){ ctx.beginPath(); ctx.roundRect(13.4,vy-0.5,2.3,1,0.5); ctx.fill(); }
+    ctx.restore();
+
+    carRim(outline);
+
+    // ── beefy dark fender flares seating the giant wheels (+ warm chrome-orange trim lip) ──
+    ctx.save(); ctx.lineCap="round";
+    ctx.strokeStyle="rgba(6,4,2,0.55)"; ctx.lineWidth=3;
     ctx.beginPath();
-    ctx.moveTo(-17,1); ctx.quadraticCurveTo(-8,-4,0,0); ctx.quadraticCurveTo(8,4,17,-1);
-    ctx.lineTo(17,5); ctx.quadraticCurveTo(8,9,0,5); ctx.quadraticCurveTo(-8,1,-17,6);
-    ctx.closePath(); ctx.fill();
-    ctx.strokeStyle="#eafcff"; ctx.lineWidth=1.6;                                 // crest hi-light
-    ctx.beginPath(); ctx.moveTo(-17,1); ctx.quadraticCurveTo(-8,-4,0,0); ctx.quadraticCurveTo(8,4,17,-1); ctx.stroke();
-    ctx.fillStyle="#eafcff";                                                      // foam curl
-    ctx.beginPath(); ctx.moveTo(12,-4); ctx.quadraticCurveTo(19,-6,18,0); ctx.quadraticCurveTo(17,3,13,2); ctx.quadraticCurveTo(15,-1,12,-4); ctx.closePath(); ctx.fill();
-    ctx.fillStyle="rgba(120,200,225,0.5)";                                        // curl inner shade
-    ctx.beginPath(); ctx.moveTo(13,2); ctx.quadraticCurveTo(15,-1,12,-4); ctx.quadraticCurveTo(15.6,-1,15,1.6); ctx.closePath(); ctx.fill();
-    ctx.fillStyle="#bff4ff";                                                      // droplets
-    for(const [dx,dy,s] of [[-11,-6,2],[-3,7,1.6]]){
-      ctx.beginPath(); ctx.moveTo(dx,dy-s*2.2);
-      ctx.quadraticCurveTo(dx+s,dy-s*0.3,dx+s,dy); ctx.arc(dx,dy,s,0,Math.PI);
-      ctx.quadraticCurveTo(dx-s,dy-s*0.3,dx,dy-s*2.2); ctx.closePath(); ctx.fill();
+    ctx.moveTo(-15,-6); ctx.lineTo(-4,-8.2);  ctx.moveTo(4,-8.2); ctx.lineTo(15,-6);
+    ctx.moveTo(-15,6);  ctx.lineTo(-4,8.2);   ctx.moveTo(4,8.2);  ctx.lineTo(15,6);
+    ctx.stroke();
+    ctx.strokeStyle="rgba(255,208,148,0.38)"; ctx.lineWidth=0.9;
+    ctx.beginPath();
+    ctx.moveTo(-15,-6.9); ctx.lineTo(-4,-9);  ctx.moveTo(4,-9); ctx.lineTo(15,-6.9);
+    ctx.moveTo(-15,6.9);  ctx.lineTo(-4,9);   ctx.moveTo(4,9);  ctx.lineTo(15,6.9);
+    ctx.stroke();
+    ctx.restore();
+
+    // ── glossy cab canopy (frames the number roundel) ──
+    carCanopy(14,14);
+
+    // ── CHROME ROLL CAGE over the cab (signature) ──
+    const chrome=(x,hy,w)=>{ let g=ctx.createLinearGradient(x-w/2,0,x+w/2,0);
+      g.addColorStop(0,"#f6f9fe"); g.addColorStop(0.4,"#c4ccdb"); g.addColorStop(0.56,"#868ea1"); g.addColorStop(1,"#474e60");
+      ctx.fillStyle=g; ctx.beginPath(); ctx.roundRect(x-w/2,-hy,w,hy*2,w*0.5); ctx.fill();
+      ctx.fillStyle="rgba(255,255,255,0.6)"; ctx.fillRect(x-w*0.3,-hy+0.6,w*0.26,hy*2-1.2); };
+    ctx.fillStyle="rgba(150,158,176,0.85)";                                           // longitudinal roof rails
+    ctx.beginPath(); ctx.roundRect(-7,-7.4,13,1.4,0.7); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(-7,6,13,1.4,0.7); ctx.fill();
+    chrome(6,7.6,3);                                                                  // front hoop
+    chrome(-7,7.6,3);                                                                 // rear hoop
+    ctx.fillStyle="rgba(255,255,255,0.9)"; ctx.beginPath(); ctx.arc(6,-4.8,0.6,0,TAU); ctx.fill();  // crisp glint on the front hoop
+
+    // ── SUPERCHARGER BLOWER poking up through the hood ──
+    let bb=ctx.createLinearGradient(0,-4.6,0,4.6);
+    bb.addColorStop(0,"#2c313d"); bb.addColorStop(0.5,"#171b23"); bb.addColorStop(1,"#0b0d13");
+    ctx.fillStyle=bb; ctx.beginPath(); ctx.roundRect(6.8,-4.6,5.6,9.2,1.6); ctx.fill();
+    for(const sy of [-2.4,2.4]){                                                      // twin velocity-stack intakes
+      let vs=ctx.createRadialGradient(9.2,sy-0.6,0.2, 9.5,sy,2.2);
+      vs.addColorStop(0,"#f2f5fb"); vs.addColorStop(0.5,"#aeb6c6"); vs.addColorStop(1,"#565e70");
+      ctx.fillStyle=vs; ctx.beginPath(); ctx.arc(9.5,sy,2,0,TAU); ctx.fill();
+      ctx.fillStyle="#0c0f16"; ctx.beginPath(); ctx.arc(9.5,sy,0.85,0,TAU); ctx.fill();
     }
-    ctx.fillStyle="rgba(255,255,255,0.8)";                                        // droplet speculars
-    for(const [dx,dy,s] of [[-11,-6,2],[-3,7,1.6]]){ ctx.beginPath(); ctx.arc(dx-s*0.3,dy-s*0.3,s*0.35,0,TAU); ctx.fill(); }
-    let sp=ctx.createRadialGradient(-9,-6,0,-9,-6,7);                             // body specular
-    sp.addColorStop(0,"rgba(255,255,255,0.5)"); sp.addColorStop(1,"rgba(255,255,255,0)");
-    ctx.fillStyle=sp; ctx.beginPath(); ctx.ellipse(-9,-6,6.5,3.6,-0.3,0,TAU); ctx.fill();
-    ctx.fillStyle="#08323b"; ctx.beginPath(); ctx.roundRect(-6,-6,12,12,4); ctx.fill();          // glossy cockpit
-    ctx.fillStyle="rgba(130,220,255,0.5)"; ctx.beginPath(); ctx.moveTo(-6,-1); ctx.lineTo(0,-6); ctx.lineTo(3,-6); ctx.lineTo(-6,2); ctx.closePath(); ctx.fill();  // reflection
-    ctx.fillStyle="#7fe4ff"; ctx.beginPath(); ctx.roundRect(-3,-4.5,3,9,1.5); ctx.fill();        // glint
-    ctx.fillStyle="#eafcff"; ctx.beginPath(); ctx.roundRect(-17,4,10,3,1.5); ctx.fill();         // foam skirt
-    ctx.fillStyle="#25d4e0"; ctx.fillRect(-19,-6,2.4,3.2); ctx.fillRect(-19,2.8,2.4,3.2);        // side intakes
-    ctx.strokeStyle="rgba(255,255,255,0.42)"; ctx.lineWidth=1;                     // rim light: top+left
-    ctx.beginPath(); ctx.moveTo(-10,-9.5); ctx.lineTo(10,-9.5); ctx.moveTo(-17,-2.5); ctx.lineTo(-17,2.5); ctx.stroke();
-    ctx.strokeStyle="rgba(0,0,0,0.28)";                                           // rim shade: bottom+right
-    ctx.beginPath(); ctx.moveTo(-10,9.5); ctx.lineTo(10,9.5); ctx.moveTo(17,-2.5); ctx.lineTo(17,2.5); ctx.stroke();
+    ctx.fillStyle="rgba(255,255,255,"+(0.28+0.34*idle).toFixed(3)+")";                // idle belt shimmer
+    ctx.fillRect(7.2,-4.4,4.6,0.9);
+    let lip=ctx.createLinearGradient(12,0,14,0);                                       // chrome scoop lip (faces forward)
+    lip.addColorStop(0,"#eaeff7"); lip.addColorStop(1,"#7d8598");
+    ctx.fillStyle=lip; ctx.beginPath(); ctx.roundRect(12,-4.9,2,9.8,1.2); ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,0.96)"; ctx.beginPath(); ctx.arc(13,-2.6,0.7,0,TAU); ctx.fill();  // HERO wet pin-specular on the scoop lip
+
+    // ── chrome bull-bar push guard on the nose + grille ──
+    ctx.fillStyle="#14171e"; ctx.beginPath(); ctx.roundRect(13,-4,1.5,8,0.6); ctx.fill();  // grille recess
+    chrome(15,6.2,2.6);                                                               // bull bar
+
+    // ── lights, gloss, hero glints ──
+    carHeadlights(13.2, 7);
+    carSpecular(-7,-5.5);
+    ctx.fillStyle="rgba(255,255,255,0.82)"; ctx.beginPath(); ctx.ellipse(16.4,-2.1,1.3,0.7,-0.4,0,TAU); ctx.fill();  // snout glint
   }
-  else if(vid==="phoenix"){                                  // 🌋 World 6 reward — blazing fire-bird racer
-    let tp=ctx.createLinearGradient(-16,0,-30,0);                                 // glowing tail plume trailing off the back (behind body)
-    tp.addColorStop(0,"#ffd23b"); tp.addColorStop(0.5,"rgba(255,122,30,0.7)"); tp.addColorStop(1,"rgba(255,90,30,0)");
-    ctx.fillStyle=tp; ctx.beginPath();
-    ctx.moveTo(-16,-6); ctx.quadraticCurveTo(-30,-3,-27,0); ctx.quadraticCurveTo(-30,3,-16,6); ctx.quadraticCurveTo(-22,0,-16,-6); ctx.closePath(); ctx.fill();
-    let g=ctx.createLinearGradient(-17,-9.5,17,9.5);                              // dimensional ember body
-    g.addColorStop(0,"#ff8a3c"); g.addColorStop(0.5,"#e5451a"); g.addColorStop(1,"#7a1408");
-    ctx.fillStyle=g; ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,8); ctx.fill();
-    let sh=ctx.createLinearGradient(0,-9.5,0,-1.5);                               // top sheen
-    sh.addColorStop(0,"rgba(255,240,200,0.4)"); sh.addColorStop(1,"rgba(255,240,200,0)");
-    ctx.fillStyle=sh; ctx.beginPath(); ctx.roundRect(-16,-9,32,7.5,7); ctx.fill();
-    ctx.fillStyle="rgba(255,138,40,0.9)";                                         // feathered wing flicks sweeping back
-    for(const wsg of [-1,1]){
-      ctx.beginPath(); ctx.moveTo(2,8.5*wsg); ctx.quadraticCurveTo(-10,15*wsg,-15,11*wsg);
-      ctx.quadraticCurveTo(-6,9*wsg,-2,7*wsg); ctx.closePath(); ctx.fill();
+  else if(vid==="wave"){
+    const t = game.t;
+const outline = () => {                                    // cresting-wave hydrofoil: sharp prow, crest-swelled rear (nose = +x)
+  ctx.beginPath();
+  ctx.moveTo(18.4,0);                                      // pointed prow slicing the water
+  ctx.bezierCurveTo(17.5,-5.2, 13.6,-8, 7,-8.7);          // upper nose shoulder
+  ctx.bezierCurveTo(-1,-9.4, -6.5,-10.4, -11,-10.2);      // deck rises toward the crest
+  ctx.quadraticCurveTo(-16.8,-9.6, -18.6,-4);             // crest wall curls up at the rear-top
+  ctx.quadraticCurveTo(-19.4,0, -18.6,4);                 // rounded rear
+  ctx.quadraticCurveTo(-16.8,9.4, -12,9.2);               // lower tail
+  ctx.bezierCurveTo(-5,10, 2,9.8, 8,8.8);                 // smooth water-cut belly
+  ctx.bezierCurveTo(13.8,7.9, 17.5,5, 18.4,0);            // lower nose shoulder
+  ctx.closePath();
+};
+carPaint("#0fa2c0", outline);
+
+// ── GIMMICK: the curling wave (clipped to the hull) ──
+ctx.save(); outline(); ctx.clip();
+// deep water pooled in the belly for contrast under the foam
+let deep = ctx.createLinearGradient(0,-2,0,10);
+deep.addColorStop(0,"rgba(5,58,78,0)"); deep.addColorStop(1,"rgba(3,40,58,0.58)");
+ctx.fillStyle = deep; ctx.fillRect(-20,-11,40,22);
+// hull chine seam down the prow shoulder — a crisp panel line (trim + depth)
+ctx.lineCap = "round";
+ctx.strokeStyle = "rgba(6,66,88,0.5)"; ctx.lineWidth = 0.9;
+ctx.beginPath(); ctx.moveTo(17.4,1.5); ctx.quadraticCurveTo(6,4.4, -5,5.1); ctx.stroke();
+ctx.strokeStyle = "rgba(206,246,255,0.4)"; ctx.lineWidth = 0.7;      // lit edge riding the seam
+ctx.beginPath(); ctx.moveTo(17.4,0.7); ctx.quadraticCurveTo(6,3.6, -5,4.3); ctx.stroke();
+// the cresting wave body — a glassy teal wall filling the upper deck
+let wb = ctx.createLinearGradient(0,-11,0,2);
+wb.addColorStop(0,"#a6f0fb"); wb.addColorStop(0.32,"#4fd2e6"); wb.addColorStop(0.62,"#1ba8c6"); wb.addColorStop(1,"#0a7a96");
+ctx.fillStyle = wb;
+ctx.beginPath();
+ctx.moveTo(-20,-11); ctx.lineTo(20,-11); ctx.lineTo(20,-3.5);
+ctx.quadraticCurveTo(12,-1.5, 4,-3.5);                    // foam crest edge undulating across
+ctx.quadraticCurveTo(-4,-5.5, -12,-2.5);
+ctx.quadraticCurveTo(-16.5,-0.5, -20,-2.5);
+ctx.closePath(); ctx.fill();
+// glassy sheen streaking down the wave face
+let gloss = ctx.createLinearGradient(-2,-11,4,-3);
+gloss.addColorStop(0,"rgba(255,255,255,0.55)"); gloss.addColorStop(0.55,"rgba(210,248,255,0.12)"); gloss.addColorStop(1,"rgba(255,255,255,0)");
+ctx.fillStyle = gloss; ctx.fillRect(-20,-11,40,8);
+// thick white FOAM crest riding that edge
+ctx.lineJoin = "round"; ctx.lineCap = "round";
+ctx.strokeStyle = "rgba(9,104,134,0.5)"; ctx.lineWidth = 1.5;        // cyan shadow under the lip → foam rolls OVER
+ctx.beginPath();
+ctx.moveTo(20,-2.3); ctx.quadraticCurveTo(12,-0.3, 4,-2.3);
+ctx.quadraticCurveTo(-4,-4.3, -12,-1.3); ctx.quadraticCurveTo(-16.5,0.7, -20,-1.3);
+ctx.stroke();
+ctx.strokeStyle = "#f4fdff"; ctx.lineWidth = 2.8;
+ctx.beginPath();
+ctx.moveTo(20,-3.5); ctx.quadraticCurveTo(12,-1.5, 4,-3.5);
+ctx.quadraticCurveTo(-4,-5.5, -12,-2.5); ctx.quadraticCurveTo(-16.5,-0.5, -20,-2.5);
+ctx.stroke();
+ctx.strokeStyle = "rgba(200,246,255,0.55)"; ctx.lineWidth = 1.1;     // softer inner foam
+ctx.beginPath();
+ctx.moveTo(20,-5); ctx.quadraticCurveTo(12,-3, 4,-5);
+ctx.quadraticCurveTo(-4,-7, -12,-4); ctx.quadraticCurveTo(-16.5,-2, -20,-4);
+ctx.stroke();
+// the BARREL curl — foam rolling over at the rear-top, the wave's signature
+let curl = ctx.createRadialGradient(-12.5,-6.2,0.4, -12,-5.5,7);
+curl.addColorStop(0,"#ffffff"); curl.addColorStop(0.5,"#e2f9ff"); curl.addColorStop(1,"rgba(140,225,244,0)");
+ctx.fillStyle = curl;
+ctx.beginPath();
+ctx.moveTo(-16.5,-2);
+ctx.quadraticCurveTo(-18.5,-9, -11,-9);
+ctx.quadraticCurveTo(-4.5,-9, -7.5,-3);
+ctx.quadraticCurveTo(-9.5,-6.5, -13,-6);
+ctx.quadraticCurveTo(-16.5,-5.5, -16.5,-2);
+ctx.closePath(); ctx.fill();
+ctx.fillStyle = "rgba(18,116,146,0.55)";                 // hollow inside the tube → reads as a rolling barrel
+ctx.beginPath();
+ctx.moveTo(-7.5,-3); ctx.quadraticCurveTo(-9.5,-6.5, -13,-6);
+ctx.quadraticCurveTo(-9,-5, -8,-2.5); ctx.closePath(); ctx.fill();
+// foam bubbles + a shimmer along the crest
+const shim = 0.7 + 0.3*Math.sin(t*4);
+ctx.fillStyle = "rgba(255,255,255,0.9)";
+for(const [bx,by,br] of [[-13.5,-6.8,1.3],[-8,-3.6,1.0],[-1,-4.6,1.1],[6,-3.1,1.2],[13,-3.9,0.9],[-15.5,-3.5,0.9]]){
+  ctx.beginPath(); ctx.arc(bx,by,br,0,TAU); ctx.fill();
+}
+ctx.fillStyle = "rgba(255,255,255,"+(0.55*shim).toFixed(3)+")";   // crest twinkle
+ctx.beginPath(); ctx.arc(2,-4.2,0.9,0,TAU); ctx.arc(-6,-4.9,0.8,0,TAU); ctx.fill();
+// crisp HOT pin-point on the curl lip → wet, glassy hot-spot
+let hot = ctx.createRadialGradient(-13.2,-7.4,0, -13.2,-7.4,2.3);
+hot.addColorStop(0,"rgba(255,255,255,1)"); hot.addColorStop(0.4,"rgba(255,255,255,0.45)"); hot.addColorStop(1,"rgba(255,255,255,0)");
+ctx.fillStyle = hot; ctx.beginPath(); ctx.arc(-13.2,-7.4,2.3,0,TAU); ctx.fill();
+ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(-13.2,-7.4,0.55,0,TAU); ctx.fill();
+// frothy wake skirt kicked up at the tail
+ctx.fillStyle = "rgba(240,253,255,0.85)";
+for(const [fx,fy,fr] of [[-17.2,4.6,2],[-15,6.6,1.7],[-13,4.4,1.6],[-16,2.6,1.4]]){
+  ctx.beginPath(); ctx.arc(fx,fy,fr,0,TAU); ctx.fill();
+}
+// two water droplets beading on the deck, with speculars
+ctx.fillStyle = "#cdf4ff";
+for(const [dx,dy,s] of [[9,4.6,1.9],[-2,6.4,1.5]]){
+  ctx.beginPath(); ctx.moveTo(dx,dy-s*2.2);
+  ctx.quadraticCurveTo(dx+s,dy-s*0.3,dx+s,dy); ctx.arc(dx,dy,s,0,Math.PI);
+  ctx.quadraticCurveTo(dx-s,dy-s*0.3,dx,dy-s*2.2); ctx.closePath(); ctx.fill();
+}
+ctx.fillStyle = "rgba(255,255,255,0.85)";
+for(const [dx,dy,s] of [[9,4.6,1.9],[-2,6.4,1.5]]){ ctx.beginPath(); ctx.arc(dx-s*0.3,dy-s*0.4,s*0.36,0,TAU); ctx.fill(); }
+ctx.restore();
+
+carRim(outline);
+carCanopy(15,15);
+carHeadlights(12.6,5);
+carSpecular(-9,-6.5);
+// hero flourishes: a bright prow glint + a couple of airborne spray flecks off the crest
+ctx.fillStyle = "rgba(255,255,255,0.9)";
+ctx.beginPath(); ctx.ellipse(13,-5.6,1.5,0.8,-0.4,0,TAU); ctx.fill();
+for(const [sx,sph,sr] of [[-14,0,0.85],[-9.5,1.7,0.7],[-4.5,3.2,0.6],[-1,4.6,0.5]]){
+  const sy = -10 - 1.6*Math.abs(Math.sin(t*3+sph));
+  ctx.fillStyle = "rgba(230,251,255,"+(0.5 - 0.12*Math.sin(t*3+sph)).toFixed(3)+")";
+  ctx.beginPath(); ctx.arc(sx,sy,sr,0,TAU); ctx.fill();
+}
+  }
+  else if(vid==="phoenix"){
+    const flick = 0.6 + 0.4*Math.sin(game.t*16);                                 // idle flame flicker — 3 offset phases feed the layered fire
+    const fl2   = 0.6 + 0.4*Math.sin(game.t*16 + 2.3);
+    const fl3   = 0.6 + 0.4*Math.sin(game.t*16 + 4.6);
+    const outline = () => {                                                       // fire-bird silhouette: beak nose, full breast, tapering tail (nose = +x)
+      ctx.beginPath();
+      ctx.moveTo(15.5,0);
+      ctx.bezierCurveTo(15,-6, 11.5,-8.8, 5,-9.6);
+      ctx.bezierCurveTo(-2,-10.2, -9,-9.6, -14,-7.6);
+      ctx.quadraticCurveTo(-18.2,-5.4, -17.6,0);
+      ctx.quadraticCurveTo(-18.2,5.4, -14,7.6);
+      ctx.bezierCurveTo(-9,9.6, -2,10.2, 5,9.6);
+      ctx.bezierCurveTo(11.5,8.8, 15,6, 15.5,0);
+      ctx.closePath();
+    };
+    // ── fiery back-halo + layered tail plume (additive glow, behind the body) ──
+    ctx.save(); ctx.globalCompositeOperation = "lighter";
+    let halo = ctx.createRadialGradient(-3,0,2, -3,0,22);
+    halo.addColorStop(0,"rgba(255,140,40,"+(0.20*flick).toFixed(3)+")");
+    halo.addColorStop(0.6,"rgba(255,80,24,"+(0.08*flick).toFixed(3)+")");
+    halo.addColorStop(1,"rgba(255,60,20,0)");
+    ctx.fillStyle = halo; ctx.beginPath(); ctx.ellipse(-3,0,22,15,0,0,TAU); ctx.fill();
+    const tl = -27.5 - 3*flick;                                                   // outer plume, flickering length
+    let tp = ctx.createLinearGradient(-14,0,-33,0);
+    tp.addColorStop(0,"#ff8a2a"); tp.addColorStop(0.4,"rgba(255,110,26,"+(0.60*flick).toFixed(3)+")"); tp.addColorStop(1,"rgba(220,60,20,0)");
+    ctx.fillStyle = tp; ctx.beginPath();
+    ctx.moveTo(-14,-7); ctx.quadraticCurveTo(tl,-3.6, tl-2,0); ctx.quadraticCurveTo(tl,3.6, -14,7); ctx.quadraticCurveTo(-20,0, -14,-7); ctx.closePath(); ctx.fill();
+    const tl2 = -22.5 - 2.5*fl2;                                                  // inner white-hot core streaming out the tail
+    let tpc = ctx.createLinearGradient(-14,0,-27,0);
+    tpc.addColorStop(0,"#fff0b0"); tpc.addColorStop(0.5,"rgba(255,182,64,"+(0.70*fl2).toFixed(3)+")"); tpc.addColorStop(1,"rgba(255,120,30,0)");
+    ctx.fillStyle = tpc; ctx.beginPath();
+    ctx.moveTo(-14,-3.6); ctx.quadraticCurveTo(tl2,-1.6, tl2-1.5,0); ctx.quadraticCurveTo(tl2,1.6, -14,3.6); ctx.quadraticCurveTo(-18,0, -14,-3.6); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    for(const s of [-1,1]){                                                       // feathered wing flicks sweeping back (only the tips clear the bodywork)
+      let wf = ctx.createLinearGradient(0,7*s,-16,13*s);
+      wf.addColorStop(0,"rgba(255,176,66,0.95)"); wf.addColorStop(1,"rgba(226,66,18,0.20)");
+      ctx.fillStyle = wf; ctx.beginPath();
+      ctx.moveTo(3,8*s); ctx.quadraticCurveTo(-9,15*s, -16,11.5*s);
+      ctx.quadraticCurveTo(-11,10*s, -8,8.5*s); ctx.quadraticCurveTo(-3,8*s, 3,7*s); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "rgba(255,224,140,0.5)"; ctx.lineWidth = 0.8; ctx.lineCap = "round";  // hot leading feather-edge
+      ctx.beginPath(); ctx.moveTo(3,8*s); ctx.quadraticCurveTo(-9,15*s, -16,11.5*s); ctx.stroke();
     }
-    let crg=ctx.createLinearGradient(0,-11.5,0,-6);                               // flame-gradient crest along the ridge
-    crg.addColorStop(0,"#fff0a0"); crg.addColorStop(0.5,"#ff9a2e"); crg.addColorStop(1,"#e5540f");
-    ctx.fillStyle=crg; ctx.beginPath();
-    ctx.moveTo(-11,-8); ctx.lineTo(-4,-11.5); ctx.lineTo(0,-8); ctx.lineTo(5,-11.5); ctx.lineTo(9,-8); ctx.lineTo(9,-6); ctx.lineTo(-11,-6); ctx.closePath(); ctx.fill();
-    let bk=ctx.createLinearGradient(13,0,22,0);                                   // golden beak nose
-    bk.addColorStop(0,"#ffe27a"); bk.addColorStop(1,"#e59a12");
-    ctx.fillStyle=bk; ctx.beginPath(); ctx.moveTo(13,-4.6); ctx.lineTo(22,0); ctx.lineTo(13,4.6); ctx.closePath(); ctx.fill();
-    ctx.fillStyle="rgba(255,255,255,0.5)"; ctx.beginPath(); ctx.moveTo(13,-3); ctx.lineTo(18,0); ctx.lineTo(13,-0.5); ctx.closePath(); ctx.fill();  // beak glint
-    ctx.fillStyle="#2a0e06"; ctx.beginPath(); ctx.roundRect(-6,-6,12,12,4); ctx.fill();          // glossy cockpit
-    let gl=ctx.createLinearGradient(-5,-5.5,5,5.5);
-    gl.addColorStop(0,"rgba(255,210,120,0.6)"); gl.addColorStop(0.5,"rgba(255,150,60,0.08)"); gl.addColorStop(1,"rgba(255,150,60,0)");
-    ctx.fillStyle=gl; ctx.beginPath(); ctx.roundRect(-5.4,-5.4,10.8,10.8,3.4); ctx.fill();
-    ctx.fillStyle="#ffb347"; ctx.beginPath(); ctx.arc(0,0,2.2,0,TAU); ctx.fill();                 // molten glint core
-    let sp=ctx.createRadialGradient(-9,-6,0,-9,-6,7);                             // body specular
-    sp.addColorStop(0,"rgba(255,240,200,0.45)"); sp.addColorStop(1,"rgba(255,240,200,0)");
-    ctx.fillStyle=sp; ctx.beginPath(); ctx.ellipse(-9,-6,6.5,3.6,-0.3,0,TAU); ctx.fill();
-    ctx.strokeStyle="rgba(255,220,150,0.45)"; ctx.lineWidth=1;                     // rim light: top+left
-    ctx.beginPath(); ctx.moveTo(-10,-9.5); ctx.lineTo(10,-9.5); ctx.moveTo(-17,-2.5); ctx.lineTo(-17,2.5); ctx.stroke();
-    ctx.strokeStyle="rgba(0,0,0,0.3)";                                            // rim shade: bottom+right
-    ctx.beginPath(); ctx.moveTo(-10,9.5); ctx.lineTo(10,9.5); ctx.moveTo(17,-2.5); ctx.lineTo(17,2.5); ctx.stroke();
+    carPaint("#e5451a", outline);                                                 // base ember body + shared glossy lighting
+    ctx.save(); outline(); ctx.clip();                                            // signature molten heat sheen (clipped)
+    let em = ctx.createLinearGradient(14,-9,-14,9);
+    em.addColorStop(0,"rgba(255,196,96,0.58)"); em.addColorStop(0.5,"rgba(255,92,30,0.12)"); em.addColorStop(1,"rgba(112,18,6,0.58)");
+    ctx.fillStyle = em; ctx.fillRect(-20,-11,40,22);
+    for(const s of [-1,1]){                                                       // feather panel seams — dark groove + hot highlight riding above it
+      ctx.strokeStyle = "rgba(120,24,6,0.5)"; ctx.lineWidth = 0.7;
+      ctx.beginPath(); ctx.moveTo(11,3*s); ctx.quadraticCurveTo(-4,7*s, -15,6*s); ctx.stroke();
+      ctx.strokeStyle = "rgba(255,196,116,0.32)"; ctx.lineWidth = 0.7;
+      ctx.beginPath(); ctx.moveTo(11,3*s-1.1); ctx.quadraticCurveTo(-4,7*s-1.1, -15,6*s-1.1); ctx.stroke();
+    }
+    ctx.restore();
+    carRim(outline);
+    // ── layered flame crest up the spine: additive halo → deep back tongues → white-hot core ──
+    ctx.save(); ctx.globalCompositeOperation = "lighter";
+    let ch = ctx.createRadialGradient(-1,-8,0, -1,-8,13);
+    ch.addColorStop(0,"rgba(255,172,52,"+(0.34*flick).toFixed(3)+")");
+    ch.addColorStop(0.55,"rgba(255,100,30,"+(0.12*flick).toFixed(3)+")");
+    ch.addColorStop(1,"rgba(255,70,20,0)");
+    ctx.fillStyle = ch; ctx.beginPath(); ctx.ellipse(-1,-8,13,9,0,0,TAU); ctx.fill();
+    ctx.restore();
+    let crB = ctx.createLinearGradient(0,-13,0,-4.5);                             // deep back tongues (curved, licking flame)
+    crB.addColorStop(0,"rgba(200,44,8,0)"); crB.addColorStop(0.35,"#e5540f"); crB.addColorStop(1,"#a82806");
+    ctx.fillStyle = crB; ctx.beginPath();
+    ctx.moveTo(-11,-5);
+    ctx.quadraticCurveTo(-8.5,-8, -6,-11-1.4*flick);
+    ctx.quadraticCurveTo(-4.5,-8.4, -3,-7.4);
+    ctx.quadraticCurveTo(-0.6,-10.6, 1.5,-13-1.8*fl2);
+    ctx.quadraticCurveTo(3.2,-9, 5,-7.6);
+    ctx.quadraticCurveTo(6.8,-10, 8.2,-10-1.2*fl3);
+    ctx.quadraticCurveTo(9.3,-7.6, 9.8,-6);
+    ctx.closePath(); ctx.fill();
+    let crF = ctx.createLinearGradient(0,-12,0,-5.5);                             // inset white-hot core, offset tips for depth
+    crF.addColorStop(0,"rgba(255,246,190,0)"); crF.addColorStop(0.28,"#fff2b4"); crF.addColorStop(0.62,"#ff9e34"); crF.addColorStop(1,"rgba(255,120,30,0.25)");
+    ctx.fillStyle = crF; ctx.beginPath();
+    ctx.moveTo(-9.4,-5.4);
+    ctx.quadraticCurveTo(-7.6,-8, -6,-10-1.4*flick);
+    ctx.quadraticCurveTo(-4.8,-8, -3.4,-7.2);
+    ctx.quadraticCurveTo(-1,-9.8, 1.4,-11.8-1.8*fl2);
+    ctx.quadraticCurveTo(3,-8.2, 4.6,-7.3);
+    ctx.quadraticCurveTo(6.4,-9, 7.8,-9-1.2*fl3);
+    ctx.quadraticCurveTo(8.6,-7, 9,-5.8);
+    ctx.closePath(); ctx.fill();
+    // ── golden hooked raptor beak (extends past the silhouette) ──
+    let bk = ctx.createLinearGradient(12,-4, 21,3.5);
+    bk.addColorStop(0,"#ffe9a0"); bk.addColorStop(0.45,"#f2ab1e"); bk.addColorStop(1,"#a8650a");
+    ctx.fillStyle = bk; ctx.beginPath();
+    ctx.moveTo(11.5,-5.2);
+    ctx.quadraticCurveTo(19,-3.4, 23,-0.7);
+    ctx.quadraticCurveTo(24.2,0.1, 22.4,1);                                       // crisp hooked tip
+    ctx.quadraticCurveTo(19,3.2, 11.5,5.2);
+    ctx.quadraticCurveTo(14.6,0, 11.5,-5.2);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "rgba(96,48,6,0.3)"; ctx.beginPath();                         // shaded lower mandible
+    ctx.moveTo(11.7,0.5); ctx.quadraticCurveTo(18,2.6, 22.4,0.9); ctx.quadraticCurveTo(19,3.2, 11.7,5); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "rgba(70,34,3,0.6)"; ctx.lineWidth = 0.8; ctx.lineCap = "round";       // gape line between mandibles
+    ctx.beginPath(); ctx.moveTo(11.8,0.4); ctx.quadraticCurveTo(17,0.7, 22.4,0.8); ctx.stroke();
+    ctx.strokeStyle = "rgba(255,248,210,0.7)"; ctx.lineWidth = 0.9;               // bright upper-ridge highlight
+    ctx.beginPath(); ctx.moveTo(12.6,-3.2); ctx.quadraticCurveTo(18,-2.3, 22.2,-0.6); ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,0.95)"; ctx.beginPath(); ctx.ellipse(16.5,-2, 1.3,0.6, -0.5,0,TAU); ctx.fill();   // hot pin-spec on the beak
+    carHeadlights(10.5,5.6);                                                      // glowing phoenix eyes flanking the beak base
+    ctx.fillStyle = "#26100a"; ctx.beginPath(); ctx.roundRect(-6.8,-6.8,13.6,13.6,4.6); ctx.fill();                    // molten cockpit — frames the number roundel
+    let gl = ctx.createLinearGradient(-6,-6, 6,6);
+    gl.addColorStop(0,"rgba(255,214,150,0.6)"); gl.addColorStop(0.5,"rgba(200,80,30,0.12)"); gl.addColorStop(1,"rgba(90,16,4,0.55)");
+    ctx.fillStyle = gl; ctx.beginPath(); ctx.roundRect(-6.8,-6.8,13.6,13.6,4.6); ctx.fill();
+    ctx.save(); ctx.beginPath(); ctx.roundRect(-6.8,-6.8,13.6,13.6,4.6); ctx.clip();                                   // diagonal glass streak
+    ctx.fillStyle = "rgba(255,240,200,0.26)";
+    ctx.beginPath(); ctx.moveTo(-6.8,-1.5); ctx.lineTo(-1.5,-6.8); ctx.lineTo(1.6,-6.8); ctx.lineTo(-3.6,-1.5); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle = "rgba(255,198,112,0.6)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.roundRect(-6.8,-6.8,13.6,13.6,4.6); ctx.stroke();  // warm ember canopy rim
+    carSpecular(-9,-6);                                                           // soft body sheen
+    ctx.fillStyle = "rgba(255,255,255,0.95)"; ctx.beginPath(); ctx.arc(-9.4,-7.6, 1, 0,TAU); ctx.fill();               // crisp hot pin-point (wet gloss)
   }
   else { // rocket
     drawRocketBody(CONFIG.carColor, CONFIG.stripe);
   }
 }
 function drawRocketBody(bodyCol, stripeCol){
-  // rear thruster block (behind body)
-  let bg = ctx.createLinearGradient(-19,-8,-15,8);
-  bg.addColorStop(0,"#2c3651"); bg.addColorStop(1,"#141a29");
-  ctx.fillStyle = bg; ctx.fillRect(-19,-8,4,16);
+  // 🚀 RED ROCKET — sculpted aero racer (nose = +x). Body art is color-agnostic
+  // (white/black alpha overlays) so it also skins P2 and the garage preview.
+  const flick = 0.55 + 0.45*Math.sin(game.t*20);            // idle thruster flicker
+  const hue = (game.lv && game.lv.hue) || "#5a6cff";        // world light, for the shadow-side bounce
+  const outline = () => {                                    // aero silhouette: pointed nose, haunched middle, rounded tail
+    ctx.beginPath();
+    ctx.moveTo(18,0);
+    ctx.bezierCurveTo(17.5,-5.5, 13.5,-8.6, 7,-9.2);
+    ctx.bezierCurveTo(-1,-10, -10,-9.8, -15,-8.4);
+    ctx.quadraticCurveTo(-18.6,-6.6, -18.6,0);
+    ctx.quadraticCurveTo(-18.6,6.6, -15,8.4);
+    ctx.bezierCurveTo(-10,9.8, -1,10, 7,9.2);
+    ctx.bezierCurveTo(13.5,8.6, 17.5,5.5, 18,0);
+    ctx.closePath();
+  };
 
-  // body: base color + top-left light -> bottom-right shade, clipped to silhouette
-  ctx.save();
-  ctx.beginPath(); ctx.roundRect(-17,-9.5,34,19,7); ctx.clip();
-  ctx.fillStyle = bodyCol; ctx.fillRect(-18,-10,36,20);
-  let g = ctx.createLinearGradient(-14,-9.5,15,9.5);
-  g.addColorStop(0,"rgba(255,255,255,0.30)");
-  g.addColorStop(0.45,"rgba(255,255,255,0.03)");
-  g.addColorStop(0.60,"rgba(0,0,0,0.05)");
-  g.addColorStop(1,"rgba(0,0,0,0.36)");
-  ctx.fillStyle = g; ctx.fillRect(-18,-10,36,20);
-  // top sheen band fading down
-  let sh = ctx.createLinearGradient(0,-9.5,0,-1);
-  sh.addColorStop(0,"rgba(255,255,255,0.34)");
-  sh.addColorStop(1,"rgba(255,255,255,0)");
-  ctx.fillStyle = sh; ctx.fillRect(-17,-9.5,34,8.5);
-  // racing stripe with gloss (kept accent)
-  if(stripeCol){
-    ctx.fillStyle = stripeCol; ctx.fillRect(-17,-2.4,34,4.8);
-    let stg = ctx.createLinearGradient(0,-2.4,0,2.4);
-    stg.addColorStop(0,"rgba(255,255,255,0.30)");
-    stg.addColorStop(0.5,"rgba(255,255,255,0)");
-    stg.addColorStop(1,"rgba(0,0,0,0.22)");
-    ctx.fillStyle = stg; ctx.fillRect(-17,-2.4,34,4.8);
+  // ── rear wing (behind body; only the tips clear the bodywork) ──
+  ctx.fillStyle = "#0e1320";
+  ctx.beginPath(); ctx.roundRect(-16.6,-11.6,3.4,23.2,1.7); ctx.fill();
+  let wsh = ctx.createLinearGradient(-16.6,0,-13.2,0);
+  wsh.addColorStop(0,"rgba(255,255,255,0.20)"); wsh.addColorStop(1,"rgba(255,255,255,0)");
+  ctx.fillStyle = wsh; ctx.beginPath(); ctx.roundRect(-16.6,-11.6,3.4,23.2,1.7); ctx.fill();
+  ctx.fillStyle = "#161c2b";
+  ctx.beginPath(); ctx.roundRect(-17.6,-12,4.2,3.4,1); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(-17.6,8.6,4.2,3.4,1); ctx.fill();
+
+  // ── twin thruster nozzles (peek out the tail) — cleaner glow: layered ramp + crisp white-hot pin ──
+  for(const ny of [-5.2, 5.2]){
+    let ring = ctx.createRadialGradient(-16.8,ny,0.4, -19,ny,4.2);
+    ring.addColorStop(0,"#eef2fa"); ring.addColorStop(0.5,"#8a92a6"); ring.addColorStop(1,"#232838");
+    ctx.fillStyle = ring; ctx.beginPath(); ctx.ellipse(-18.4,ny,3.4,3.2,0,0,TAU); ctx.fill();
+    let core = ctx.createRadialGradient(-18.8,ny,0.2, -18.9,ny,3);
+    core.addColorStop(0,"rgba(255,255,244,"+(0.98*flick).toFixed(3)+")");   // white-hot center
+    core.addColorStop(0.28,"rgba(255,232,150,"+(0.9*flick).toFixed(3)+")");
+    core.addColorStop(0.62,"rgba(255,140,50,"+(0.6*flick).toFixed(3)+")");
+    core.addColorStop(1,"rgba(255,74,18,0)");
+    ctx.fillStyle = core; ctx.beginPath(); ctx.ellipse(-19,ny,2.5,2.3,0,0,TAU); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,250,"+(0.85*flick).toFixed(3)+")";        // crisp igniter pinpoint
+    ctx.beginPath(); ctx.ellipse(-18.7,ny,0.7,0.7,0,0,TAU); ctx.fill();
   }
-  // specular shine dot (top-left)
-  let sp = ctx.createRadialGradient(-9,-6,0,-9,-6,9);
-  sp.addColorStop(0,"rgba(255,255,255,0.55)");
-  sp.addColorStop(1,"rgba(255,255,255,0)");
-  ctx.fillStyle = sp;
-  ctx.beginPath(); ctx.ellipse(-9,-6,8,4.6,-0.32,0,TAU); ctx.fill();
-  // ground-contact ambient occlusion sliver along bottom edge
-  let ao = ctx.createLinearGradient(0,9.5,0,4.5);
-  ao.addColorStop(0,"rgba(0,0,0,0.30)");
-  ao.addColorStop(1,"rgba(0,0,0,0)");
-  ctx.fillStyle = ao; ctx.fillRect(-17,4.5,34,5);
+
+  // ── BODY (clipped to the silhouette) ──
+  ctx.save(); outline(); ctx.clip();
+  ctx.fillStyle = bodyCol; ctx.fillRect(-20,-11,40,22);
+  let g = ctx.createLinearGradient(-13,-10, 13,10);          // curved-surface: hot top-left -> deep bottom-right
+  g.addColorStop(0,"rgba(255,255,255,0.44)"); g.addColorStop(0.34,"rgba(255,255,255,0.07)");
+  g.addColorStop(0.6,"rgba(0,0,0,0.06)"); g.addColorStop(1,"rgba(0,0,0,0.46)");
+  ctx.fillStyle = g; ctx.fillRect(-20,-11,40,22);
+  let spine = ctx.createLinearGradient(0,-10,0,0);           // glossy spine sheen
+  spine.addColorStop(0,"rgba(255,255,255,0.42)"); spine.addColorStop(1,"rgba(255,255,255,0)");
+  ctx.fillStyle = spine; ctx.fillRect(-18,-10,36,10);
+  ctx.globalAlpha = 0.15; ctx.fillStyle = hue;               // world-colour bounce on the shadow side
+  ctx.fillRect(-18,4,36,7); ctx.globalAlpha = 1;
+  ctx.strokeStyle = "rgba(0,0,0,0.22)"; ctx.lineWidth = 0.6; // panel lines + nostril vents
+  ctx.beginPath(); ctx.moveTo(12,-6.6); ctx.lineTo(-14,-6.2); ctx.moveTo(12,6.6); ctx.lineTo(-14,6.2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(9.5,-8); ctx.lineTo(7,-3.2); ctx.moveTo(9.5,8); ctx.lineTo(7,3.2); ctx.stroke();
+  if(stripeCol){                                             // racing stripe with white pinstripes + gloss
+    ctx.fillStyle = "rgba(255,255,255,0.85)"; ctx.fillRect(-16,-3.1,33,6.2);
+    ctx.fillStyle = stripeCol; ctx.fillRect(-16,-2.4,33,4.8);
+    let sg = ctx.createLinearGradient(0,-2.4,0,2.4);
+    sg.addColorStop(0,"rgba(255,255,255,0.34)"); sg.addColorStop(0.5,"rgba(255,255,255,0)"); sg.addColorStop(1,"rgba(0,0,0,0.24)");
+    ctx.fillStyle = sg; ctx.fillRect(-16,-2.4,33,4.8);
+  }
+  let ao = ctx.createLinearGradient(0,10,0,4);               // ground-contact ambient occlusion
+  ao.addColorStop(0,"rgba(0,0,0,0.34)"); ao.addColorStop(1,"rgba(0,0,0,0)");
+  ctx.fillStyle = ao; ctx.fillRect(-18,4,36,6);
   ctx.restore();
 
-  // rim light: bright top-left -> dark bottom-right in a single gradient stroke
-  let rim = ctx.createLinearGradient(-17,-9.5,17,9.5);
-  rim.addColorStop(0,"rgba(255,255,255,0.5)");
-  rim.addColorStop(0.5,"rgba(255,255,255,0.05)");
-  rim.addColorStop(0.55,"rgba(0,0,0,0.05)");
-  rim.addColorStop(1,"rgba(0,0,0,0.4)");
-  ctx.strokeStyle = rim; ctx.lineWidth = 1.2;
-  ctx.beginPath(); ctx.roundRect(-16.4,-8.9,32.8,17.8,6.5); ctx.stroke();
+  // ── rim light along the silhouette ──
+  let rim = ctx.createLinearGradient(-17,-9.5, 17,9.5);
+  rim.addColorStop(0,"rgba(255,255,255,0.62)"); rim.addColorStop(0.5,"rgba(255,255,255,0.06)");
+  rim.addColorStop(0.55,"rgba(0,0,0,0.06)"); rim.addColorStop(1,"rgba(0,0,0,0.5)");
+  ctx.strokeStyle = rim; ctx.lineWidth = 1.1; outline(); ctx.stroke();
 
-  // glossy cockpit glass: deep base + diagonal reflection streak
-  ctx.fillStyle = "#131a29";
-  ctx.beginPath(); ctx.roundRect(-6,-6.5,12,13,4); ctx.fill();
-  let cg = ctx.createLinearGradient(-6,-6.5,6,6.5);
-  cg.addColorStop(0,"rgba(96,150,210,0.5)");
-  cg.addColorStop(0.5,"rgba(28,44,74,0.25)");
-  cg.addColorStop(1,"rgba(4,7,14,0.5)");
-  ctx.fillStyle = cg;
-  ctx.beginPath(); ctx.roundRect(-6,-6.5,12,13,4); ctx.fill();
-  ctx.save();
-  ctx.beginPath(); ctx.roundRect(-6,-6.5,12,13,4); ctx.clip();
-  ctx.fillStyle = "rgba(255,255,255,0.22)";
-  ctx.beginPath();
-  ctx.moveTo(-6,-1.5); ctx.lineTo(-1.5,-6.5); ctx.lineTo(1.5,-6.5); ctx.lineTo(-3,-1.5); ctx.closePath(); ctx.fill();
+  // ── chrome nose cone ──
+  let nz = ctx.createLinearGradient(12,0, 18.5,0);
+  nz.addColorStop(0,"rgba(255,255,255,0.12)"); nz.addColorStop(0.6,"#eef3fb"); nz.addColorStop(1,"#aeb8cc");
+  ctx.fillStyle = nz; ctx.beginPath();
+  ctx.moveTo(12.5,-4.4); ctx.quadraticCurveTo(18,-2, 18,0); ctx.quadraticCurveTo(18,2, 12.5,4.4);
+  ctx.quadraticCurveTo(15,0, 12.5,-4.4); ctx.closePath(); ctx.fill();
+
+  // ── headlight lenses on the nose shoulders ──
+  for(const ly of [-5, 5]){
+    let hl = ctx.createRadialGradient(12.2,ly,0.2, 12.2,ly,2.6);
+    hl.addColorStop(0,"rgba(255,252,225,0.95)"); hl.addColorStop(0.5,"rgba(255,238,170,0.7)"); hl.addColorStop(1,"rgba(255,220,120,0)");
+    ctx.fillStyle = hl; ctx.beginPath(); ctx.ellipse(12.2,ly,2.3,1.8,0,0,TAU); ctx.fill();
+  }
+
+  // ── cockpit canopy (frames the number roundel) ──
+  ctx.fillStyle = "#0f1626";
+  ctx.beginPath(); ctx.roundRect(-8,-8,16,16,5.5); ctx.fill();
+  let cg = ctx.createLinearGradient(-8,-8, 8,8);
+  cg.addColorStop(0,"rgba(120,170,225,0.55)"); cg.addColorStop(0.5,"rgba(30,48,80,0.2)"); cg.addColorStop(1,"rgba(4,7,14,0.5)");
+  ctx.fillStyle = cg; ctx.beginPath(); ctx.roundRect(-8,-8,16,16,5.5); ctx.fill();
+  ctx.save(); ctx.beginPath(); ctx.roundRect(-8,-8,16,16,5.5); ctx.clip();
+  ctx.fillStyle = "rgba(255,255,255,0.24)";
+  ctx.beginPath(); ctx.moveTo(-8,-2); ctx.lineTo(-2,-8); ctx.lineTo(2,-8); ctx.lineTo(-4,-2); ctx.closePath(); ctx.fill();
   ctx.restore();
-  // bright front glass edge (kept accent)
-  ctx.fillStyle = "rgba(170,222,255,0.42)";
-  ctx.beginPath(); ctx.roundRect(3,-5.5,3,11,2); ctx.fill();
+
+  // ── speculars: soft canopy bloom + ONE crisp wet pin-point on the nose shoulder ──
+  let sp = ctx.createRadialGradient(-8,-6.5,0, -8,-6.5,9);
+  sp.addColorStop(0,"rgba(255,255,255,0.6)"); sp.addColorStop(1,"rgba(255,255,255,0)");
+  ctx.fillStyle = sp; ctx.beginPath(); ctx.ellipse(-8,-6.5,7,4,-0.32,0,TAU); ctx.fill();
+  let pin = ctx.createRadialGradient(9.8,-6.2,0, 9.8,-6.2,2.6);            // tight wet halo
+  pin.addColorStop(0,"rgba(255,255,255,0.5)"); pin.addColorStop(1,"rgba(255,255,255,0)");
+  ctx.fillStyle = pin; ctx.beginPath(); ctx.ellipse(9.8,-6.2,2.6,1.7,-0.4,0,TAU); ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.95)";                                // hot pin-point dot
+  ctx.beginPath(); ctx.ellipse(9.8,-6.2,1,0.6,-0.4,0,TAU); ctx.fill();
 }
 function drawVehiclePreview(vid, x, y, scale, alpha){
   ctx.save(); ctx.translate(x,y); ctx.scale(scale,scale); ctx.rotate(-Math.PI/2);
@@ -7345,7 +8898,7 @@ function fillTextC(txt, x, y, stroked){
   ctx.textAlign = pa;
 }
 // 📏 navigation buttons scale with the screen (iPad ≈ 53px, phones floor at 44px — Apple's minimum touch target)
-function navS(){ return clamp(Math.round(Math.min(W,H)*0.065), 44, 60); }
+function navS(){ return clamp(Math.round(Math.min(W,H)*0.085), 54, 80); }   // nav/HUD icon buttons — bigger + finger-friendly, scales with screen
 function drawIconBtn(x,y,s,icon,act){
   roundedPanel(x,y,s,s,12);
   ctx.font = (s*0.5)+"px sans-serif"; ctx.textBaseline="middle";
@@ -7707,8 +9260,9 @@ function drawMap(){
   ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.arc(PADX+18, 75.2+safeT, 7.2, 0, TAU); ctx.fill();
   ctx.fillStyle = "#f4f6ff"; ctx.fillText(store.coinsBank, PADX+34, 76+safeT);
   hudBtns.length = 0;
-  drawIconBtn(W-PADX-42, 12+safeT, 40, store.muted?"🔇":"🔊", "mute");
-  drawIconBtn(W-PADX-94, 12+safeT, 40, "🗺️", "back");
+  const mS=navS();
+  drawIconBtn(W-PADX-mS, 12+safeT, mS, store.muted?"🔇":"🔊", "mute");
+  drawIconBtn(W-PADX-mS*2-8, 12+safeT, mS, "🗺️", "back");
   // serpentine road with nodes (this world's levels only)
   mapNodes.length = 0;
   const mx = Math.max(PADX+42, W*0.085);                 // keep clear of side notch/island
@@ -8020,7 +9574,7 @@ function drawBuild(dt){
   hudBtns.length = 0;
   const top = 8+safeT;
   // top bar
-  drawIconBtn(PADX, top, 44, "↩️", "back");
+  drawIconBtn(PADX, top, navS(), "↩️", "back");
   ctx.font = "900 22px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillStyle="#f4f6ff";
   ctx.fillText("🔨 "+(bl.editingId? "TRACK "+bl.editingId : "NEW TRACK"), PADX+54, top+23);
@@ -8159,8 +9713,9 @@ function drawCoopMap(){
   ctx.font="600 14px 'Avenir Next',sans-serif"; ctx.fillStyle="#8b93ad"; ctx.textBaseline="middle";
   ctx.fillText((input.hasTouch? pName(0)+" = left thumb · "+pName(1)+" = right thumb"
                               : pName(0)+" = ARROWS · "+pName(1)+" = WASD")+" · both cars reach the flag!", W/2, 62+safeT);
-  drawIconBtn(W-PADX-42, 12+safeT, 40, store.muted?"🔇":"🔊", "mute");
-  drawIconBtn(W-PADX-94, 12+safeT, 40, "🗺️", "back");
+  const mS=navS();
+  drawIconBtn(W-PADX-mS, 12+safeT, mS, store.muted?"🔇":"🔊", "mute");
+  drawIconBtn(W-PADX-mS*2-8, 12+safeT, mS, "🗺️", "back");
   coopNodes.length = 0;
   const mx = Math.max(PADX+42, W*0.085);
   const cellT = clamp(H*0.24, 104, 230);                 // same adaptive density as the campaign map
@@ -8298,7 +9853,7 @@ function drawKoEnd(dt){
 function drawVsPick(){
   nightSky(); hudBtns.length = 0;
   const top = 8+safeT;
-  drawIconBtn(PADX, top, 44, "↩️", "back");
+  drawIconBtn(PADX, top, navS(), "↩️", "back");
   const ko = game.vsMode==='ko';
   const arenas = ko ? KO_ARENAS : VS_ARENAS;
   ctx.font = "italic 900 30px 'Avenir Next Condensed','Arial Narrow',sans-serif";
@@ -8953,7 +10508,7 @@ function drawCrates(dt){
   hudBtns.length = 0;
   const top = 8+safeT;
   const SHORT = H < 520;   // 🆕 v3: short landscape phones get a compact stack
-  drawIconBtn(PADX, top, 44, "↩️", "back");
+  drawIconBtn(PADX, top, navS(), "↩️", "back");
   ctx.font = "italic 900 28px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillStyle="#ffb742";
   ctx.fillText("🎁 CRATES", PADX+56, top+23);
@@ -9435,7 +10990,7 @@ function drawShop(dt){
   const locked = isCars && (sel.reward||sel.secret) && !owned;
 
   // ---- header: back · title · coins ----
-  drawIconBtn(PADX, top, 44, "↩️", "back");
+  drawIconBtn(PADX, top, navS(), "↩️", "back");
   ctx.font = "italic 900 26px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillStyle="#ffb742";
   ctx.fillText(sh.garageMode ? "🚗 GARAGE" : "🛒 GARAGE", PADX+56, top+23);
