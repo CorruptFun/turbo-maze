@@ -6326,10 +6326,149 @@ function drawTitle(dt){
   ctx.fillStyle = "#f4f6ff"; ctx.textAlign="center";
   ctx.fillText(input.hasTouch? "TAP TO START" : "PRESS ENTER TO START", W/2, H*0.87);
   ctx.globalAlpha = 1;
-  for(const tp of input.taps.splice(0)){ AU.ui(); game.state="series"; }
+  for(const tp of input.taps.splice(0)){ AU.ui(); game.state="home"; }
 }
 
 /* ---------------- WORLD SELECT (series hub) ---------------- */
+/* ---------------- 🏠 HOME — the landing dashboard (dad's flow: modes ARE the main page) ---------------- */
+function drawHome(){
+  nightSky();
+  hudBtns.length = 0;
+  ctx.textAlign="center"; ctx.textBaseline="alphabetic";
+  ctx.font = "900 italic 38px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#ffb742";
+  ctx.fillText(CONFIG.title, W/2, 44+safeT);
+  ctx.font = "800 15px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#8b93ad";
+  ctx.fillText("WHERE TO, CHAMP?", W/2, 64+safeT);
+  ctx.textBaseline="middle";
+  roundedPanel(PADX, 12+safeT, 150, 40, 12);
+  ctx.font = "800 19px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.textAlign="left";
+  ctx.fillStyle = "#ffd76a"; ctx.fillText("✦", PADX+14, 33+safeT);
+  ctx.fillStyle = "#f4f6ff"; ctx.fillText("AURA "+Math.round(store.aura), PADX+32, 33+safeT);
+  roundedPanel(PADX, 58+safeT, 104, 36, 12);
+  ctx.fillStyle="#e8a930"; ctx.beginPath(); ctx.arc(PADX+18, 76+safeT, 8, 0, TAU); ctx.fill();
+  ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.arc(PADX+18, 75.2+safeT, 7.2, 0, TAU); ctx.fill();
+  ctx.fillStyle = "#f4f6ff"; ctx.fillText(store.coinsBank, PADX+34, 76+safeT);
+  const hS = navS();
+  drawIconBtn(W-PADX-hS, 12+safeT, hS, store.muted?"🔇":"🔊", "mute");
+  // the big tiles — WORLDS first, then everything else
+  const starsWon = Object.keys(store.stars).filter(k=>!String(k).startsWith("c:") && store.stars[k]>0).length;
+  const newN = CONFIG.cratesEnabled ? Object.keys(store.found||{}).filter(k=>!(store.seenItems||{})[k]).length : 0;
+  const tiles = [
+    {label:"WORLDS", emoji:"🌍", act:"worlds", col:"#ffb742", sub: starsWon+"/"+LEVELS.length+" BEATEN"},
+    {label:"GARAGE", emoji:"🚗", act:"garage", col:"#9ae64a", sub: store.ownedCars.length+" RIDES"},
+    {label:"BUILD",  emoji:"🔨", act:"build",  col:"#ff8a3c", sub:(store.customLevels.length||0)+"/10 TRACKS"},
+    {label:"SHOP",   emoji:"🛒", act:"shop",   col:"#7ef7ff", sub:"🪙 "+store.coinsBank},
+    ...(CONFIG.cratesEnabled ? [{label:"CRATES", emoji:"🎁", act:"crates", col:"#ffd76a",
+        sub: newN? "● "+newN+" NEW!" : (store.cratesOpened||0)+" OPENED", hot: newN>0 }] : []),
+    {label:"VS",     emoji:"⚔️", act:"vs",     col:"#ff8fe0", sub:(store.vsScore||[0,0]).join(" – ")},
+    {label:"CO-OP",  emoji:"🤝", act:"coop",   col:"#9ae6ff", sub:Object.values(store.coopStars||{}).filter(Boolean).length+"/"+COOP_LEVELS.length},
+  ];
+  const chipRow = store.customLevels.length ? 60 : 0;
+  const bandTop = 100+safeT, bandBot = H-20-safeB-chipRow;
+  const cols = W>=900? 4 : (W>=560? 3 : 2);
+  const rows = Math.ceil(tiles.length/cols), gap = 14;
+  const tw2 = Math.min(300, Math.floor((W-2*PADX-gap*(cols-1))/cols));
+  const th2 = Math.min(200, Math.floor((bandBot-bandTop-gap*(rows-1))/rows));
+  const gridH = rows*th2+gap*(rows-1), y0 = bandTop + Math.max(0,(bandBot-bandTop-gridH)/2);
+  tiles.forEach((T,i)=>{
+    const cRow=(i/cols)|0;
+    const inRow = (cRow===rows-1)? tiles.length-(rows-1)*cols : cols;
+    const rowW = inRow*tw2+gap*(inRow-1), rx0=(W-rowW)/2;
+    const x = rx0 + (i%cols)*(tw2+gap), y = y0 + cRow*(th2+gap);
+    roundedPanel(x, y, tw2, th2, 18, "rgba(20,24,38,0.94)");
+    ctx.strokeStyle = T.col; ctx.globalAlpha = T.hot? (0.7+Math.sin(game.t*5)*0.3) : 0.5; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.roundRect(x+1.5, y+1.5, tw2-3, th2-3, 17); ctx.stroke(); ctx.globalAlpha = 1;
+    ctx.font = Math.round(th2*0.34)+"px sans-serif";
+    fillTextC(T.emoji, x+tw2/2, y+th2*0.32);
+    ctx.font = "900 "+clamp(Math.round(th2*0.17),16,27)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+    ctx.fillStyle = T.col;
+    fillTextC(T.label, x+tw2/2, y+th2*0.64);
+    ctx.font = "800 "+clamp(Math.round(th2*0.11),11,14)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+    ctx.fillStyle = T.hot? "#ff8fe0" : "#8b93ad";
+    fillTextC(T.sub, x+tw2/2, y+th2*0.85);
+    hudBtns.push({x, y, w:tw2, h:th2, act:T.act});
+  });
+  // custom-track chips (playable shortcuts + share-import highlight)
+  if(chipRow){
+    let gcx = PADX; const cy0 = H-20-safeB-52;
+    for(const cl of store.customLevels){
+      const st = store.stars["c:"+cl.id]||0;
+      roundedPanel(gcx, cy0, 48, 46, 12, "rgba(20,24,36,0.92)");
+      ctx.font = "17px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillStyle="#f4f6ff";
+      fillTextC(EMOJIS[cl.emojiIx||0], gcx+24, cy0+15);
+      ctx.font = "800 11px 'Avenir Next Condensed',sans-serif";
+      ctx.fillStyle = st? "#ffd76a" : "#8b93ad";
+      fillTextC(st? "⭐".repeat(st) : cl.name.replace("TRACK","T"), gcx+24, cy0+35);
+      if(game.importedTrack===cl){
+        ctx.strokeStyle="#ffd76a"; ctx.lineWidth=3+Math.sin(game.t*5)*1.5;
+        ctx.beginPath(); ctx.roundRect(gcx-3, cy0-3, 54, 52, 14); ctx.stroke();
+      }
+      hudBtns.push({x:gcx,y:cy0,w:48,h:46,act:"pc:"+cl.id});
+      gcx += 54;
+      if(gcx > W-PADX-54) break;
+    }
+  }
+  for(const tp of input.taps.splice(0)){
+    for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){
+      AU.ui();
+      if(b.act==="mute"){ AU.toggleMute(); return; }
+      game.importedTrack = null;
+      if(b.act==="worlds") game.state="series";
+      else if(b.act==="garage") game.state="garage";
+      else if(b.act==="build") enterBuilder(null);
+      else if(b.act==="shop"){ sh.tab="cars"; shopSyncSel(); game.state="shop"; }
+      else if(b.act==="crates" && CONFIG.cratesEnabled){ bk.open=false; game.state="crates"; }
+      else if(b.act==="vs") game.state="vspick";
+      else if(b.act==="coop") game.state="cooppick";
+      else if(b.act.startsWith("pc:")){ const cl = store.customLevels.find(c=>c.id===+b.act.slice(3)); if(cl) loadCustom(cl, "map"); }
+      return;
+    }
+  }
+}
+
+/* ---------------- 🚗 GARAGE — quick-switch between OWNED rides (no shopping, just pick & go) ---------------- */
+function drawGarage(){
+  nightSky();
+  hudBtns.length = 0;
+  const hS = navS();
+  drawIconBtn(PADX, 12+safeT, hS, "↩️", "back");
+  ctx.textAlign="center"; ctx.textBaseline="alphabetic";
+  ctx.font = "900 italic 34px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#9ae64a";
+  fillTextC("🚗 GARAGE", W/2, 44+safeT);
+  ctx.font = "800 14px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#8b93ad";
+  ctx.fillText("TAP A RIDE TO DRIVE IT", W/2, 64+safeT);
+  ctx.textBaseline="middle";
+  const owned = VEHICLES.filter(v=>store.ownedCars.includes(v.id));
+  const bandTop = 92+safeT, bandBot = H-16-safeB, gap = 12;
+  const cols = clamp(Math.floor((W-2*PADX)/168), 2, 6);
+  const rows = Math.ceil(owned.length/cols);
+  const tw3 = Math.min(210, Math.floor((W-2*PADX-gap*(cols-1))/cols));
+  const th3 = Math.min(170, Math.max(96, Math.floor((bandBot-bandTop-gap*(rows-1))/rows)));
+  const gridH = rows*th3+gap*(rows-1), y0 = bandTop + Math.max(0,(bandBot-bandTop-gridH)/2);
+  owned.forEach((v,i)=>{
+    const rIx=(i/cols)|0;
+    const inRow = (rIx===rows-1)? owned.length-(rows-1)*cols : cols;
+    const rowW = inRow*tw3+gap*(inRow-1), rx0=(W-rowW)/2;
+    const x = rx0 + (i%cols)*(tw3+gap), y = y0 + rIx*(th3+gap);
+    const riding = store.car===v.id;
+    roundedPanel(x, y, tw3, th3, 16, riding? "rgba(34,64,44,0.95)" : "rgba(20,24,38,0.94)");
+    if(riding){ ctx.strokeStyle="#9ae64a"; ctx.lineWidth=3.5; ctx.beginPath(); ctx.roundRect(x+1.5,y+1.5,tw3-3,th3-3,15); ctx.stroke(); }
+    drawVehiclePreview(v.id, x+tw3/2, y+th3*0.42, Math.max(1.1, (th3-46)/40), 1);
+    ctx.font = "900 "+clamp(Math.round(th3*0.13),12,17)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+    ctx.fillStyle = riding? "#9ae64a" : "#f4f6ff"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    fillTextC(riding? "✓ "+v.name : v.name, x+tw3/2, y+th3-16);
+    hudBtns.push({x, y, w:tw3, h:th3, act:"eq:"+v.id});
+  });
+  for(const tp of input.taps.splice(0)){
+    for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){
+      AU.ui();
+      if(b.act==="back"){ game.state="home"; return; }
+      if(b.act.startsWith("eq:")){ const id=b.act.slice(3); if(store.ownedCars.includes(id)){ store.car=id; save(); AU.key();
+        const v=VEHICLES.find(x=>x.id===id); sticker("🏎️ "+(v?v.name:"RIDE")+" — LET'S GO!", "#9ae64a"); } return; }
+    }
+  }
+}
+
 function drawSeries(){
   nightSky();
   hudBtns.length = 0;
@@ -6345,11 +6484,11 @@ function drawSeries(){
   ctx.font = "800 19px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.textAlign="left";
   ctx.fillStyle = "#ffd76a"; ctx.fillText("✦", PADX+14, 33+safeT);
   ctx.fillStyle = "#f4f6ff"; ctx.fillText("AURA "+Math.round(store.aura), PADX+32, 33+safeT);
-  drawIconBtn(W-PADX-42, 12+safeT, 40, store.muted?"🔇":"🔊", "mute");
-  // world cards — wrapping grid centered in the band between header and the mode dashboard
-  const dashH = clamp(Math.round(H*0.16), H<520? 64 : 84, 128);   // 🧭 dashboard tile height
-  const dashChips = store.customLevels.length ? 56 : 0;           // custom-track chip row (only when tracks exist)
-  const garageY = H - dashH - dashChips - 10 - safeB;
+  const wnS = navS();
+  drawIconBtn(W-PADX-wnS, 12+safeT, wnS, store.muted?"🔇":"🔊", "mute");
+  drawIconBtn(W-PADX-wnS*2-8, 12+safeT, wnS, "🏠", "home");
+  // world cards — full-height grid (modes + chips live on the 🏠 HOME page now)
+  const garageY = H - 28 - safeB;
   const N = SERIES.length;
   const cw = Math.min(300, Math.max(140, (W-2*PADX-48)/Math.min(N,4)));
   const perRow = Math.max(1, Math.min(N, Math.floor((W-2*PADX+16)/(cw+16))));
@@ -6389,61 +6528,13 @@ function drawSeries(){
     ctx.globalAlpha = 1;
     hudBtns.push({x, y, w:cw, h:chh, act:"s:"+s});
   }
-  // 🧭 MODE DASHBOARD — the five modes are first-class TILES, same card language as the worlds
-  // (was a row of small pills; dad's ask: "make the main tiles the buttons — the initial navigation dashboard")
-  const gy = garageY;
-  // custom-track chips: compact row ABOVE the dashboard (only when tracks exist)
-  if(dashChips){
-    let gcx = PADX;
-    for(const cl of store.customLevels){
-      const st = store.stars["c:"+cl.id]||0;
-      roundedPanel(gcx, gy+4, 48, 46, 12, "rgba(20,24,36,0.92)");
-      ctx.font = "17px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillStyle="#f4f6ff";
-      fillTextC(EMOJIS[cl.emojiIx||0], gcx+24, gy+19);
-      ctx.font = "800 11px 'Avenir Next Condensed',sans-serif";
-      ctx.fillStyle = st? "#ffd76a" : "#8b93ad";
-      fillTextC(st? "⭐".repeat(st) : cl.name.replace("TRACK","T"), gcx+24, gy+39);
-      if(game.importedTrack===cl){
-        ctx.strokeStyle="#ffd76a"; ctx.lineWidth=3+Math.sin(game.t*5)*1.5;
-        ctx.beginPath(); ctx.roundRect(gcx-3, gy+1, 54, 52, 14); ctx.stroke();
-      }
-      hudBtns.push({x:gcx,y:gy+4,w:48,h:46,act:"pc:"+cl.id});
-      gcx += 54;
-      if(gcx > W-PADX-54) break;
-    }
-  }
-  const newN = CONFIG.cratesEnabled ? Object.keys(store.found||{}).filter(k=>!(store.seenItems||{})[k]).length : 0;
-  const tiles = [
-    {label:"BUILD",  emoji:"🔨", act:"build",  col:"#ffb742", sub:(store.customLevels.length||0)+"/10 TRACKS"},
-    {label:"SHOP",   emoji:"🛒", act:"shop",   col:"#7ef7ff", sub:"🪙 "+store.coinsBank},
-    ...(CONFIG.cratesEnabled ? [{label:"CRATES", emoji:"🎁", act:"crates", col:"#ffd76a",
-        sub: newN? "● "+newN+" NEW!" : (store.cratesOpened||0)+" OPENED", hot: newN>0 }] : []),
-    {label:"VS",     emoji:"⚔️", act:"vs",     col:"#ff8fe0", sub:(store.vsScore||[0,0]).join(" – ")},
-    {label:"CO-OP",  emoji:"🤝", act:"coop",   col:"#9ae6ff", sub:Object.values(store.coopStars||{}).filter(Boolean).length+"/"+COOP_LEVELS.length},
-  ];
-  const tGap = 10, tW = Math.floor((W-2*PADX-tGap*(tiles.length-1))/tiles.length), ty = gy + dashChips;
-  let tx = PADX;
-  for(const T of tiles){
-    roundedPanel(tx, ty, tW, dashH, 16, "rgba(20,24,38,0.94)");
-    ctx.strokeStyle = T.col; ctx.globalAlpha = T.hot? (0.7+Math.sin(game.t*5)*0.3) : 0.5; ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.roundRect(tx+1.5, ty+1.5, tW-3, dashH-3, 15); ctx.stroke(); ctx.globalAlpha = 1;
-    ctx.textBaseline = "middle";
-    ctx.font = Math.round(dashH*0.34)+"px sans-serif";
-    fillTextC(T.emoji, tx+tW/2, ty+dashH*0.30);
-    ctx.font = "900 "+clamp(Math.round(dashH*0.20),13,22)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-    ctx.fillStyle = T.col;
-    fillTextC(T.label, tx+tW/2, ty+dashH*0.62);
-    ctx.font = "800 "+clamp(Math.round(dashH*0.13),10,13)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-    ctx.fillStyle = T.hot? "#ff8fe0" : "#8b93ad";
-    fillTextC(T.sub, tx+tW/2, ty+dashH*0.84);
-    hudBtns.push({x:tx, y:ty, w:tW, h:dashH, act:T.act});
-    tx += tW + tGap;
-  }
+  // (mode tiles + custom-track chips moved to the 🏠 HOME landing page)
   // input
   for(const tp of input.taps.splice(0)){
     for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){
       AU.ui();
       if(b.act==="mute"){ AU.toggleMute(); return; }
+      if(b.act==="home"){ game.state="home"; return; }
       game.importedTrack = null;
       if(b.act==="build") enterBuilder(null);
       else if(b.act==="shop"){ sh.tab="cars"; shopSyncSel(); game.state="shop"; }   // centre the showroom on the equipped car every time it opens
@@ -6759,7 +6850,7 @@ function shareTrack(){
 }
 function builderAction(a){
   AU.ui();
-  if(a==="back"){ game.state="series"; return; }
+  if(a==="back"){ game.state="home"; return; }
   if(a==="undo"){ popUndo(); return; }
   if(a==="hue"){ bl.hueIx=(bl.hueIx+1)%HUES.length; return; }
   if(a==="emoji"){ bl.emojiIx=(bl.emojiIx+1)%EMOJIS.length; return; }
@@ -6985,7 +7076,7 @@ function drawCoopMap(){
     const curG = Math.min(unlockedN-1, n-1);
     if(tp.screen){ AU.ui(); startCoop(curG); return; }
     for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){
-      AU.ui(); if(b.act==="mute") AU.toggleMute(); else if(b.act==="back") game.state="series"; return;
+      AU.ui(); if(b.act==="mute") AU.toggleMute(); else if(b.act==="back") game.state="home"; return;
     }
     for(const nd of coopNodes) if(dist(tp.x,tp.y,nd.x,nd.y)<nd.r){ AU.ui(); startCoop(nd.ix); return; }
   }
@@ -7139,7 +7230,7 @@ function drawVsPick(){
     if(tp.screen){ AU.ui(); pick(0); return; }
     for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){
       AU.ui();
-      if(b.act==="back") game.state="series";
+      if(b.act==="back") game.state="home";
       else if(b.act==="mode:ko") game.vsMode='ko';
       else if(b.act==="mode:race") game.vsMode='race';
       else if(b.act.startsWith("a:")) pick(+b.act.slice(2));
@@ -7187,7 +7278,7 @@ function drawVsEnd(dt){
       if(tp.screen){ AU.ui(); startVs(game.vsSource); return; }
       for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){
         AU.ui();
-        if(b.act==="retry") startVs(game.vsSource); else { game.vs=false; game.state="series"; }
+        if(b.act==="retry") startVs(game.vsSource); else { game.vs=false; game.state="home"; }
         return;
       }
     }
@@ -7699,7 +7790,7 @@ function drawReveal(dt){
   }
 }
 function cratesAction(a){
-  if(a==="back"){ AU.ui(); if(bk.open){ bk.open=false; bookSeen(); return; } game.reveal=null; game.state="series"; return; }
+  if(a==="back"){ AU.ui(); if(bk.open){ bk.open=false; bookSeen(); return; } game.reveal=null; game.state="home"; return; }
   if(a==="book"){ AU.ui(); bk.open=true; bk.t=0; return; }
   if(a==="book:close"){ AU.ui(); bk.open=false; bookSeen(); return; }
   if(a.startsWith("info:")){ AU.key();
@@ -7943,7 +8034,7 @@ function shopSyncSel(){
   shopPending = null;
 }
 function shopAction(a){
-  if(a==="back"){ AU.ui(); sh.ptr = null; shopPending = null; game.state="series"; return; }
+  if(a==="back"){ AU.ui(); sh.ptr = null; shopPending = null; game.state="home"; return; }
   if(a==="noop"){ AU.bonk(); return; }
   if(a==="tab:cars"||a==="tab:pets"){ AU.ui(); sh.tab = a.slice(4); shopSyncSel(); return; }
   if(a==="prev"||a==="next"){ AU.ui(); sh.sel = clamp(sh.sel + (a==="next"?1:-1), 0, sh.max); sh.target = sh.sel; shopPending = null; return; }
@@ -8447,15 +8538,17 @@ function frame(now){
 function tick(now){
   const dt = Math.max(0, Math.min(0.05, (now-last)/1000)); last = now;
   game.t += dt;
-  if(!CONFIG.cratesEnabled && game.state==="crates") game.state="series";   // 🎁 master off → never strand on the dead crates screen
+  if(!CONFIG.cratesEnabled && game.state==="crates") game.state="home";   // 🎁 master off → never strand on the dead crates screen
   ctx.setTransform(DPR,0,0,DPR,0,0);
   ctx.clearRect(0,0,W,H);
   // tablet held upright → ask for landscape (menus only, never mid-game)
-  const portraitHint = input.hasTouch && H > W*1.15 && (game.state==="title" || game.state==="map" || game.state==="series" || game.state==="cooppick");
+  const portraitHint = input.hasTouch && H > W*1.15 && (game.state==="title" || game.state==="map" || game.state==="series" || game.state==="home" || game.state==="garage" || game.state==="cooppick");
   if(portraitHint) input.taps.length = 0;
 
   if(game.state==="title"){ drawTitle(dt); }
   else if(game.state==="series"){ drawSeries(); updateStickers(dt); drawStickers(); }
+  else if(game.state==="home"){ drawHome(); updateStickers(dt); drawStickers(); }
+  else if(game.state==="garage"){ drawGarage(); updateStickers(dt); drawStickers(); }
   else if(game.state==="map"){ drawMap(); updateStickers(dt); drawStickers(); }
   else if(game.state==="build"){ drawBuild(dt); updateStickers(dt); drawStickers(); }
   else if(game.state==="shop"){ updateFx(dt); drawShop(dt); drawConfettiScreen(); drawStickers(); }
@@ -8518,7 +8611,7 @@ function tick(now){
         if(b.act==="pause") togglePause();
         if(b.act==="resume") paused=false;
         if(b.act==="map"){ paused=false; game.state = game.fromBuilder? "build" : game.coop? "cooppick" : (game.vs||game.ko)? "vspick" : "map"; }
-        if(b.act==="home"){ paused=false; game.state = "series"; }   // 🏠 straight to the main dashboard
+        if(b.act==="home"){ paused=false; game.state = "home"; }   // 🏠 straight to the main dashboard
       }
     }
   }
@@ -8556,7 +8649,7 @@ function tick(now){
     store.customLevels.push(cl); save();
   }
   game.importedTrack = cl;
-  game.state = "series";
+  game.state = "home";   // chips live on the landing page
   sticker("NEW TRACK ARRIVED! 📦", "#ffd76a");
 })();
 
