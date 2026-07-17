@@ -191,7 +191,7 @@ tuning knobs, **how to revert anything**, and **how to edit/add/remove assets**.
 
 ## License
 
-© 2026 CorruptFun. All Rights Reserved. **Proprietary** — see [LICENSE](LICENSE).
+© 2026 Corrupt Solutions LLC. All Rights Reserved. **Proprietary** — see [LICENSE](LICENSE).
 
 This game is free to **play** at its official link, but the code, level designs,
 and artwork are not open source. The source is visible only because web games run
