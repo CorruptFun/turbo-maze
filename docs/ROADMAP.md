@@ -6,12 +6,12 @@
 
 ## Make it better (joy per effort)
 
-- [~] **1. 🎵 Music** — adrenaline racing loops, procedural Web Audio (no assets):
+- [x] **1. 🎵 Music** (`see commit`) — adrenaline racing loops, procedural Web Audio (no assets):
   per-world flavor (each world gets its own key/waveform personality), boss-race
-  tension variant, chill menu loop, respects mute. *(Opus agent building now.)*
-- [~] **2. 👻 Ghost time-trials** — race a translucent replay of your own best run,
+  tension variant, chill menu loop, respects mute. 
+- [x] **2. 👻 Ghost time-trials** (`see commit`) — race a translucent replay of your own best run,
   campaign solo only; "GHOST BEATEN!" celebration; compressed saves (default-safe
-  `store.ghosts`), per-level best-time chip. *(Opus agent building now.)*
+  `store.ghosts`), per-level best-time chip. 
 - [ ] **3. 🚗 Garage = real showroom, owned-only** — full spec:
   `docs/WORLD7-HANDOFF.md` §Queued (sh.garageMode on the existing showroom).
 - [ ] **4. 🅱️ B-side worlds** — a second 15 unlocked by beating a world (co-op

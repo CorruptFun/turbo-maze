@@ -46,6 +46,8 @@ const CONFIG = {
   cratesPowerups:   true,          // 🎁 false = drop the POWER-UPS bucket (rocket/double/shield/freeze/ghost/slowmo)
   cratesCosmetics:  true,          // 🎁 false = drop the COSMETICS bucket (trails/shine/toppers)
   mazeVariety:      true,          // 🔀 false = every maze keeps the classic top-left → bottom-right layout (no mirror/rotate)
+  music:            true,          // 🎵 false = no procedural chiptune (adrenaline race loop + chill menu loop) — engine SFX untouched
+  ghosts:           true,          // 👻 false = no ghost time-trials (stops recording your run AND spawning the replay racer)
 };
 // Words the game yells. Keep 'em short — he's 7. Add your own!
 const YELLS = {
@@ -3290,7 +3292,9 @@ let store = { unlocked:1, stars:{}, aura:0, coinsBank:0, muted:false, customLeve
   cosmetics:[], cosmetic:null, cratesOpened:0, goldenFound:0, goldTaken:{},
   // 📖 crates v3 collection book — found = lifetime discovery ledger, seenItems = viewed ledger.
   // Keys namespaced "upg:engine" / "pu:rocket" / "cos:trail_flame" / "cur:pouch". Both default {} → Object.assign-safe.
-  found:{}, seenItems:{} };
+  found:{}, seenItems:{},
+  // 👻 ghost time-trials — per campaign-level best runs: { [levelIx]: {t:seconds, d:base64 blob} }. Default {} → Object.assign keeps old saves safe.
+  ghosts:{} };
 try { const s = localStorage.getItem("turboMaze"); if(s) store = Object.assign(store, JSON.parse(s)); } catch(e){}
 // 🎁 retroactively grant each world's reward car for any world ALREADY beaten (older saves recorded the clear before reward cars existed)
 for(let s=0;s<SERIES.length;s++)
@@ -3298,8 +3302,29 @@ for(let s=0;s<SERIES.length;s++)
 function save(){ try { localStorage.setItem("turboMaze", JSON.stringify(store)); } catch(e){} }
 
 /* ---------------- audio (all synth, no files) ---------------- */
+// 🎵 procedural chiptune — PER-WORLD personality (index 0-6 == SERIES world). root = lead reference (Hz),
+// scale = semitone steps, lead = arpeggio waveform, tempo = base BPM (146 default). Deterministic — no samples.
+const MUS_WORLDS = [
+  { root:220.00, scale:[0,2,4,7,9],      lead:"square",   tempo:146 },                 // 0 TURBO BASICS — A major pentatonic, bright square
+  { root:164.81, scale:[0,2,3,5,7,10],   lead:"triangle", tempo:142, airy:1 },         // 1 BRAIN FREEZE — E minor, airy triangle, slower hat
+  { root:146.83, scale:[0,2,3,5,7,9,10], lead:"sawtooth", tempo:146, detune:7 },        // 2 MAZE MAYHEM — D dorian, detuned saw
+  { root:196.00, scale:[0,2,3,5,7,8,10], lead:"square",   tempo:148, industrial:1 },    // 3 METAL MELTDOWN — G minor, gritty square + extra offbeat kick
+  { root:261.63, scale:[0,2,4,7,9],      lead:"square",   tempo:150, bouncy:1 },        // 4 SPLASH ZONE — C major pentatonic, bouncy
+  { root:174.61, scale:[0,2,4,6,7,9,11], lead:"triangle", tempo:144, vibrato:1 },       // 5 COSMIC RUSH — F lydian, soft triangle w/ slow vibrato
+  { root:164.81, scale:[0,1,3,5,7,8,10], lead:"sawtooth", tempo:156, driving:1 },       // 6 HOT LAVA — E phrygian, driving saw, tempo 156
+];
+// arpeggio contours — scale-degree indices (may exceed scale length → octave up); -1 = rest. A 4-bar block picks one deterministically.
+const MUS_ARPS = [
+  [0,2,4,7, 4,2,0,2],
+  [0,4,7,4, 9,7,4,2],
+  [0,2,0,4, 2,4,-1,7],
+  [7,4,2,0, 4,2,0,-1],
+  [0,3,5,7, 5,3,2,0],
+];
+const MUS_BASS = [0,0,7,0, 5,0,7,0];   // scale-degree pattern for the 8 eighth-notes in a bar (root-heavy, walks to the 5th)
+function musSeed(a,b){ let h = ((a|0)*73856093) ^ ((b|0)*19349663); h = (h ^ (h>>>13)) >>> 0; return h; }  // deterministic — never Math.random in the scheduler
 const AU = {
-  ctx:null, master:null, engine:null, engineGain:null, driftGain:null, started:false,
+  ctx:null, master:null, engine:null, engineGain:null, driftGain:null, started:false, music:null,
   init(){
     if(this.started) return;
     try{
@@ -3357,7 +3382,146 @@ const AU = {
   ui(){ this.beep(520,0.06,"square",0.07); },
   win(){ [523,659,784,1046,784,1046,1318,1568].forEach((f,i)=> setTimeout(()=>this.beep(f, i>5?0.4:0.14, "triangle", 0.14), i*110)); },
   toggleMute(){ store.muted=!store.muted; save(); if(this.master) this.master.gain.value = store.muted?0:0.5; },
+
+  /* ---------- 🎵 procedural music sequencer (lookahead scheduler, no samples) ---------- */
+  // called every frame from tick(); mode = {kind:"race",world,boss} | {kind:"menu"} | {kind:"off"}.
+  // diffs against the running mode and only rebuilds on change → never stacks schedulers.
+  musicSig(m){ return m.kind==="race" ? ("race:"+m.world+":"+(m.boss?1:0)) : m.kind==="menu" ? "menu" : "off"; },
+  musicEnsure(mode){
+    try{
+      if(!CONFIG.music){ this.musicStop(); return; }
+      if(!this.started || !this.ctx) return;          // no AudioContext yet (title / pre-gesture / unsupported) → stay quiet
+      const sig = this.musicSig(mode);
+      if(this.music && this.music.sig === sig) return; // unchanged → leave the running loop alone
+      this.musicStop();                                // tear the old one down first (never two at once)
+      if(mode.kind === "off") return;
+      this.musicStart(mode, sig);
+    }catch(e){ this.music = null; }
+  },
+  musicStart(mode, sig){
+    const race = mode.kind === "race";
+    const world = race ? clamp(mode.world|0, 0, MUS_WORLDS.length-1) : 0;
+    const V = MUS_WORLDS[world];
+    const bpm = race ? (V.tempo + (mode.boss?10:0)) : 100;
+    const bus = this.ctx.createGain(); bus.gain.value = 0.16; bus.connect(this.master);
+    // one reusable noise buffer for hats/snares (Math.random here is SETUP, not the scheduler)
+    const nb = this.ctx.createBuffer(1, Math.max(1, Math.floor(this.ctx.sampleRate*0.12)), this.ctx.sampleRate);
+    const nd = nb.getChannelData(0); for(let i=0;i<nd.length;i++) nd[i] = Math.random()*2-1;
+    const M = this.music = {
+      sig, kind:mode.kind, world, boss:!!mode.boss, V, bus, noise:nb,
+      stepDur: 15/bpm,                                 // seconds per 16th step (60/bpm/4)
+      step:0, bar:0, timer:null, next: this.ctx.currentTime + 0.06,
+      leadRoot: race? V.root : 220.0,
+      bassRoot: (race? V.root : 220.0)/2,
+      menuChords: [[0,3,7],[5,8,12],[-4,0,3],[-5,-1,2]], // A-minor-ish garage progression (offsets from root)
+    };
+    M.timer = setInterval(()=>{ try{ this.musicTick(); }catch(e){ this.musicStop(); } }, 90);
+    this.musicTick();                                  // prime immediately so the first bar lands on time
+  },
+  musicStop(){
+    const M = this.music; if(!M) return;
+    this.music = null;
+    try{ if(M.timer) clearInterval(M.timer); }catch(e){}
+    try{ if(M.bus){ const b = M.bus; b.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05); setTimeout(()=>{ try{ b.disconnect(); }catch(e){} }, 300); } }catch(e){}
+  },
+  musicTick(){
+    const M = this.music; if(!M || !this.ctx) return;
+    const now = this.ctx.currentTime, ahead = now + 0.12;
+    if(M.next < now - 0.5) M.next = now + 0.03;         // fell way behind (tab was backgrounded) → drop the backlog
+    let guard = 0;
+    while(M.next < ahead && guard++ < 64){
+      this.musicStep(M, M.step, M.next);
+      M.next += M.stepDur;
+      if(++M.step >= 16){ M.step = 0; M.bar++; }
+    }
+  },
+  musicStep(M, s, t){
+    const bus = M.bus;
+    if(M.kind === "menu"){                              // chill garage loop: soft triangle chords + sparse pluck
+      if(s===0 || s===8){
+        const ch = M.menuChords[M.bar % M.menuChords.length];
+        for(const semi of ch) this.mNote(bus, 220*Math.pow(2, semi/12), t, 1.15, "triangle", 0.05);
+      }
+      if(s===6 || s===12){                              // sparse pluck up top
+        const semi = [12,7,15,10][(M.bar+ (s>>2)) % 4];
+        this.mNote(bus, 220*Math.pow(2, semi/12), t, 0.4, "triangle", 0.045);
+      }
+      if(s%4===0) this.mKick(bus, t, 0.28);             // gentle heartbeat
+      return;
+    }
+    const V = M.V;
+    if(s%4===0) this.mKick(bus, t, 0.9);                // KICK on 0/4/8/12
+    if(V.industrial && (s===6 || s===14)) this.mKick(bus, t, 0.5);  // world 3: extra industrial offbeat thump
+    if(s%4===2) this.mHat(M, t, V.airy? 0.03 : 0.055);  // HAT on the &s
+    if(!V.airy && (s===1||s===5||s===9||s===13)) this.mHat(M, t, 0.028);   // busier hats (airy world 1 keeps it sparse)
+    if(M.boss && (s===4 || s===12)) this.mSnare(M, t);  // BOSS snare on 4/12
+    if(s%2===0){                                        // BASS + LEAD on every 8th
+      const bDeg = MUS_BASS[(s>>1) % 8];
+      this.mNote(bus, M.bassRoot*Math.pow(2, this.mSemi(V, bDeg)/12), t, M.stepDur*1.7, "square", 0.13);
+      const lDeg = this.mLead(M, M.bar, s);
+      if(lDeg >= 0){
+        const semi = this.mSemi(V, lDeg) + (M.boss?12:0);
+        this.mNote(bus, M.leadRoot*Math.pow(2, semi/12), t, M.stepDur*1.35, V.lead, 0.085,
+          { detune:V.detune||0, vibrato:!!V.vibrato });
+      }
+    }
+  },
+  mSemi(V, deg){ const L=V.scale.length, o=Math.floor(deg/L); return V.scale[((deg%L)+L)%L] + o*12; },
+  mLead(M, bar, step){                                  // 2-bar phrase; the contour swaps every 4 bars (deterministic seed)
+    const V = M.V, block = Math.floor(bar/4);
+    const seed = musSeed(M.world*97 + block, 0);
+    const arp = MUS_ARPS[seed % MUS_ARPS.length];
+    const ls = (bar%2)*8 + (step>>1);                   // 0..15 across the 2-bar phrase
+    let deg = arp[ls % 8];
+    if(deg < 0) return -1;
+    if(ls >= 8) deg += V.scale.length;                  // 2nd bar an octave up → the phrase has an arc
+    if((seed>>4) & 1) deg += V.scale.length;            // block-level octave lift for variety
+    return deg;
+  },
+  mNote(dest, freq, t, dur, type, vol, opts){
+    const o = this.ctx.createOscillator(); o.type = type; o.frequency.value = freq;
+    if(opts && opts.detune && o.detune) o.detune.value = opts.detune;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0003, vol), t+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+    o.connect(g); g.connect(dest); o.start(t); o.stop(t+dur+0.03);
+    if(opts && opts.vibrato){
+      const lfo = this.ctx.createOscillator(); lfo.type="sine"; lfo.frequency.value = 5;
+      const lg = this.ctx.createGain(); lg.gain.value = freq*0.012;
+      lfo.connect(lg); lg.connect(o.frequency); lfo.start(t); lfo.stop(t+dur+0.03);
+    }
+  },
+  mKick(dest, t, vol){
+    const o = this.ctx.createOscillator(); o.type="sine";
+    o.frequency.setValueAtTime(110, t); o.frequency.exponentialRampToValueAtTime(50, t+0.09);
+    const g = this.ctx.createGain(); g.gain.setValueAtTime(vol||0.85, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.12);
+    o.connect(g); g.connect(dest); o.start(t); o.stop(t+0.14);
+  },
+  mHat(M, t, vol){
+    const s = this.ctx.createBufferSource(); s.buffer = M.noise;
+    const hp = this.ctx.createBiquadFilter(); hp.type="highpass"; hp.frequency.value = 7000;
+    const g = this.ctx.createGain(); g.gain.setValueAtTime(vol||0.05, t); g.gain.exponentialRampToValueAtTime(0.0005, t+0.03);
+    s.connect(hp); hp.connect(g); g.connect(M.bus); s.start(t); s.stop(t+0.05);
+  },
+  mSnare(M, t){
+    const s = this.ctx.createBufferSource(); s.buffer = M.noise;
+    const bp = this.ctx.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value = 1800; bp.Q.value = 0.8;
+    const g = this.ctx.createGain(); g.gain.setValueAtTime(0.45, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.13);
+    s.connect(bp); bp.connect(g); g.connect(M.bus); s.start(t); s.stop(t+0.15);
+  },
 };
+// 🎵 which loop should be playing right now? race music only for a SOLO campaign/custom race — VS/co-op/KO/builder
+// stay silent (true no-op, exactly as before); menus get the chill loop; title & result screens stay quiet.
+function musicMode(){
+  if(game.state === "play"){
+    if(game.vs || game.coop || game.ko || game.fromBuilder) return {kind:"off"};
+    const w = (game.levelIx>=0 && !game.customId) ? seriesOf(game.levelIx) : 0;
+    return { kind:"race", world: w<0?0:w, boss: !!game.rival };
+  }
+  const MENU = { home:1, series:1, map:1, shop:1, crates:1, garage:1, vspick:1, cooppick:1 };
+  return MENU[game.state] ? {kind:"menu"} : {kind:"off"};
+}
 
 /* ---------------- input: keyboard + touch ---------------- */
 const input = { vec:{x:0,y:0}, vec2:{x:0,y:0}, nitro:false,
@@ -3600,6 +3764,51 @@ function gateFinish(L){
       return Object.assign({}, L, {grid: sim.map(r=>r.join(""))}); }
   return L;                                                             // no safe seal → leave as-is (backstop covers it)
 }
+/* ---------------- 👻 ghost time-trials (record your own best run, then race the replay) ---------------- */
+// eligible = SOLO campaign level ONLY. Custom tracks (game.customId) + VS/co-op/KO are excluded → true no-op there.
+function ghostEligible(){ return CONFIG.ghosts && game.levelIx>=0 && !game.customId && !game.vs && !game.coop && !game.ko; }
+const GHOST_HZ = 0.125, GHOST_CAP = 1400;   // 8 Hz sampling, ≤175s of run captured
+// encode: [x,y,heading]* → per-sample int16 x/y deltas (px, two's-complement) + 1 heading byte → base64. x/y round-trip EXACTLY.
+function ghostEnc(rec){
+  if(!rec || rec.length < 2) return "";
+  const buf = new Uint8Array(rec.length*5);
+  let px=0, py=0, o=0;
+  for(let i=0;i<rec.length;i++){
+    const x = Math.round(rec[i][0]), y = Math.round(rec[i][1]);
+    const dx = clamp(x-px, -32768, 32767) & 0xffff, dy = clamp(y-py, -32768, 32767) & 0xffff;
+    buf[o++] = dx & 0xff; buf[o++] = (dx>>8) & 0xff;
+    buf[o++] = dy & 0xff; buf[o++] = (dy>>8) & 0xff;
+    buf[o++] = Math.round(((rec[i][2]%TAU+TAU)%TAU)/TAU*256) & 0xff;
+    px = x; py = y;
+  }
+  let s=""; for(let i=0;i<buf.length;i++) s += String.fromCharCode(buf[i]);
+  return btoa(s);
+}
+function ghostDec(str){
+  try{
+    const bin = atob(str), n = Math.floor(bin.length/5);
+    if(n < 2) return null;
+    const pts = new Array(n); let px=0, py=0;
+    for(let i=0;i<n;i++){
+      const o = i*5;
+      const ux = bin.charCodeAt(o) | (bin.charCodeAt(o+1)<<8);
+      const uy = bin.charCodeAt(o+2) | (bin.charCodeAt(o+3)<<8);
+      px += ux>=32768? ux-65536 : ux;
+      py += uy>=32768? uy-65536 : uy;
+      pts[i] = { x:px, y:py, h: bin.charCodeAt(o+4)/256*TAU };
+    }
+    return pts;
+  }catch(e){ return null; }
+}
+// interpolated ghost position at replay time t (lerp pos, shortest-arc lerp heading)
+function ghostAt(gh){
+  const pts = gh.pts, last = pts.length-1;
+  const f = gh.t / GHOST_HZ;
+  if(f <= 0) return pts[0];
+  if(f >= last) return pts[last];
+  const i = f|0, u = f-i, a = pts[i], b = pts[i+1];
+  return { x: lerp(a.x,b.x,u), y: lerp(a.y,b.y,u), h: a.h + angDiff(a.h,b.h)*u };
+}
 function startLevel(L, meta){
   L = varyMaze(L, meta);        // 🔀 mirror/rotate later-world & co-op mazes for start/finish variety
   if(meta.ix!==undefined) L = gateFinish(L);   // 🔒 campaign: seal the finish behind the locked door (no key-skip)
@@ -3623,6 +3832,7 @@ function startLevel(L, meta){
   game.lavas = []; game.geysers = []; game.sweep = null;                  // 🌋 World 7: molten pools / geyser vents / the lava sweep (reset for ALL modes)
   game.voidCell = [];   // 2D void mask, built per-row alongside game.solid
   game.lavaCell = [];   // 2D lava mask, built per-row alongside game.solid (🌋 melt + BFS checks)
+  game.ghostRec = []; game.ghostAcc = 0; game.ghost = null; game.ghostHadPrev = false;   // 👻 reset run recorder + replay for EVERY load (all modes)
   game.hasKey=false; game.playT=0; game.bonks=0;
   game.vs = !!(meta && meta.vs);
   game.coop = !!(meta && meta.coop);
@@ -3766,6 +3976,13 @@ function startLevel(L, meta){
     const fd = finishDist();
     if(fd){ const d0 = fd[game.startCell[1]][game.startCell[0]];
       if(d0 > 24){ game.ckptField = fd; game.ckptHalf = d0*0.5; } }
+  }
+  // 👻 spawn this level's ghost (your prior best run) — SOLO campaign only; decodes cleanly or stays null
+  if(ghostEligible() && store.ghosts && store.ghosts[game.levelIx]){
+    game.ghostHadPrev = true;
+    const rec = store.ghosts[game.levelIx];
+    const pts = ghostDec(rec.d);
+    if(pts && pts.length >= 2) game.ghost = { pts, t:0, dur:rec.t, done:false, fade:1 };
   }
   game.state = "play";
   armRun();                                    // 🎁 set up this run's armed power-up
@@ -4297,6 +4514,22 @@ function meltCar(car){
         : pick(["🫠 MELTED!","🔥 TOO HOT!","🌋 OUCH — MOLTEN!"]), "#ff6a3c");
 }
 function updateEntities(dt){
+  // 👻 record this run @ 8 Hz (SOLO campaign only) — samples the REAL messy run (melts/respawns and all)
+  if(ghostEligible() && game.ghostRec.length < GHOST_CAP){
+    game.ghostAcc += dt;
+    if(game.ghostAcc >= GHOST_HZ){
+      game.ghostAcc -= GHOST_HZ;
+      game.ghostRec.push([game.car.x, game.car.y, game.car.heading]);
+    }
+  }
+  // 👻 advance the replay ghost; fade out over 1s once it crosses its own finish time
+  if(game.ghost){
+    game.ghost.t += dt;
+    if(game.ghost.t >= game.ghost.dur){
+      game.ghost.done = true;
+      game.ghost.fade = Math.max(0, game.ghost.fade - dt);
+    }
+  }
   // gates cycle (shared)
   for(const g of game.gates){
     g.ph += dt;
@@ -4868,6 +5101,20 @@ function levelClear(){
       if(!unlock) unlock = wmsg; else sticker(wmsg, "#ffd76a");
     }
   }
+  // 👻 save this run as the level's ghost if it beat the stored best (or none) and the blob fits — SOLO campaign only
+  let ghostBeaten = false;
+  if(ghostEligible()){
+    const ix = game.levelIx, prev = store.ghosts && store.ghosts[ix];
+    if(!prev || game.playT < prev.t){
+      const enc = ghostEnc(game.ghostRec);
+      if(enc && enc.length < 4000){
+        store.ghosts = store.ghosts || {};
+        store.ghosts[ix] = { t:+game.playT.toFixed(2), d:enc };
+        if(game.ghostHadPrev) ghostBeaten = true;   // only crow about it when there was a ghost to beat
+      }
+    }
+  }
+  if(ghostBeaten) setTimeout(()=> sticker("👻 GHOST BEATEN — NEW BEST!", "#7ef7ff"), 700);
   save();
   game.clearData = { stars, t:0, time:game.playT, timeOk, allCoins, aura:Math.round(game.car.aura), shown:0,
     msg: game.rival? "SMOKED HIM! 🏆" : undefined, unlock };
@@ -5165,6 +5412,7 @@ function drawWorld(dt){
     }
   }
   if(game.car2) drawCar(game.car2);
+  if(game.ghost) drawGhost(game.ghost);   // 👻 your best-run replay — translucent, no collision, purely visual
   drawCar(car);
   if(game.vs || game.coop || game.ko){
     // name tags over both cars
@@ -6031,6 +6279,28 @@ function drawVehiclePreview(vid, x, y, scale, alpha){
   drawNumDecal(vid);
   ctx.restore(); ctx.globalAlpha = 1;
 }
+// 👻 draw the replay ghost — a translucent rounded-rect body in the player's trail colour + a floating 👻.
+function drawGhost(gh){
+  const p = ghostAt(gh);
+  const a = 0.32 * clamp(gh.fade, 0, 1);
+  if(a <= 0.003) return;
+  const col = vehicleById(store.car || "rocket").trail();
+  ctx.save();
+  ctx.globalAlpha = a;
+  ctx.translate(p.x, p.y);
+  ctx.rotate(p.h);
+  ctx.fillStyle = col;
+  ctx.beginPath(); ctx.roundRect(-16, -9, 32, 18, 6); ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.25)";
+  ctx.beginPath(); ctx.roundRect(-16, -9, 32, 7, 6); ctx.fill();
+  ctx.restore();
+  ctx.save();
+  ctx.globalAlpha = clamp(gh.fade, 0, 1);
+  ctx.font = "16px sans-serif"; ctx.textBaseline = "middle";
+  fillTextC("👻", p.x, p.y - 22);
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
 function drawCar(car){
   const vid = car.p2 ? "p2" : (store.car || "rocket");
   const v = car.p2 ? {trail:()=>"#b06ee8"} : vehicleById(vid);
@@ -6800,6 +7070,16 @@ function drawHUD(){
   ctx.textAlign="center";
   ctx.fillStyle = late ? "#8b93ad" : "#f4f6ff";
   fillTextC("⏱ " + tStr, W/2, top+20);
+  // 👻 ghost chip — the time you're chasing (sits below the timer, clear of the boss bar when there is one)
+  if(game.ghost){
+    const gy2 = top + (game.rival? 74 : 43);
+    const gStr = "👻 " + game.ghost.dur.toFixed(1) + "s";
+    ctx.font = "800 15px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+    const gw = ctx.measureText(gStr).width + emojiPad(gStr) + 22;
+    roundedPanel(W/2-gw/2, gy2, gw, 28, 12);
+    ctx.fillStyle = game.ghost.done ? "#8b93ad" : (game.playT < game.ghost.dur ? "#9ae64a" : "#ff9a6a");
+    fillTextC(gStr, W/2, gy2+15);
+  }
   // level tag (right) — narrow phones just get emoji + number
   ctx.font = "800 18px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   const tag = W<760 ? game.lv.emoji+" "+(game.levelIx>=0? (game.levelIx+1) : game.lv.name)
@@ -9355,6 +9635,7 @@ function tick(now){
     ctx.fillStyle = "#f4f6ff"; ctx.textAlign="center"; ctx.textBaseline="middle";
     ctx.fillText("TURN IT SIDEWAYS!", W/2, H*0.42+86);
   }
+  AU.musicEnsure(musicMode());   // 🎵 keep the right procedural loop running for the current screen (self-guards + no-ops)
 }
 // a shared track arrived by link? add it to the garage
 (function importFromHash(){
@@ -9383,6 +9664,7 @@ window.__tm = { game, loadLevel, loadCustom, store, CONFIG, CRATES, spawnGolden,
   shopAction, VEHICLES, PETS, LEVELS, VS_ARENAS, startVs, customToLevel,
   SERIES, seriesUnlocked, seriesBeaten, seriesOf, save,
   COOP_LEVELS, startCoop, KO_ARENAS, startKo,
+  AU, ghostEnc, ghostDec, ghostAt, ghostEligible, musicMode,   // 🎵/👻 test hooks
   step(sec){ paused = false; let n = last; for(let i=0;i<sec*60;i++){ n += 1000/60; tick(n); } last = performance.now(); } };
 </script>
 </body>
