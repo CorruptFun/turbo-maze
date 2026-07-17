@@ -1,0 +1,17 @@
+# Turbo Maze cloud-sync Worker — Cloudflare config.
+# Full deploy runbook (account creation → KV namespace → deploy → wire the URL
+# into the game) lives in docs/CLOUD-SYNC.md. The two <FILL_ME> ids below are
+# printed by `wrangler kv namespace create SYNC` — paste them, then deploy.
+
+name = "turbo-maze-sync"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+# KV namespace bound as `env.SYNC`. Create it once with:
+#   npx wrangler kv namespace create SYNC
+#   npx wrangler kv namespace create SYNC --preview
+# then paste the printed ids here.
+[[kv_namespaces]]
+binding = "SYNC"
+id = "<FILL_ME__production_kv_id>"
+preview_id = "<FILL_ME__preview_kv_id>"

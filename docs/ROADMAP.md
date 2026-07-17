@@ -23,10 +23,14 @@
 
 ## MVP to the wild (in order — each unblocks the next)
 
-- [ ] **6. ☁️ Cloud sync by code** — THE prerequisite for sharing. Design done (vault
-  note): ~50-line Cloudflare Worker + KV, memorable 4-word code, **merge /
-  most-progress-wins** (never last-write-wins). Dad: create the CF account; agent:
-  write Worker + client + deploy steps.
+- [~] **6. ☁️ Cloud sync by code** — THE prerequisite for sharing. **Built + tested,
+  ships DORMANT** (inert until a Worker URL is wired in — one line). Cloudflare
+  Worker + KV, memorable 4-word code, **merge / most-progress-wins** (never
+  last-write-wins): 34 offline merge tests pass + browser 2-device e2e verified.
+  No-account model confirmed (dad, 2026-07-17): silent auto-backup per device +
+  one-time code to hop devices; findable code on title/pause/home. Full design +
+  **deploy runbook** in `docs/CLOUD-SYNC.md`. **Remaining (dad, when ready to go
+  live): create CF account → `wrangler` deploy → paste URL into `SYNC_URL_BUILTIN`.**
 - [ ] **7. 📤 "Send to a friend" button** in-game (navigator.share of the play link) +
   a fresh-device first-run pass (minute one must be magical, zero explanation) +
   a low-end Android perf spin.

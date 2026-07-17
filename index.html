@@ -22,6 +22,28 @@
 <canvas id="cv"></canvas>
 <script>
 "use strict";
+/* ═══════════════════════════════════════════════════════════════════════════
+   TURBO MAZE — MAP OF THIS FILE     (one self-contained file, no build step)
+   ───────────────────────────────────────────────────────────────────────────
+   Each section starts with a  ---- NAME ----  banner — ⌘F / Ctrl-F a
+   ▸NAME below to jump straight there.
+   ───────────────────────────────────────────────────────────────────────────
+   TWEAK ZONE  ▸CONFIG (settings) ▸YELLS (announcer words)          ← start here
+   DATA        ▸LEVELS ▸SERIES (worlds) ▸VS_ARENAS ▸KO_ARENAS ▸COOP_LEVELS
+   CORE        ▸save data ▸audio ▸input ▸game state ▸level loading ▸main loop
+   GAMEPLAY    ▸car physics ▸entities ▸fx ▸ghost time-trials
+   RENDER      ▸pre-rendered ground ▸drawing ▸HUD ▸stickers
+   SHOP / META ▸vehicles & pets ▸vehicle stats ▸CRATES ▸COLLECTION BOOK ▸GARAGE SHOWROOM
+   SCREENS     ▸HOME ▸WORLD SELECT ▸LEVEL BUILDER ▸VS MODE ▸CO-OP ▸KNOCKOUT ▸CLOUD SYNC
+   ───────────────────────────────────────────────────────────────────────────
+   HOW TO CHANGE X:
+     add a world   → append 15 to ▸LEVELS + a {name,emoji,hue,count} in ▸SERIES   (docs/AUTHORING.md)
+     new hazard    → a tile char in ▸LEVELS + update ▸entities + a draw in ▸drawing (docs/WORLD-DESIGN-SYSTEM.md)
+     add a car/pet → ▸vehicles & pets (VEHICLES / PETS) + stats in ▸vehicle stats
+     crates/items  → ▸CRATES + docs/MYSTERY-CRATES.md
+     cloud sync    → ▸CLOUD SYNC here + worker/  (docs/CLOUD-SYNC.md)
+     debug in console → window.__tm  (exposed at the bottom, near ▸main loop)
+   ═══════════════════════════════════════════════════════════════════════════ */
 /* ================================================================
    TURBO MAZE — a drift-racing maze game for a 7-year-old sigma
    Built by dad (+ Claude). One file, no deps, works on a tablet.
@@ -3297,9 +3319,91 @@ let store = { unlocked:1, stars:{}, aura:0, coinsBank:0, muted:false, customLeve
   ghosts:{} };
 try { const s = localStorage.getItem("turboMaze"); if(s) store = Object.assign(store, JSON.parse(s)); } catch(e){}
 // 🎁 retroactively grant each world's reward car for any world ALREADY beaten (older saves recorded the clear before reward cars existed)
-for(let s=0;s<SERIES.length;s++)
-  if(SERIES[s].reward && seriesBeaten(s) && !store.ownedCars.includes(SERIES[s].reward)) store.ownedCars.push(SERIES[s].reward);
-function save(){ try { localStorage.setItem("turboMaze", JSON.stringify(store)); } catch(e){} }
+function grantRewardCars(){
+  for(let s=0;s<SERIES.length;s++)
+    if(SERIES[s].reward && seriesBeaten(s) && !store.ownedCars.includes(SERIES[s].reward)) store.ownedCars.push(SERIES[s].reward);
+}
+grantRewardCars();
+function saveLocal(){ try { localStorage.setItem("turboMaze", JSON.stringify(store)); } catch(e){} }
+function save(){ saveLocal(); schedulePush(); }   // local write is instant; cloud push is debounced (no-op until sync is deployed)
+
+/* ================= ☁️ CLOUD SYNC (progress by a 4-word code) ================= */
+// One localStorage blob → the cloud, keyed by a memorable 4-word code. No
+// accounts, no PII: the code IS the key. The server does a "most-progress-wins"
+// merge, so an out-of-date device can never clobber newer progress. Fully inert
+// until a Worker URL is wired in (see SYNC_URL_BUILTIN + docs/CLOUD-SYNC.md).
+//
+// ⚠️ syncMerge() below MUST stay in lockstep with worker/merge.js (that file is
+//    authoritative). Same rules; this copy is a guard so progress earned during
+//    the network round-trip can never regress.  (search tag: SYNC_MERGE)
+const SYNC_URL_BUILTIN = "";   // ⬅️ DEPLOY STEP: set to "https://turbo-maze-sync.<your-subdomain>.workers.dev"
+function syncUrl(){ try { return ((localStorage.getItem("tmSyncUrl")||"").trim()) || SYNC_URL_BUILTIN; } catch(e){ return SYNC_URL_BUILTIN; } }
+function syncEnabled(){ return /^https?:\/\//.test(syncUrl()); }
+
+// kid-safe wordlist — short, friendly, unambiguous. 256 words → 256⁴ ≈ 4.3B codes.
+const SYNC_WORDS = ("tiger lion panda otter koala zebra gecko robin eagle shark whale bunny puppy kitty pony foal moose bison camel llama sloth mouse goose duck swan finch hawk owl bat fox wolf bear seal crab clam snail frog toad newt deer elk ram goat pig cow hen rooster turkey parrot raven crow dove lark wren jay quail heron stork crane swift kiwi emu dodo lemur yak ox mule donkey ferret weasel beaver badger hedgehog mole shrew vole hare rabbit squirrel chipmunk raccoon possum skunk mink rocket comet meteor planet saturn nebula galaxy cosmos star moon sun cloud storm rain snow frost hail wind breeze thunder bolt spark flame ember blaze glow shine beam ray dawn dusk noon night sky ocean river lake pond creek brook wave tide reef coral pearl shell sand dune hill peak cliff cave canyon valley meadow forest jungle desert tundra swamp marsh apple mango berry cherry grape lemon lime melon peach pear plum banana orange coconut papaya guava fig date olive corn bean pea carrot potato tomato onion garlic ginger honey sugar candy cookie muffin waffle pancake donut pretzel bagel biscuit cracker jelly jam butter cheese cream milk cocoa mocha maple mint vanilla ruby amber jade opal topaz onyx quartz crystal copper silver golden bronze iron steel cobalt indigo violet purple crimson scarlet yellow emerald teal azure navy maroon rosy pink lilac lavender cyan minty red blue green gray brown black white brave mighty jolly happy sunny cheery lucky merry snappy zippy speedy turbo nitro drift zoom dash flash rush blitz racer rider driver champ hero legend").split(/\s+/);
+function genCode(){ const w = SYNC_WORDS, p = []; for(let i=0;i<4;i++) p.push(w[Math.floor(Math.random()*w.length)]); return p.join("-"); }
+function ensureSyncCode(){ if(!/^[a-z]+(-[a-z]+){3}$/.test(store.syncCode||"")){ store.syncCode = genCode(); saveLocal(); } return store.syncCode; }
+
+// ---- SYNC_MERGE: client-side copy of the most-progress-wins join (guard) ----
+const SYNC_MAX_SCALARS = ["unlocked","coinsBank","aura","coopUnlocked","cratesOpened","goldenFound","nextTrackId"];
+const SYNC_OR_FLAGS    = ["shopGift"];
+const SYNC_MAX_MAPS    = ["stars","coopStars","upg","powerups","found","seenItems","goldTaken","seriesCleared"];
+const SYNC_UNION_ARR   = ["ownedCars","ownedPets","cosmetics"];
+function _sNum(x){ return typeof x==="number" && isFinite(x) ? x : undefined; }
+function _sMaxMap(a,b){ a=a||{}; b=b||{}; const o={}; for(const k of new Set([...Object.keys(a),...Object.keys(b)])){ const an=_sNum(a[k]),bn=_sNum(b[k]); if(an!==undefined||bn!==undefined) o[k]=Math.max(an===undefined?-Infinity:an, bn===undefined?-Infinity:bn); else o[k]=a[k]||b[k]; } return o; }
+function _sUnion(a,b){ const seen=new Set(),o=[]; for(const v of [...(a||[]),...(b||[])]){ const key=(v&&typeof v==="object")?JSON.stringify(v):v; if(!seen.has(key)){ seen.add(key); o.push(v); } } return o; }
+function _sGhosts(a,b){ a=a||{}; b=b||{}; const o={}; for(const k of new Set([...Object.keys(a),...Object.keys(b)])){ const av=a[k],bv=b[k]; if(!av){o[k]=bv;continue;} if(!bv){o[k]=av;continue;} const at=_sNum(av.t),bt=_sNum(bv.t); if(at===undefined){o[k]=bv;continue;} if(bt===undefined){o[k]=av;continue;} o[k]=at<=bt?av:bv; } return o; }
+function _sCKey(lv){ if(!lv||typeof lv!=="object") return JSON.stringify(lv); const {id, ...rest}=lv; return JSON.stringify(rest); }
+function _sLevels(a,b){ const all=[...(a||[]),...(b||[])]; let maxId=0; for(const lv of all) if(lv&&typeof lv.id==="number"&&lv.id>maxId) maxId=lv.id; const o=[],seen=new Set(),used=new Set(); for(const lv of all){ if(!lv) continue; const ck=_sCKey(lv); if(seen.has(ck)) continue; seen.add(ck); let id=(typeof lv.id==="number")?lv.id:null; if(id===null||used.has(id)) id=++maxId; used.add(id); o.push(id===lv.id?lv:Object.assign({},lv,{id})); } return o; }
+function syncMerge(a,b){ a=a||{}; b=b||{}; const o={};
+  for(const k of SYNC_MAX_SCALARS){ const an=_sNum(a[k]),bn=_sNum(b[k]); if(an!==undefined||bn!==undefined) o[k]=Math.max(an===undefined?-Infinity:an, bn===undefined?-Infinity:bn); }
+  for(const k of SYNC_OR_FLAGS){ if(a[k]!==undefined||b[k]!==undefined) o[k]=!!(a[k]||b[k]); }
+  for(const k of SYNC_MAX_MAPS){ if(a[k]!==undefined||b[k]!==undefined) o[k]=_sMaxMap(a[k],b[k]); }
+  for(const k of SYNC_UNION_ARR){ if(a[k]!==undefined||b[k]!==undefined) o[k]=_sUnion(a[k],b[k]); }
+  if(a.ghosts!==undefined||b.ghosts!==undefined) o.ghosts=_sGhosts(a.ghosts,b.ghosts);
+  if(a.customLevels!==undefined||b.customLevels!==undefined){ o.customLevels=_sLevels(a.customLevels,b.customLevels); let hi=0; for(const lv of o.customLevels) if(lv&&typeof lv.id==="number"&&lv.id>hi) hi=lv.id; o.nextTrackId=Math.max(o.nextTrackId||0,hi); }
+  return o;
+}
+
+// ---- sync engine ----
+const sync = { state:"idle", msg:"", inflight:false };   // state: idle|syncing|ok|err
+let _pushTimer = 0;
+function schedulePush(){ if(!syncEnabled()) return; clearTimeout(_pushTimer); _pushTimer = setTimeout(()=>syncNow("push"), 3500); }
+function applyRemote(remote){
+  if(!remote || typeof remote!=="object") return;
+  // join the LIVE store with the returned blob → never regress progress earned
+  // during the round-trip; device-local fields aren't in the join so they stay.
+  Object.assign(store, syncMerge(store, remote));
+  grantRewardCars();
+  saveLocal();
+}
+async function syncNow(reason){
+  if(!syncEnabled()) return false;
+  if(sync.inflight) return false;
+  ensureSyncCode();
+  sync.inflight = true; sync.state = "syncing"; sync.msg = "Syncing…";
+  try {
+    const res = await fetch(syncUrl(), {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ code: store.syncCode, store })
+    });
+    const data = await res.json();
+    if(data && data.ok){ applyRemote(data.store); sync.state="ok"; sync.msg="Saved to the cloud ☁️"; return true; }
+    sync.state="err"; sync.msg = data && data.error ? ("Hmm: "+data.error) : "Couldn't sync";
+    return false;
+  } catch(e){
+    sync.state="err"; sync.msg="Offline — will try again"; return false;   // never breaks the game
+  } finally { sync.inflight = false; }
+}
+function promptEnterCode(){
+  const v = window.prompt("Type your 4-word cloud code to load your stuff\n(like  tiger-comet-mango-turbo):", store.syncCode||"");
+  if(v==null) return;
+  const code = v.trim().toLowerCase().replace(/\s+/g,"-").replace(/[^a-z\-]/g,"");
+  if(/^[a-z]+(-[a-z]+){3}$/.test(code)){ store.syncCode = code; saveLocal(); sticker("CODE SET! ☁️","#9ae6ff"); syncNow("code"); }
+  else sticker("THAT CODE LOOKS OFF","#ff8f8f");
+}
+function copyCode(){ try { navigator.clipboard.writeText(store.syncCode||""); sticker("CODE COPIED! 📋","#9ae6ff"); } catch(e){ sticker(store.syncCode||"","#9ae6ff"); } }
 
 /* ---------------- audio (all synth, no files) ---------------- */
 // 🎵 procedural chiptune — PER-WORLD personality (index 0-6 == SERIES world). root = lead reference (Hz),
@@ -3672,7 +3776,7 @@ const game = {
   flow:null, objective:null,
   cam:{x:0,y:0}, shake:0,
   parts:[], floats:[], stickers:[], confetti:[],
-  coinsAll:0, hasKey:false, bonks:0,
+  coinsAll:0, hasKey:false,
   clearData:null, hintT:0,
   attract:{a:0},
 };
@@ -3833,7 +3937,7 @@ function startLevel(L, meta){
   game.voidCell = [];   // 2D void mask, built per-row alongside game.solid
   game.lavaCell = [];   // 2D lava mask, built per-row alongside game.solid (🌋 melt + BFS checks)
   game.ghostRec = []; game.ghostAcc = 0; game.ghost = null; game.ghostHadPrev = false;   // 👻 reset run recorder + replay for EVERY load (all modes)
-  game.hasKey=false; game.playT=0; game.bonks=0;
+  game.hasKey=false; game.playT=0;
   game.vs = !!(meta && meta.vs);
   game.coop = !!(meta && meta.coop);
   game.ko = !!(meta && meta.ko);
@@ -4122,7 +4226,6 @@ function prerenderGround(L){
   // 📐 resolution cap: huge worlds (46x30 ≈ 16.7M px) exceed iOS canvas limits — render the
   // static ground at reduced scale and blit up (imperceptible for flat fills, saves ~half the memory)
   const gs = Math.min(1, Math.sqrt(12e6/(w*h)));
-  game.groundScale = gs;
   const g = document.createElement("canvas"); g.width=Math.ceil(w*gs); g.height=Math.ceil(h*gs);
   const x = g.getContext("2d");
   x.scale(gs, gs);                                   // all existing draw code stays in world coords
@@ -4606,7 +4709,6 @@ function updateEntities(dt){
       p.lit = lerp(p.lit, on?1:0, dt*12);
       if(on) held = true;
     }
-    game.coopHeld = held;
     const gateOpen = (held || game.seqDone) ? 1 : 0;
     for(const q of game.coopGates) q.open = lerp(q.open, gateOpen, dt*12);
   }
@@ -4871,7 +4973,7 @@ function updateEntities(dt){
         car.vx *= 0.85; car.vy *= 0.85; car.sq = 1.2;
       } else if(car.invuln<=0 && !blockHit(car, car.x, car.y)){
         car.invuln = 1.6; car.spinT = 0.55; car.sq = 0.6;
-        game.bonks++; game.shake = 9; AU.goober();
+        game.shake = 9; AU.goober();
         sticker("👾 "+pick(YELLS.goober), "#ff8fe0");
         const guard = boosted(car)? upgMul("bumper") : 1;           // 🦺 GOOBER GUARD (v3): he grabs fewer coins
         const steal = Math.min(Math.floor(3/guard), car.coins);     // tiers: 2,2,1,1,1 · GOLD 0
@@ -7292,6 +7394,55 @@ function bigTitle(y){
     ctx.fillRect(i*cw, y2, cw, 10);
   }
 }
+/* ---------------- ☁️ CLOUD SYNC screen (your profile / find-your-code) ---------------- */
+function drawSync(){
+  nightSky(); hudBtns.length = 0;
+  ctx.textAlign="center"; ctx.textBaseline="alphabetic";
+  ctx.font = "900 italic 34px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#9ae6ff";
+  ctx.fillText("☁️ CLOUD SYNC", W/2, 60+safeT);
+  ctx.font = "800 15px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#8b93ad";
+  ctx.fillText("YOUR PROGRESS, ON ANY DEVICE", W/2, 84+safeT);
+
+  const cx = W/2;
+  ctx.font = "600 15px system-ui,'Segoe UI',sans-serif"; ctx.fillStyle="#c7ccda";
+  ctx.fillText("This secret code IS your save. Type it on another", cx, 118+safeT);
+  ctx.fillText("tablet or phone to carry everything over —", cx, 138+safeT);
+  ctx.fillText("stars, coins, cars and all.", cx, 158+safeT);
+
+  // the code — big + tappable to copy
+  const code = ensureSyncCode();
+  const bw = Math.min(W-36, 470), bh = 64, codeY = 182+safeT;
+  roundedPanel(cx-bw/2, codeY, bw, bh, 16, "rgba(18,24,40,0.92)");
+  ctx.font = "900 25px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#f4f6ff"; ctx.textBaseline="middle";
+  ctx.fillText(code.toUpperCase().replace(/-/g," · "), cx, codeY+bh/2);
+  ctx.textBaseline="alphabetic";
+  ctx.font="700 12px system-ui,sans-serif"; ctx.fillStyle="#8b93ad";
+  ctx.fillText("TAP THE CODE TO COPY IT", cx, codeY+bh+16);
+  hudBtns.push({x:cx-bw/2, y:codeY, w:bw, h:bh, act:"sync:copy"});
+
+  if(sync.msg){
+    ctx.font="800 14px system-ui,sans-serif";
+    ctx.fillStyle = sync.state==="err"?"#ffb0b0":(sync.state==="ok"?"#9ae64a":"#9ae6ff");
+    ctx.fillText(sync.msg, cx, codeY+bh+40);
+  }
+
+  const pw = Math.min(400, W*0.82), ph = clamp(Math.round(H*0.09),52,60), gap=12; let py = codeY+bh+58;
+  drawBigBtn(cx-pw/2, py, pw, ph, sync.inflight?"⏳ SYNCING…":"🔄 SYNC NOW", "sync:now", "#9ae64a", "#12151f"); py+=ph+gap;
+  drawBigBtn(cx-pw/2, py, pw, ph, "⌨️ ENTER A CODE", "sync:enter", "rgba(60,66,86,0.95)", "#f4f6ff"); py+=ph+gap;
+  drawBigBtn(cx-pw/2, py, pw, ph, "✅ DONE", "sync:done", "#ffd76a", "#12151f");
+
+  for(const tp of input.taps.splice(0)){
+    for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){
+      AU.ui();
+      if(b.act==="sync:copy") copyCode();
+      else if(b.act==="sync:now") syncNow("manual");
+      else if(b.act==="sync:enter") promptEnterCode();
+      else if(b.act==="sync:done"){ game.state="home"; }
+      break;
+    }
+  }
+}
+
 function drawTitle(dt){
   nightSky();
   // attract car doing donuts
@@ -7351,6 +7502,7 @@ function drawHome(){
   ctx.fillStyle = "#f4f6ff"; ctx.fillText(store.coinsBank, PADX+34, 76+safeT);
   const hS = navS();
   drawIconBtn(W-PADX-hS, 12+safeT, hS, store.muted?"🔇":"🔊", "mute");
+  if(syncEnabled()) drawIconBtn(W-PADX-hS*2-8, 12+safeT, hS, "☁️", "sync");   // ☁️ profile / cloud code
   // the big tiles — WORLDS first, then everything else
   const starsWon = Object.keys(store.stars).filter(k=>!String(k).startsWith("c:") && store.stars[k]>0).length;
   const newN = CONFIG.cratesEnabled ? Object.keys(store.found||{}).filter(k=>!(store.seenItems||{})[k]).length : 0;
@@ -7413,6 +7565,7 @@ function drawHome(){
     for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){
       AU.ui();
       if(b.act==="mute"){ AU.toggleMute(); return; }
+      if(b.act==="sync"){ game.state="sync"; return; }
       game.importedTrack = null;
       if(b.act==="worlds") game.state="series";
       else if(b.act==="garage"){ sh.garageMode=true; sh.tab="cars"; shopSyncSel(); game.state="shop"; }
@@ -9488,7 +9641,7 @@ let paused = false;
 function togglePause(){ if(game.state==="play"){ paused=!paused; AU.ui(); } }
 document.addEventListener("visibilitychange", ()=>{
   if(document.hidden && game.state==="play") paused = true;
-  if(!document.hidden) AU.resume();
+  if(!document.hidden){ AU.resume(); if(syncEnabled()) syncNow("resume"); }   // ☁️ pull latest when the kid comes back / hops devices
 });
 
 /* ---------------- main loop ---------------- */
@@ -9510,6 +9663,7 @@ function tick(now){
   if(game.state==="title"){ drawTitle(dt); }
   else if(game.state==="series"){ drawSeries(); updateStickers(dt); drawStickers(); }
   else if(game.state==="home"){ drawHome(); updateStickers(dt); drawStickers(); }
+  else if(game.state==="sync"){ drawSync(); updateStickers(dt); drawStickers(); }
   else if(game.state==="map"){ drawMap(); updateStickers(dt); drawStickers(); }
   else if(game.state==="build"){ drawBuild(dt); updateStickers(dt); drawStickers(); }
   else if(game.state==="shop"){ updateFx(dt); drawShop(dt); drawConfettiScreen(); drawStickers(); }
@@ -9561,7 +9715,16 @@ function tick(now){
       let py2 = H*0.38;
       drawBigBtn(W/2-pw/2, py2, pw, ph2, "▶ KEEP RACING", "resume", "#9ae64a", "#12151f"); py2 += ph2+pgap;
       drawBigBtn(W/2-pw/2, py2, pw, ph2, game.fromBuilder? "🔨 BACK TO GARAGE" : game.coop? "🤝 CO-OP MAP" : (game.vs||game.ko)? "⚔️ ARENA PICK" : "🗺 LEVEL MAP", "map", "rgba(60,66,86,0.95)", "#f4f6ff"); py2 += ph2+pgap;
-      drawBigBtn(W/2-pw/2, py2, pw, ph2, "🏠 MAIN MENU", "home", "#ffd76a", "#12151f");
+      drawBigBtn(W/2-pw/2, py2, pw, ph2, "🏠 MAIN MENU", "home", "#ffd76a", "#12151f"); py2 += ph2+pgap;
+      if(syncEnabled()){   // ☁️ your code, findable right here — little text, tap to manage
+        const cy = py2+12;
+        ctx.textAlign="center"; ctx.textBaseline="alphabetic";
+        ctx.font="800 12px system-ui,sans-serif"; ctx.fillStyle="#7f8aa8";
+        ctx.fillText("☁️ CLOUD CODE — TAP TO MANAGE", W/2, cy);
+        ctx.font="900 15px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.fillStyle="#9ae6ff";
+        ctx.fillText((store.syncCode||"").toUpperCase().replace(/-/g," · "), W/2, cy+20);
+        hudBtns.push({x:W/2-150, y:cy-16, w:300, h:44, act:"sync"});
+      }
     }
     // HUD button taps
     for(const tp of input.taps.splice(0)){
@@ -9573,6 +9736,7 @@ function tick(now){
         if(b.act==="resume") paused=false;
         if(b.act==="map"){ paused=false; game.state = game.fromBuilder? "build" : game.coop? "cooppick" : (game.vs||game.ko)? "vspick" : "map"; }
         if(b.act==="home"){ paused=false; game.state = "home"; }   // 🏠 straight to the main dashboard
+        if(b.act==="sync"){ paused=false; game.state = "sync"; }    // ☁️ manage your cloud code
       }
     }
   }
@@ -9617,6 +9781,9 @@ function tick(now){
 
 requestAnimationFrame(frame);
 
+// ☁️ pull cloud progress on boot (no-op until a Worker URL is wired in)
+if(syncEnabled()){ syncNow("open"); }   // syncNow() calls ensureSyncCode() itself
+
 // debug handle (safe to ignore)
 window.__tm = { game, loadLevel, loadCustom, store, CONFIG, CRATES, spawnGolden, grabGolden, bl, enterBuilder, encodeTrack, decodeTrack,
   shopAction, VEHICLES, PETS, LEVELS, VS_ARENAS, startVs, customToLevel,
@@ -9624,6 +9791,7 @@ window.__tm = { game, loadLevel, loadCustom, store, CONFIG, CRATES, spawnGolden,
   COOP_LEVELS, startCoop, KO_ARENAS, startKo,
   AU, ghostEnc, ghostDec, ghostAt, ghostEligible, musicMode,   // 🎵/👻 test hooks
   sh, shopRoster, hudBtns, input,                              // 🚗 garage/showroom test hooks
+  sync, syncNow, syncMerge, syncEnabled, syncUrl, ensureSyncCode, genCode, applyRemote,   // ☁️ cloud-sync test hooks
   step(sec){ paused = false; let n = last; for(let i=0;i<sec*60;i++){ n += 1000/60; tick(n); } last = performance.now(); } };
 </script>
 </body>

@@ -1,0 +1,13 @@
+{
+  "name": "turbo-maze-sync",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Cloudflare Worker + KV cloud-sync for Turbo Maze (most-progress-wins merge by 4-word code).",
+  "scripts": {
+    "test": "node test-merge.js",
+    "mock": "node mock-server.js",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  }
+}
