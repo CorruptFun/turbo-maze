@@ -137,7 +137,11 @@ BOOST**. Coins you collect in any level bank up and buy:
 - **10 buyable rides:** Red Rocket, Turbo Taxi, Banana, Big Green (a tractor),
   Glizzy GT, Cart Racer, Skibidi GT (yes, a racing toilet), The Saucer, 2FAST and
   The Beast
-- **4 pets** that chase your car through the maze: Ducky, Buddy, Boo, Rexy
+- **10 pets** that chase your car through the maze: Ducky, Buddy, Boo, Rexy —
+  plus the 🇮🇹 **Brainrot Pals**: FRAGOLINA (a strawberry elephant 🐘🍓),
+  CAPPUCCINO SHARKO 🦈☕, CROCCO PIZZAIOLO 🐊🍕, GATTO SPAGHETTI 🐱🍝,
+  DOLFINO TRUMPETTO 🐬🎺 and the 500-coin flex, **DIAMANTE 67** 💎 (a diamond
+  wearing the racing number, with real sparkles)
 - **Car number** — every ride wears a roof decal, changeable 0–99 (default: 67, obviously)
 
 **The stats are real.** Each car has its own SPEED / ACCEL / GRIP / BOOST, and in

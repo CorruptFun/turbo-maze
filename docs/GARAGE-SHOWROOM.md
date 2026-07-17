@@ -204,7 +204,13 @@ top of the buy path in `shopAction`.
   `SERIES` entry (the strip/button auto-show "🔒 BEAT [world]" until earned).
 - **Re-tune balance:** edit `CAR_STATS` numbers, or the five `k*` slopes in
   `updateCar`. Re-run the deterministic top-speed sim (see §4) to sanity-check.
-- **New pet:** add to `PETS` (id, name, price, emoji). No stats needed.
+- **New pet:** add to `PETS` (id, name, price, emoji). No stats needed. Optional
+  **composed-pet** fields (see `drawPetGuy`, used by the follower, victory screen
+  and turntable): `hat:"🍓"` (small emoji worn up-right), `num:"67"` (bold decal
+  over the body), `fx:"diamond"` (time-driven sparkle twinkles, pause-safe).
+  The 🇮🇹 Brainrot Pals (fragolina/sharko/crocco/gatto/dolfino/diamante) are the
+  reference set. **Naming rule:** brainrot-style content is always ORIGINAL
+  characters in the meme spirit — never literal Roblox roster names (house BRIEF).
 
 ## 9. Regression guards (what to re-check after edits)
 

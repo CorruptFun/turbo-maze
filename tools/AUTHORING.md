@@ -89,6 +89,50 @@ with `__tm.step(seconds)`** rather than waiting on real time. Push a test level 
 drive a car through each new mechanic to the finish. Test at 1024×720, iPad 1180×820, iPhone-landscape
 956×440.
 
+## Maze sizing — the growth curve (2026-07-16)
+
+Worlds grow **bigger and more complex the deeper you go** (dad's directive: the game
+should challenge you as you get better). W1 stays small (tutorial). Shipped bands
+(opener → finale, ramp linearly across a world's 15 levels):
+
+| World | Opens | Finale |
+|---|---|---|
+| 2 BRAIN FREEZE | ~26×15 | 26×14 |
+| 3 MAZE MAYHEM | ~26×14 | 32×17 |
+| 4 METAL MELTDOWN | ~28×15 | 38×21 |
+| 5 SPLASH ZONE | ~34×18 | 44×25 |
+| 6 COSMIC RUSH | ~36×19 | **52×34** (≈8.8× the pre-growth late game) |
+
+**A future World N should open bigger than World N-1 opened** and finale past it.
+Hard caps: width ≤ 52, height ≤ 34 (see the resolution cap below). Complexity scales
+with size: real branching, loops, coin-rewarded dead-ends — something interesting
+every ~6-8 cells, never barren corridors. `par` = `Math.ceil(BFSpath*1.9/2)*2`.
+
+Engine facts that make giants safe (don't re-invent):
+- **🚩 Auto-checkpoints** (engine, automatic): any campaign level whose S→F path is
+  **> 24 cells** silently moves the respawn to the halfway mark when the player
+  crosses it on safe ground. Authors get this for free — no tile. Two-player modes
+  are excluded by design.
+- **📐 Resolution cap** (engine, automatic): ground + skid prerender canvases cap at
+  12M px (`game.groundScale` < 1 on giants, blitted up) so iOS canvas limits can't
+  be hit. Nothing for authors to do — but don't exceed the 52×34 grid caps.
+
+## Authoring gotchas (learned the hard way — check these before shipping)
+
+- **VS fairness / engine spawns:** the parser keeps the **LAST `S`** (loop overwrites)
+  and the **FIRST `2`** (guarded by `!p2x`). Any fairness/distance math using
+  `findIn` (first match) is subtly wrong. Gate every VS grid change with
+  |d(lastS→F) − d(first2→F)| ≤ 1 by walls-only BFS.
+- **Canvas text with emoji** (if you touch UI): always `fillTextC(txt,x,y,stroked)` for
+  centered strings and size containers with `+ emojiPad(txt)` — iOS WebKit mis-centers
+  emoji glyph runs (paints right of the anchor).
+- **Maze variety** mirrors/rotates every W2+ level at load: directional data
+  (`crushers`, `hazards`, `asteroids` dx/dy, `seq`) is auto-reflected by
+  `transformLevel` — but only for props it knows. A new coordinate-carrying prop
+  needs its own reflect line there.
+- **gateFinish** (runtime) seals the finish behind the door on key/door levels —
+  author them loosely, it verifies per level.
+
 ## Deploy
 
 Commit to `main` and `git push` (GitHub Pages `CorruptFun/turbo-maze` auto-redeploys the live link).

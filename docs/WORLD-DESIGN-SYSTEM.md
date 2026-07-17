@@ -89,6 +89,17 @@ puddles) / co-op-style buttons in single-player / a rewind or ghost-of-yourself 
 
 ---
 
+## 3b. The SIZE ladder (added 2026-07-16 — the second axis of escalation)
+
+Alongside the mechanic ladder, worlds now escalate in **scale and complexity**: every
+world *opens* bigger than the last one opened and its finale explodes past it, peaking
+at SUPERNOVA's 52×34 (~8.8× the pre-growth late game). The shipped bands + the rules
+that keep giants fun (auto-checkpoints at halfway, the 12M-px render cap, "something
+interesting every 6-8 cells") live in `tools/AUTHORING.md` → *Maze sizing*. A new
+world picks its band by extending the curve, not by feel. Two-player modes are the
+exception: co-op grows only with the bounding-box camera (queued), KO stays a tight
+ring on purpose.
+
 ## 4. Coherence guardrails (the standing rules)
 
 1. **One new primitive per world** — remix the rest. (Prevents both repetition and soup.)
@@ -102,6 +113,11 @@ puddles) / co-op-style buttons in single-player / a rewind or ghost-of-yourself 
 5. **Every world gets a doc + an identity card** — the longevity investment (Dad's standing
    ask). Future sessions read the card, not the code, to stay coherent.
 6. **The comingSoon card teases the *next theme*** — a thread that pulls the player forward.
+7. **Meme-adjacent content is original-in-spirit** — brainrot-style characters/items evoke
+   the vibe (Italian-announcer names, absurd mashups, the 67 gag) but are OUR characters,
+   never literal Roblox/meme roster names (house BRIEF rule; see the Brainrot Pals).
+8. **Size follows the ladder** (§3b) — bigger every world, with the forgiveness
+   counterweights (checkpoints, hint arrow, no-game-over) always in force.
 
 ---
 
