@@ -5935,16 +5935,22 @@ function flame(car){
 // The instant a finger lands on ANY hudBtn, bloom a quick press highlight + squash + ripple.
 // It's tested against LAST frame's hudBtns (valid — menus are static frame-to-frame) and is
 // purely cosmetic, so it's decoupled from the action → zero added latency, and it works on
-// every screen that uses hudBtns (home/map/shop/pause/clear/…). Hooked from the pointer-down
-// input layer via pressAt(). Cookbook §1 (press animates a cap), adapted to raw canvas.
+// every screen that uses hudBtns (home/map/shop/pause/clear/…). The world-map & co-op level
+// nodes use a bespoke circular hit-test (not hudBtns), so pressAt() checks those too — with a
+// round bloom. Hooked from the pointer-down input layer. Cookbook §1, adapted to raw canvas.
 let presses = [];
-function pressAt(x,y){                       // pop the topmost button under (x,y); return it (or null)
+function pressRect(x,y,w,h,rad){              // spawn a bloom; rad=null → auto (rounded button), rad=h/2 → circle
+  presses.push({x, y, w, h, t:0, rad});
+  if(presses.length>6) presses.shift();
+}
+function pressAt(x,y){                        // pop the topmost thing under (x,y); return it (or null)
   for(let i=hudBtns.length-1;i>=0;i--){ const b=hudBtns[i];
-    if(x>=b.x && x<=b.x+b.w && y>=b.y && y<=b.y+b.h){
-      presses.push({x:b.x, y:b.y, w:b.w, h:b.h, t:0});
-      if(presses.length>6) presses.shift();
-      return b;
-    }
+    if(x>=b.x && x<=b.x+b.w && y>=b.y && y<=b.y+b.h){ pressRect(b.x,b.y,b.w,b.h); return b; }
+  }
+  // level nodes (round, bespoke hit-test): campaign map & co-op map
+  const nodes = game.state==="map" ? mapNodes : game.state==="cooppick" ? coopNodes : null;
+  if(nodes) for(const nd of nodes){
+    if(dist(x,y,nd.x,nd.y) < nd.r){ pressRect(nd.x-nd.r, nd.y-nd.r, nd.r*2, nd.r*2, nd.r); return nd; }   // round bloom
   }
   return null;
 }
@@ -5953,7 +5959,7 @@ function drawPresses(dt){
   const DUR = FX.D.press;
   presses = presses.filter(p=>{
     p.t += dt; const k = p.t/DUR; if(k>=1) return false;
-    const r = Math.max(2, Math.min(16, p.h/2-1));
+    const r = p.rad!=null ? p.rad : Math.max(2, Math.min(16, p.h/2-1));
     const cx = p.x+p.w/2, cy = p.y+p.h/2, e = FX.E.out(k);
     // 1) squash-flash — a bright warm cap that snaps in + fades (the "you pressed it!" pop)
     const sq = 1 - 0.09*FX.E.out(Math.min(1,k*1.9));
@@ -10043,6 +10049,26 @@ function drawKoHUD(pad, top){
     }
   }
 }
+// 🏆 result-screen title banner — the game's own white sticker-card motif (cohesive with the
+// level-name/announcer stickers): dark-ink title for guaranteed legibility + a winner-color
+// racing-stripe under it (brand accent). Slides + fades in via inT. Shared by cooked/vsend/koend.
+function resultBanner(cx, cy, title, col, inT){
+  const big = H < 480;                        // phone-landscape → tighter
+  ctx.save();
+  ctx.translate(cx, cy + (1-inT)*44);
+  ctx.globalAlpha = inT;
+  ctx.rotate(-0.03);
+  ctx.font = "italic 900 "+(big?46:60)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  const tw = ctx.measureText(title).width + emojiPad(title), cardW = tw+60, cardH = big?70:88;
+  ctx.fillStyle = "rgba(12,14,22,0.9)"; ctx.beginPath(); ctx.roundRect(-cardW/2+6, -cardH/2+7, cardW, cardH, 18); ctx.fill();  // hard shadow (toy energy)
+  ctx.fillStyle = "#f7f8ff";            ctx.beginPath(); ctx.roundRect(-cardW/2,   -cardH/2,   cardW, cardH, 18); ctx.fill();  // white card
+  ctx.fillStyle = "#141822"; fillTextC(title, 0, -cardH*0.08);                                                                // dark-ink title
+  ctx.fillStyle = col;               ctx.beginPath(); ctx.roundRect(-24, cardH*0.24, 32, 5, 2.5); ctx.fill();                 // racing-stripe in the winner's color
+  ctx.globalAlpha = inT*0.4;         ctx.beginPath(); ctx.roundRect(12,  cardH*0.24, 14, 5, 2.5); ctx.fill();
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
 function drawKoEnd(dt){
   drawWorld(0.0001);
   ctx.fillStyle = "rgba(8,10,16,0.72)"; ctx.fillRect(0,0,W,H);
@@ -10050,12 +10076,7 @@ function drawKoEnd(dt){
   const r = game.koResult; r.t += dt;
   const inT = easeOut(clamp(r.t/0.3,0,1));
   const winCol = r.p1win? vehicleById(store.car).trail() : "#b06ee8";
-  ctx.save(); ctx.translate(W/2, H*0.3+(1-inT)*40); ctx.globalAlpha=inT; ctx.rotate(-0.03);
-  ctx.font = "italic 900 60px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-  ctx.textAlign="center"; ctx.textBaseline="middle";
-  const msg = pName(r.p1win?0:1).toUpperCase()+" WINS! 🏆";
-  ctx.fillStyle="rgba(12,14,22,0.9)"; fillTextC(msg,5,5);
-  ctx.fillStyle=winCol; fillTextC(msg,0,0); ctx.restore(); ctx.globalAlpha=1;
+  resultBanner(W/2, H*0.3, pName(r.p1win?0:1).toUpperCase()+" WINS! 🏆", winCol, inT);
   ctx.font = "800 22px 'Avenir Next Condensed','Arial Narrow',sans-serif"; ctx.textAlign="center";
   ctx.fillStyle="#ff5a6a"; fillTextC("LAST ONE STANDING 💥", W/2, H*0.44);
   const ks = store.koScore||[0,0];
@@ -10162,17 +10183,7 @@ function drawVsEnd(dt){
   const r = game.vsResult; r.t += dt;
   const inT = easeOut(clamp(r.t/0.3,0,1));
   const winCol = r.p1win? vehicleById(store.car).trail() : "#b06ee8";
-  ctx.save();
-  ctx.translate(W/2, H*0.28+(1-inT)*40);
-  ctx.globalAlpha = inT;
-  ctx.rotate(-0.03);
-  ctx.font = "italic 900 60px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-  ctx.textAlign="center"; ctx.textBaseline="middle";
-  const msg = pName(r.p1win?0:1).toUpperCase()+" WINS! 🏁";
-  ctx.fillStyle="rgba(12,14,22,0.9)"; fillTextC(msg, 5, 5);
-  ctx.fillStyle=winCol; fillTextC(msg, 0, 0);
-  ctx.restore();
-  ctx.globalAlpha = 1;
+  resultBanner(W/2, H*0.28, pName(r.p1win?0:1).toUpperCase()+" WINS! 🏁", winCol, inT);
   const c1=game.car, c2=game.car2;
   const coinKing = c1.coins===c2.coins? -1 : (c1.coins>c2.coins? 0:1);
   const auraKing = Math.round(c1.aura)===Math.round(c2.aura)? -1 : (c1.aura>c2.aura? 0:1);
@@ -11541,17 +11552,11 @@ function drawCooked(dt){
   ctx.fillStyle = "rgba(8,10,16,0.72)"; ctx.fillRect(0,0,W,H);
   game.cookedT += dt;
   const inT = easeOut(clamp(game.cookedT/0.3,0,1));
-  ctx.save();
-  ctx.translate(W/2, H*0.34 + (1-inT)*50);
-  ctx.globalAlpha = inT;
-  ctx.rotate(-0.03);
-  ctx.font = "italic 900 60px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-  ctx.textAlign="center"; ctx.textBaseline="middle";
-  ctx.fillStyle = "rgba(12,14,22,0.9)"; fillTextC("HE BEAT YOU! 💀", 5, 5);
-  ctx.fillStyle = "#ff8fe0"; fillTextC("HE BEAT YOU! 💀", 0, 0);
+  resultBanner(W/2, H*0.34, "HE BEAT YOU! 💀", "#ff8fe0", inT);
+  ctx.save(); ctx.globalAlpha = inT;
   ctx.font = "800 20px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-  ctx.fillStyle = "#8b93ad";
-  ctx.fillText("the goober is doing donuts on the finish line", 0, 54);
+  ctx.fillStyle = "#8b93ad"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  fillTextC("the goober is doing donuts on the finish line", W/2, H*0.34 + 66);
   ctx.restore();
   ctx.globalAlpha = 1;
   if(game.cookedT > 0.8){
