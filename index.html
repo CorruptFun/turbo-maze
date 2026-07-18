@@ -3329,6 +3329,10 @@ window.addEventListener("resize", resize); resize();
 let store = { unlocked:1, stars:{}, aura:0, coinsBank:0, muted:false, customLevels:[], nextTrackId:0,
   ownedCars:["rocket"], car:"rocket", ownedPets:[], pet:null, carNum:67, shopGift:false,
   curSeries:0, seriesCleared:{}, coopUnlocked:1, coopStars:{},
+  // ♿ grown-up settings (Settings screen): calm the game for a sensitive/young kid. See ▸FX + drawSettings.
+  //   reduceMotion = no camera shake, fewer particles, quick fades instead of wipes.
+  //   reduceFlash  = fewer confetti/sparkles, no fast strobing pulses. musicOff = silence the chiptune loops.
+  reduceMotion:false, reduceFlash:false, musicOff:false, a11ySeen:false,
   // 🎁 mystery crates (v1): permanent upgrades, one-use power-ups, cosmetics — see docs/MYSTERY-CRATES.md
   upg:{engine:0,grip:0,nitro:0,magnet:0,lucky:0,pads:0,clock:0,boom:0,bumper:0}, powerups:{}, armed:null,
   cosmetics:[], cosmetic:null, cratesOpened:0, goldenFound:0, goldTaken:{},
@@ -3338,6 +3342,14 @@ let store = { unlocked:1, stars:{}, aura:0, coinsBank:0, muted:false, customLeve
   // 👻 ghost time-trials — per campaign-level best runs: { [levelIx]: {t:seconds, d:base64 blob} }. Default {} → Object.assign keeps old saves safe.
   ghosts:{} };
 try { const s = localStorage.getItem("turboMaze"); if(s) store = Object.assign(store, JSON.parse(s)); } catch(e){}
+// ♿ first run only: inherit the OS "Reduce Motion" preference so accessibility is on by default
+// for kids who need it — after that the in-game Settings toggles are authoritative.
+if(!store.a11ySeen){
+  try { const rm = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        store.reduceMotion = !!rm; store.reduceFlash = !!rm; } catch(e){}
+  store.a11ySeen = true;
+  try { localStorage.setItem("turboMaze", JSON.stringify(store)); } catch(e){}   // persist so we never re-seed over a later choice
+}
 // 🎁 retroactively grant each world's reward car for any world ALREADY beaten (older saves recorded the clear before reward cars existed)
 function grantRewardCars(){
   for(let s=0;s<SERIES.length;s++)
@@ -3638,12 +3650,13 @@ const AU = {
 // 🎵 which loop should be playing right now? race music only for a SOLO campaign/custom race — VS/co-op/KO/builder
 // stay silent (true no-op, exactly as before); menus get the chill loop; title & result screens stay quiet.
 function musicMode(){
+  if(store.musicOff) return {kind:"off"};   // 🎵 grown-up Settings → Music off
   if(game.state === "play"){
     if(game.vs || game.coop || game.ko || game.fromBuilder) return {kind:"off"};
     const w = (game.levelIx>=0 && !game.customId) ? seriesOf(game.levelIx) : 0;
     return { kind:"race", world: w<0?0:w, boss: !!game.rival };
   }
-  const MENU = { home:1, series:1, map:1, shop:1, crates:1, garage:1, vspick:1, cooppick:1 };
+  const MENU = { home:1, series:1, map:1, shop:1, crates:1, garage:1, vspick:1, cooppick:1, settings:1 };
   return MENU[game.state] ? {kind:"menu"} : {kind:"off"};
 }
 
@@ -3704,6 +3717,7 @@ cv.addEventListener("touchstart", e=>{
     // release-without-movement becomes the tap (so swiping never triggers a button).
     if(game.state==="shop"){ if(!sh.ptr) sh.ptr = {id:t.identifier, x0:x, y0:y, x, y, s0:sh.scroll, moved:false}; continue; }
     input.taps.push({x, y});
+    pressAt(x, y);   // 👆 instant tactile bloom on the button under the finger (zero-latency, purely visual)
     if(game.state==="play" && (game.vs || game.coop || game.ko)){
       if(x < W/2){ if(!input.joy) input.joy = {id:t.identifier, ox:x, oy:y, x, y}; }
       else if(!input.joy2) input.joy2 = {id:t.identifier, ox:x, oy:y, x, y};
@@ -3745,7 +3759,7 @@ function shopDrag(x, y){
 function shopDragEnd(){
   if(!sh.ptr) return;
   if(game.state==="shop"){
-    if(!sh.ptr.moved) input.taps.push({x:sh.ptr.x0, y:sh.ptr.y0});                       // released without moving → tap
+    if(!sh.ptr.moved){ input.taps.push({x:sh.ptr.x0, y:sh.ptr.y0}); pressAt(sh.ptr.x0, sh.ptr.y0); }   // released without moving → tap (+👆 bloom)
     else { sh.sel = clamp(Math.round(sh.scroll), 0, sh.max); sh.target = sh.sel; AU.ui(); }   // dragged → snap to nearest
   }
   sh.ptr = null;
@@ -3756,6 +3770,7 @@ cv.addEventListener("mousedown", e=>{
   AU.init();
   if(game.state==="shop"){ sh.ptr = {id:"m", x0:e.clientX, y0:e.clientY, x:e.clientX, y:e.clientY, s0:sh.scroll, moved:false}; return; }
   input.taps.push({x:e.clientX, y:e.clientY});
+  pressAt(e.clientX, e.clientY);   // 👆 tactile bloom on press
   if(game.state==="build") bl.ptr = {id:"m", x:e.clientX, y:e.clientY, stroke:false};
 });
 window.addEventListener("mousemove", e=>{
@@ -5059,6 +5074,12 @@ function updateCar(car, ctrl, dt){
     car.driftT += dt;
     if(((car.driftT*10)|0) % 4 === 0) spark(car);
     skid(car);
+    // 🛞 tire smoke off the rear wheels — a soft grey cloud that swells as it trails (juicier drift read)
+    if(Math.random()<0.55){
+      const px = Math.cos(car.heading+Math.PI/2)*7, py = Math.sin(car.heading+Math.PI/2)*7;
+      const bx = car.x-Math.cos(car.heading)*11, by = car.y-Math.sin(car.heading)*11;
+      smoke(bx+px, by+py); smoke(bx-px, by-py);
+    }
     if(!wasDrift && Math.random()<0.6) float(pick(YELLS.drift), car.x, car.y-34, game.lv.hue);
     car.aura += dt*6;
   }
@@ -5856,6 +5877,8 @@ function coopClear(){
   confettiBurst(W/2, H*0.35, 140, L.hue);
 }
 function confettiBurst(x, y, n, hue){
+  // ♿ still celebrate under reduce settings — just calmer (fewer, so it never strobes)
+  if(store.reduceFlash || store.reduceMotion) n = Math.round(n*0.35);
   for(let i=0;i<n;i++) game.confetti.push({
     x:x+rand(-60,60), y, vx:rand(-260,260), vy:rand(-460,-90),
     rot:rand(0,TAU), vr:rand(-8,8), w:rand(6,13), h:rand(8,16),
@@ -5870,17 +5893,119 @@ function drawConfettiScreen(){
   }
 }
 
+/* ---------------- ♿ FX / motion authority ---------------- */
+// ▸FX — ONE place that decides how much motion & flashing the game shows, honoring the
+// grown-up Settings toggles (store.reduceMotion / store.reduceFlash). These are cheap
+// getters read all over the draw + fx code, so calming the game is a single source of
+// truth (cookbook §8/§9). Motion tokens (D/E) keep every pop & wipe in one language.
+const FX = {
+  D: { press:0.2, wipe:0.34, wipeCalm:0.16, pop:0.22 },   // named durations (seconds)
+  E: { out:t=>1-(1-t)*(1-t),                                // easeOutQuad
+       pop:t=>{ const s=1.7; return 1+(--t)*t*((s+1)*t+s); } },  // easeOutBack (overshoot) — for tactile pops
+  get motion(){ return !store.reduceMotion; },   // false → no camera shake, fewer particles, wipes become quick fades
+  get flash(){  return !store.reduceFlash;  },   // false → thin confetti/sparkle, damp fast strobing pulses
+  shake(){ return store.reduceMotion ? 0 : game.shake; },   // the ONLY camera-shake reader (gate lives here)
+  // 0..1 attention pulse for "hot"/NEW UI — flattened to a calm mid value under reduce-flash
+  pulse(speed, lo, hi){ return store.reduceFlash ? (lo+hi)/2 : lo + (hi-lo)*(0.5+0.5*Math.sin((game.t||0)*speed)); },
+};
+// hard particle ceiling → bounded fill-rate on a cheap tablet (cookbook §10); tighter when motion is reduced
+const PART_CAP = 280;
+function partsFull(){ return game.parts.length >= (store.reduceMotion ? 90 : PART_CAP); }
+
 /* ---------------- fx ---------------- */
-function puff(x,y,col){ game.parts.push({x,y,vx:rand(-24,24),vy:rand(-24,24),t:0,life:rand(0.4,0.8),size:rand(4,10),col,fade:true}); }
+function puff(x,y,col){ if(partsFull())return; game.parts.push({x,y,vx:rand(-24,24),vy:rand(-24,24),t:0,life:rand(0.4,0.8),size:rand(4,10),col,fade:true}); }
 function spark(car){
+  if(partsFull())return;
   const a = car.heading+Math.PI+rand(-0.6,0.6);
   game.parts.push({x:car.x+Math.cos(a)*16, y:car.y+Math.sin(a)*16, vx:Math.cos(a)*rand(60,190), vy:Math.sin(a)*rand(60,190), t:0, life:rand(0.2,0.45), size:rand(2,4), col:pick(["#ffd76a","#ffb742","#fff2c0"]) });
 }
-function sparkle(x,y){ game.parts.push({x,y,vx:rand(-130,130),vy:rand(-170,40),t:0,life:rand(0.3,0.6),size:rand(2,5),col:pick(["#ffd76a","#fff4cc","#ffffff"]),grav:true}); }
-function debris(x,y){ game.parts.push({x,y,vx:rand(-160,160),vy:rand(-160,160),t:0,life:rand(0.2,0.5),size:rand(2,4),col:"#8b93ad"}); }
+// 🛞 tire smoke — soft grey puff that swells + fades (reuses the `fade` grow path). Drift/boost read.
+function smoke(x,y){
+  if(!FX.motion || partsFull())return;
+  game.parts.push({x:x+rand(-4,4), y:y+rand(-4,4), vx:rand(-26,26), vy:rand(-42,8), t:0, life:rand(0.4,0.72), size:rand(6,11), col:pick(["#dadfe9","#c4c9d8","#eef1f7"]), fade:true});
+}
+function sparkle(x,y){ if(partsFull())return; game.parts.push({x,y,vx:rand(-130,130),vy:rand(-170,40),t:0,life:rand(0.3,0.6),size:rand(2,5),col:pick(["#ffd76a","#fff4cc","#ffffff"]),grav:true}); }
+function debris(x,y){ if(partsFull())return; game.parts.push({x,y,vx:rand(-160,160),vy:rand(-160,160),t:0,life:rand(0.2,0.5),size:rand(2,4),col:"#8b93ad"}); }
 function flame(car){
+  if(partsFull())return;
   const a = car.heading+Math.PI;
   game.parts.push({x:car.x+Math.cos(a)*20+rand(-3,3), y:car.y+Math.sin(a)*20+rand(-3,3), vx:Math.cos(a)*rand(120,240), vy:Math.sin(a)*rand(120,240), t:0, life:rand(0.12,0.3), size:rand(4,9), col:pick(["#7ef7ff","#4ac6ff","#e0fbff"]) });
+}
+/* ---------------- 👆 tactile press-pop (button feedback) ---------------- */
+// The instant a finger lands on ANY hudBtn, bloom a quick press highlight + squash + ripple.
+// It's tested against LAST frame's hudBtns (valid — menus are static frame-to-frame) and is
+// purely cosmetic, so it's decoupled from the action → zero added latency, and it works on
+// every screen that uses hudBtns (home/map/shop/pause/clear/…). Hooked from the pointer-down
+// input layer via pressAt(). Cookbook §1 (press animates a cap), adapted to raw canvas.
+let presses = [];
+function pressAt(x,y){                       // pop the topmost button under (x,y); return it (or null)
+  for(let i=hudBtns.length-1;i>=0;i--){ const b=hudBtns[i];
+    if(x>=b.x && x<=b.x+b.w && y>=b.y && y<=b.y+b.h){
+      presses.push({x:b.x, y:b.y, w:b.w, h:b.h, t:0});
+      if(presses.length>6) presses.shift();
+      return b;
+    }
+  }
+  return null;
+}
+function drawPresses(dt){
+  if(!presses.length) return;
+  const DUR = FX.D.press;
+  presses = presses.filter(p=>{
+    p.t += dt; const k = p.t/DUR; if(k>=1) return false;
+    const r = Math.max(2, Math.min(16, p.h/2-1));
+    const cx = p.x+p.w/2, cy = p.y+p.h/2, e = FX.E.out(k);
+    // 1) squash-flash — a bright warm cap that snaps in + fades (the "you pressed it!" pop)
+    const sq = 1 - 0.09*FX.E.out(Math.min(1,k*1.9));
+    ctx.save();
+    ctx.globalAlpha = (1-k)*0.55;
+    ctx.translate(cx, cy); ctx.scale(sq, sq*0.95);
+    ctx.fillStyle = "#fff4dc";                                   // warm white → matches the racing accent, pops on any tint
+    ctx.beginPath(); ctx.roundRect(-p.w/2, -p.h/2, p.w, p.h, r); ctx.fill();
+    ctx.restore();
+    // 2) touch ripple — a bright expanding ring, the clearest "I tapped!" cue for a kid
+    //    (under reduce-motion it stays put as a steady rim instead of expanding)
+    const grow = FX.motion ? e*14 : 0;
+    ctx.save();
+    ctx.globalAlpha = (1-k)*0.9; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.roundRect(p.x-grow, p.y-grow, p.w+grow*2, p.h+grow*2, r+grow); ctx.stroke();
+    ctx.restore();
+    return true;
+  });
+  ctx.globalAlpha = 1;
+}
+
+/* ---------------- 🏁 branded screen transitions (flag wipe) ---------------- */
+// On a screen change the new screen REVEALS with a racing swipe: a brand-navy veil with a
+// checkered-flag leading edge slides off to the right. Input is locked while it's mostly
+// covering, which doubles as the anti-double-tap guard (cookbook §8). Reduce-motion → a short
+// plain fade-from-navy instead of the sweep. Only the "big" nav targets wipe; result screens
+// (clear/cooked/vsend/koend) animate themselves, so they're left out.
+const WIPE_STATES = {title:1, home:1, series:1, map:1, shop:1, crates:1, build:1, vspick:1, cooppick:1, play:1, sync:1, settings:1};
+function startWipe(){ game.tr = { t:0, dur: store.reduceMotion ? FX.D.wipeCalm : FX.D.wipe }; }
+function wipeCovering(){ return game.tr && game.tr.t < game.tr.dur*0.5; }   // true while the veil hides most of the screen
+function drawWipe(dt){
+  const tr = game.tr; if(!tr) return;
+  tr.t += dt; const k = Math.min(1, tr.t/tr.dur);
+  if(store.reduceMotion){                              // ♿ calm fade — no sweeping motion
+    ctx.save(); ctx.globalAlpha = 1-k; ctx.fillStyle = "#0b0e15"; ctx.fillRect(0,0,W,H); ctx.restore();
+    if(k>=1) game.tr = null; return;
+  }
+  const e = FX.E.out(k);
+  const bw = Math.max(16, Math.round(H*0.055));        // checker square size
+  const x0 = -bw*2 + e*(W + bw*4);                     // leading edge sweeps from off-left to off-right
+  ctx.save();
+  // 1) brand-navy cover to the RIGHT of the leading edge (the not-yet-revealed part)
+  ctx.fillStyle = "#0b0e15"; ctx.fillRect(x0, 0, W - x0 + 2, H);
+  // 2) checkered-flag band riding the reveal line — unmistakably "racing"
+  for(let c=0;c<2;c++){ const bx = x0 - (c+1)*bw;
+    for(let r=0, y=0; y<H; r++, y+=bw){ ctx.fillStyle = ((r+c)&1) ? "#f4f6ff" : "#12151f"; ctx.fillRect(bx, y, bw, bw); } }
+  // 3) soft shadow cast onto the freshly-revealed side (depth, one light direction)
+  const sg = ctx.createLinearGradient(x0-bw*2-18, 0, x0-bw*2, 0);
+  sg.addColorStop(0,"rgba(0,0,0,0)"); sg.addColorStop(1,"rgba(0,0,0,0.3)");
+  ctx.fillStyle = sg; ctx.fillRect(x0-bw*2-18, 0, 18, H);
+  ctx.restore();
+  if(k>=1) game.tr = null;
 }
 function skid(car){
   const k = game.skidCtx; if(!k) return;
@@ -6010,7 +6135,8 @@ function drawWorld(dt){
   const car = game.car;
   drawBackdrop(dt);
   const wW = game.cols*CELL, wH = game.rows*CELL;
-  const sx = (Math.random()*2-1)*game.shake, sy = (Math.random()*2-1)*game.shake;
+  const shk = FX.shake();   // ♿ reduce-motion → 0 (no camera shake)
+  const sx = (Math.random()*2-1)*shk, sy = (Math.random()*2-1)*shk;
   let cx, cy, z = 1;
   if(game.vs || game.coop || game.ko){
     const fitZ = Math.min(W/(wW+30), H/(wH+30));
@@ -9090,7 +9216,65 @@ const UI = {
     ctx.globalAlpha=0.9; ctx.fillStyle=this.accent; ctx.fillRect(PADX,47+safeT,40,3);
     ctx.globalAlpha=0.35; ctx.fillRect(PADX+45,47+safeT,18,3); ctx.globalAlpha=1;
   },
+  // a chunky ON/OFF pill switch (Settings). Baked look via stacked flat fills, no per-frame gradient.
+  toggle(x,y,w,h,on){
+    const r = h/2;
+    ctx.fillStyle = "rgba(0,0,0,0.30)"; ctx.beginPath(); ctx.roundRect(x+1,y+2,w,h,r); ctx.fill();   // drop shadow (one light dir)
+    ctx.fillStyle = on ? "#9ae64a" : "rgba(120,128,150,0.4)";                                          // track: green on / grey off
+    ctx.beginPath(); ctx.roundRect(x,y,w,h,r); ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.14)"; ctx.lineWidth=1; ctx.beginPath(); ctx.roundRect(x+0.5,y+0.5,w-1,h-1,r); ctx.stroke();
+    const kx = on ? x+w-h/2 : x+h/2, kr = h/2-4;                                                       // knob
+    ctx.fillStyle = "rgba(0,0,0,0.28)"; ctx.beginPath(); ctx.arc(kx, y+h/2+1.5, kr, 0, TAU); ctx.fill();
+    ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(kx, y+h/2, kr, 0, TAU); ctx.fill();
+  },
 };
+
+// ⚙️ Grown-up settings — big toggle rows for sound + accessibility. Reached from the Home gear.
+function drawSettings(){
+  nightSky();
+  hudBtns.length = 0;
+  UI.header("SETTINGS");
+  ctx.textAlign="left"; ctx.textBaseline="alphabetic"; ctx.fillStyle=UI.mut;
+  ctx.font=UI.font(13,700); ctx.fillText("FOR GROWN-UPS", PADX, 60+safeT);
+  const nS = navS();
+  drawIconBtn(W-PADX-nS, 12+safeT, nS, "🏠", "home");
+  const rows = [
+    {act:"sound",  emoji: store.muted?"🔇":"🔊", label:"SOUND EFFECTS",   on:!store.muted,        hint:"beeps, engine & crash sounds"},
+    {act:"music",  emoji:"🎵", label:"MUSIC",            on:!store.musicOff,     hint:"the background race tunes"},
+    {act:"flash",  emoji:"✨", label:"REDUCE FLASHING",  on:store.reduceFlash,   hint:"calmer confetti & sparkles"},
+    {act:"motion", emoji:"🌀", label:"REDUCE MOTION",    on:store.reduceMotion,  hint:"no screen shake · gentle fades"},
+  ];
+  const cardW = Math.min(470, W-2*PADX);
+  const rowH = clamp(Math.round(H*0.135), 64, 94), gap = 14;
+  const totalH = rows.length*rowH + (rows.length-1)*gap;
+  const x = (W-cardW)/2;
+  let y = Math.max(84+safeT, (H-totalH)/2 + 14);
+  for(const r of rows){
+    UI.card(x, y, cardW, rowH, 16);
+    UI.badge(x+rowH*0.56, y+rowH/2, Math.round(rowH*0.56), r.emoji, r.on? UI.accent : UI.mut);
+    ctx.textAlign="left"; ctx.textBaseline="alphabetic";
+    ctx.fillStyle=UI.txt; ctx.font=UI.font(clamp(Math.round(rowH*0.27),17,24),900);
+    ctx.fillText(r.label, x+rowH, y+rowH*0.44);
+    ctx.fillStyle=UI.mut; ctx.font=UI.font(clamp(Math.round(rowH*0.17),11,14),700);
+    ctx.fillText(r.hint, x+rowH, y+rowH*0.7);
+    const tw=Math.round(rowH*0.86), th=Math.round(rowH*0.4);
+    UI.toggle(x+cardW-tw-18, y+rowH/2-th/2, tw, th, r.on);
+    hudBtns.push({x, y, w:cardW, h:rowH, act:"set:"+r.act});
+    y += rowH+gap;
+  }
+  for(const tp of input.taps.splice(0)){
+    for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){
+      AU.ui();
+      if(b.act==="home"){ game.state="home"; return; }
+      if(b.act==="set:sound"){ store.muted=!store.muted; if(AU.master) AU.master.gain.value = store.muted?0:0.5; }
+      else if(b.act==="set:music"){ store.musicOff=!store.musicOff; }
+      else if(b.act==="set:flash"){ store.reduceFlash=!store.reduceFlash; }
+      else if(b.act==="set:motion"){ store.reduceMotion=!store.reduceMotion; }
+      save();
+      return;
+    }
+  }
+}
 
 function drawHome(){
   nightSky();
@@ -9103,7 +9287,8 @@ function drawHome(){
   // top-right icon buttons
   const hS = navS();
   drawIconBtn(W-PADX-hS, 12+safeT, hS, store.muted?"🔇":"🔊", "mute");
-  if(syncEnabled()) drawIconBtn(W-PADX-hS*2-8, 12+safeT, hS, "☁️", "sync");
+  drawIconBtn(W-PADX-hS*2-8, 12+safeT, hS, "⚙️", "settings");
+  if(syncEnabled()) drawIconBtn(W-PADX-hS*3-16, 12+safeT, hS, "☁️", "sync");
   // ── mode cards ──
   const starsWon = Object.keys(store.stars).filter(k=>!String(k).startsWith("c:") && store.stars[k]>0).length;
   const newN = CONFIG.cratesEnabled ? Object.keys(store.found||{}).filter(k=>!(store.seenItems||{})[k]).length : 0;
@@ -9135,7 +9320,7 @@ function drawHome(){
     fillTextC(T.label, x+tw2/2, y+th2*0.66);
     ctx.fillStyle=T.hot? T.col : UI.mut; ctx.font=UI.font(clamp(Math.round(th2*0.1),11,14),800);
     fillTextC(T.sub, x+tw2/2, y+th2*0.84);
-    ctx.globalAlpha = T.hot? (0.65+Math.sin(game.t*5)*0.35) : 0.9; ctx.fillStyle=T.col;   // bottom racing-stripe accent
+    ctx.globalAlpha = T.hot? FX.pulse(5, 0.3, 1.0) : 0.9; ctx.fillStyle=T.col;   // bottom racing-stripe accent (♿ steady under reduce-flash)
     ctx.beginPath(); ctx.roundRect(x+tw2/2-16, y+th2-7, 32, 3, 1.5); ctx.fill(); ctx.globalAlpha=1;
     hudBtns.push({x, y, w:tw2, h:th2, act:T.act});
   });
@@ -9159,6 +9344,7 @@ function drawHome(){
     for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){
       AU.ui();
       if(b.act==="mute"){ AU.toggleMute(); return; }
+      if(b.act==="settings"){ game.state="settings"; return; }
       if(b.act==="sync"){ game.state="sync"; return; }
       game.importedTrack = null;
       if(b.act==="worlds") game.state="series";
@@ -9234,7 +9420,7 @@ function drawSeries(){
     ctx.fillStyle = scol; ctx.font = UI.font(clamp(Math.round(chh*0.09),12,14),800);
     fillTextC(status, x+cw/2, y+chh*0.82);
     // bottom racing-stripe accent in the world's hue (pulses on the world you're up to)
-    ctx.globalAlpha = upNext ? (0.6+Math.sin(game.t*5)*0.35) : (open? 0.9 : 0.4);
+    ctx.globalAlpha = upNext ? FX.pulse(5, 0.25, 0.95) : (open? 0.9 : 0.4);   // ♿ steady under reduce-flash
     ctx.fillStyle = S.hue;
     ctx.beginPath(); ctx.roundRect(x+cw/2-16, y+chh-7, 32, 3, 1.5); ctx.fill();
     ctx.globalAlpha = 1;
@@ -10480,7 +10666,7 @@ function drawReveal(dt){
   ctx.fillStyle = "rgba(6,8,14,0.74)"; ctx.fillRect(0,0,W,H);
   const cx=W/2, cy=H*0.42, col=(rv.res&&rv.res.gold)? PRESTIGE.col : RARITY[rv.tier].col;   // 🥇 gold prestige reveal
   if(rv.t < 0.9){
-    const shake = (0.9-rv.t)*11*(1+rv.tier*0.15), s = 46 + rv.t*30;
+    const shake = (store.reduceMotion?0:(0.9-rv.t)*11*(1+rv.tier*0.15)), s = 46 + rv.t*30;   // ♿ reduce-motion → steady
     ctx.save(); ctx.translate(cx+rand(-shake,shake), cy+rand(-shake,shake));
     ctx.font = s+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
     const fc = CRATES[rv.from]; fillTextC(fc? fc.emoji : "🎁", 0, 0); ctx.restore();
@@ -11474,11 +11660,18 @@ function tick(now){
   // tablet held upright → ask for landscape (menus only, never mid-game)
   const portraitHint = input.hasTouch && H > W*1.15 && (game.state==="title" || game.state==="map" || game.state==="series" || game.state==="home" || game.state==="cooppick");
   if(portraitHint) input.taps.length = 0;
+  // 🏁 screen changed since last frame? kick off a branded flag-wipe reveal (see ▸branded screen transitions)
+  if(game.state !== game._lastState){
+    if(WIPE_STATES[game.state] && game._lastState !== undefined) startWipe();
+    game._lastState = game.state;
+  }
+  if(wipeCovering()) input.taps.length = 0;   // anti-double-tap: swallow taps while the veil hides the screen
 
   if(game.state==="title"){ drawTitle(dt); }
   else if(game.state==="series"){ drawSeries(); updateStickers(dt); drawStickers(); }
   else if(game.state==="home"){ drawHome(); updateStickers(dt); drawStickers(); }
   else if(game.state==="sync"){ drawSync(); updateStickers(dt); drawStickers(); }
+  else if(game.state==="settings"){ drawSettings(); updateStickers(dt); drawStickers(); }
   else if(game.state==="map"){ drawMap(); updateStickers(dt); drawStickers(); }
   else if(game.state==="build"){ drawBuild(dt); updateStickers(dt); drawStickers(); }
   else if(game.state==="shop"){ updateFx(dt); drawShop(dt); drawConfettiScreen(); drawStickers(); }
@@ -11563,6 +11756,7 @@ function tick(now){
     game._vigW=W; game._vigH=H;
   }
   ctx.fillStyle = game._vig; ctx.fillRect(0,0,W,H);
+  drawPresses(dt);   // 👆 tactile button blooms, crisp on top of the vignette
   if(portraitHint){
     ctx.fillStyle = "rgba(8,10,16,0.88)"; ctx.fillRect(0,0,W,H);
     ctx.save(); ctx.translate(W/2, H*0.42); ctx.rotate(-Math.PI/2 + Math.sin(game.t*2.2)*0.25);
@@ -11572,6 +11766,7 @@ function tick(now){
     ctx.fillStyle = "#f4f6ff"; ctx.textAlign="center"; ctx.textBaseline="middle";
     ctx.fillText("TURN IT SIDEWAYS!", W/2, H*0.42+86);
   }
+  drawWipe(dt);   // 🏁 branded flag-wipe transition, above everything
   AU.musicEnsure(musicMode());   // 🎵 keep the right procedural loop running for the current screen (self-guards + no-ops)
 }
 // a shared track arrived by link? add it to the garage
