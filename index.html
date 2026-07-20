@@ -3532,8 +3532,8 @@ function copyCode(){ try { navigator.clipboard.writeText(store.syncCode||""); st
 
 // ⬅️ DEPLOY STEP: paste your Supabase Project URL + anon (publishable) key. SAFE to ship publicly — RLS
 //    gates every row to its owner. NEVER put the service_role key or the database password here.
-const SUPABASE_URL      = "";
-const SUPABASE_ANON_KEY = "";
+const SUPABASE_URL      = "https://deskabqqxqqibxjffwmb.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_7wa6_dSbX29APJymBsi1hg_r0ls0rFi";
 // This Supabase project is SHARED across all of the owner's games (one sign-in, one identity everywhere).
 // GAME_ID keys THIS game's rows in the shared `game_saves` table (composite key user_id+game), so games
 // can never overwrite each other's saves. Every new game just picks a fresh slug. Viva Maya keeps its own
