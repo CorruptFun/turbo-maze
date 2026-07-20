@@ -17,11 +17,21 @@ path no-ops, the game runs **byte-for-byte local-only**, and the Supabase librar
 
 | Piece | Where | Notes |
 |---|---|---|
-| Config constants | `index.html` → `SUPABASE_URL`, `SUPABASE_ANON_KEY` | Owner fills these. Empty = dormant. |
+| Config constants | `index.html` → `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `GAME_ID` | Owner fills URL + key. Empty = dormant. `GAME_ID = "turbo-maze"` keys this game's rows. |
 | Cloud engine | `index.html` → `cloud*` functions | `cloudConfigured/Client/Pull/Push/SyncNow/SignIn/SignOut/Bootstrap` + `initCloud`. |
 | Vendored library | `vendor/supabase.umd.js` | Pinned `@supabase/supabase-js@2.110.7`, self-contained UMD. **Dynamic-loaded only when configured** (a `<script>` injected on demand) — a dormant build never fetches it. |
-| DB migration | `supabase/migrations/0001_saves.sql` | One row per user + owner-only RLS + `updated_at` trigger. |
+| DB migration | `supabase/migrations/0001_game_saves.sql` | **Shared** `game_saves` table — one row per **(user, game)** + owner-only RLS + `updated_at` trigger. |
 | UI | `index.html` → `openCloudModal()` | Settings → **CLOUD & BACKUP**, the Home ☁️ icon, and the pause menu. |
+
+### Shared database across all games (one project, one sign-in)
+
+This Supabase project is **shared by all of the owner's games**. Auth is project-level, so a player's
+Google account is the **same identity everywhere** — sign in on any game, recognized on all of them, using
+the **same Google OAuth client** (no per-game OAuth setup). Saves are isolated by a `game` slug in the
+shared `game_saves` table (composite key `(user_id, game)` → one row per user per game), so **no game can
+overwrite another's save**. Adding a future game = pick a new `GAME_ID` slug; **no new table, no new
+migration, no new OAuth**. (Viva Maya, already live, keeps its own `saves` table in this project untouched;
+it can be folded into `game_saves` later as a separate, careful task.)
 
 There is **no build step** (Turbo Maze is one static `index.html`), so — unlike the Viva Maya reference —
 there are no Vite chunks, no `.env`, no repo Variables, and no service worker/precache to manage. The anon
@@ -50,59 +60,41 @@ key is simply pasted into the file and committed (safe to ship — see §6).
 
 ---
 
-## 3. Owner setup (one-time, ~15 min)
+## 3. Owner setup — you already did most of this for Viva Maya
 
-You'll do this in three tabs: **Supabase**, **Google Cloud Console**, and your code editor. You'll never
-be asked for the service_role key or the database password.
+Turbo Maze **reuses the shared Viva Maya Supabase project** (`https://deskabqqxqqibxjffwmb.supabase.co`),
+so the Google Cloud OAuth client and the Supabase Google provider are **already configured** — you do NOT
+create a new OAuth app or a new project. Just three small, non-destructive steps (none touch Viva Maya):
 
-### 3.1 Supabase — create the project + table
-1. Go to <https://supabase.com> → **New project** (or open your existing one). Pick a name + a strong DB
-   password (you won't need it again for this) and a region near you.
-2. Open **SQL Editor** → **New query** → paste the entire contents of
-   [`supabase/migrations/0001_saves.sql`](../supabase/migrations/0001_saves.sql) → **Run**. You should see
-   "Success". (Safe to re-run.)
-3. Open **Project Settings → API** and keep this tab handy — you'll copy two values in §3.4:
-   - **Project URL** — looks like `https://abcdefghijklmnop.supabase.co`
-   - **anon public** key (a.k.a. *publishable* key) — a long `eyJ…` string.
-   - The part before `.supabase.co` (here `abcdefghijklmnop`) is your **project-ref** — you need it next.
+### 3.1 Run the shared-table migration (once for the whole project)
+In the project's **SQL Editor → New query**, paste the entire contents of
+[`supabase/migrations/0001_game_saves.sql`](../supabase/migrations/0001_game_saves.sql) → **Run** (expect
+"Success"; safe to re-run). This creates the shared `game_saves` table and does **not** touch Viva Maya's
+`saves` table.
 
-### 3.2 Google Cloud Console — create a Web OAuth client
-1. Go to <https://console.cloud.google.com> → create/select any project.
-2. **APIs & Services → OAuth consent screen** → choose **External** → fill the required fields (App name
-   = "Turbo Maze", your support email). Scopes: leave the defaults (email / profile / openid — all
-   non-sensitive). Save.
-3. **APIs & Services → Credentials → Create credentials → OAuth client ID** → Application type =
-   **Web application**.
-4. Under **Authorized redirect URIs**, add exactly (swap in your project-ref):
-   ```
-   https://<project-ref>.supabase.co/auth/v1/callback
-   ```
-5. **Create** → copy the **Client ID** and **Client Secret**.
+### 3.2 Add Turbo Maze's URLs to the redirect allow-list (additive — Viva Maya's entries stay)
+**Authentication → URL Configuration → Redirect URLs → Add URL**, add both:
+- `https://corruptfun.github.io/turbo-maze/**`
+- `http://localhost:8765/**`  ← for local testing
 
-### 3.3 Supabase — enable Google + set the URLs
-1. **Authentication → Providers → Google** → toggle **Enable** → paste the **Client ID** and **Client
-   Secret** from §3.2 → **Save**.
-2. **Authentication → URL Configuration**:
-   - **Site URL:** `https://corruptfun.github.io/turbo-maze/`
-   - **Redirect URLs** (add both):
-     - `https://corruptfun.github.io/turbo-maze/**`
-     - `http://localhost:8765/**`  ← for local testing (`python3 -m http.server 8765`)
+Leave **Site URL** as Viva Maya's — Turbo Maze passes its own `redirectTo` explicitly, which only needs to
+match a Redirect-URLs entry. (The Google Cloud redirect URI
+`https://deskabqqxqqibxjffwmb.supabase.co/auth/v1/callback` is the *project's* callback and is already set —
+nothing to add in Google Cloud Console.)
 
-### 3.4 Wire the game
-1. In `index.html`, find these two lines (search `SUPABASE_URL`) and paste your §3.1 values:
-   ```js
-   const SUPABASE_URL      = "https://<project-ref>.supabase.co";
-   const SUPABASE_ANON_KEY = "eyJ… your anon public key …";
-   ```
-2. Commit + push. GitHub Pages redeploys in a few minutes; reload the game.
+### 3.3 Wire the game (the same keys Viva Maya uses)
+In `index.html`, find `SUPABASE_URL` and paste the project's values (Project Settings → API — the anon key
+is the same one Viva Maya ships):
+```js
+const SUPABASE_URL      = "https://deskabqqxqqibxjffwmb.supabase.co";
+const SUPABASE_ANON_KEY = "eyJ… the project's anon public key …";
+```
+Leave `GAME_ID = "turbo-maze"` as-is. Commit + push; GitHub Pages redeploys in a few minutes.
 
-### 3.5 Publish the Google app (so anyone can sign in, no warning screen)
-- **APIs & Services → OAuth consent screen → Publish app → Confirm.**
-- Because the app requests only the non-sensitive email/profile/openid scopes, **no Google verification is
-  required** — publishing removes the "unverified app" warning and the 100-test-user cap. Brand
-  verification (your logo/name on the consent screen) is optional and purely cosmetic; if you ever pursue
-  it, Google requires the OAuth "home page" to be a real page with visible app-name/purpose text — a
-  canvas game's `index.html` won't qualify, so you'd add an `about.html` landing page first.
+> **Google OAuth publish status & consent screen:** already handled for Viva Maya — the app is published
+> with only non-sensitive scopes (email / profile / openid), so there's no verification screen and no
+> user cap. Nothing to do here. (The consent screen will show the Viva Maya app name; if you later want it
+> to read more generically across games, that's a cosmetic tweak in Google Cloud Console.)
 
 ---
 
@@ -140,7 +132,7 @@ After configuring:
 ## 6. Security
 
 - Only the **anon / publishable** key ships in the client — this is expected and safe. RLS
-  (`0001_saves.sql`) restricts every row to `auth.uid() = user_id`, so the key can only ever touch the
+  (`0001_game_saves.sql`) restricts every row to `auth.uid() = user_id`, so the key can only ever touch the
   signed-in user's own row.
 - **Never** put the `service_role` key or the database password in `index.html` (or anywhere client-side).
 - `.gitignore` already excludes `.env*`; there are no secrets in the repo beyond the safe anon key.

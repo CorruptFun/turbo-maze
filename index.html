@@ -3534,6 +3534,11 @@ function copyCode(){ try { navigator.clipboard.writeText(store.syncCode||""); st
 //    gates every row to its owner. NEVER put the service_role key or the database password here.
 const SUPABASE_URL      = "";
 const SUPABASE_ANON_KEY = "";
+// This Supabase project is SHARED across all of the owner's games (one sign-in, one identity everywhere).
+// GAME_ID keys THIS game's rows in the shared `game_saves` table (composite key user_id+game), so games
+// can never overwrite each other's saves. Every new game just picks a fresh slug. Viva Maya keeps its own
+// `saves` table; Turbo Maze + future games share `game_saves`. See docs/CLOUD_SAVE_GOOGLE_SIGNIN.md.
+const GAME_ID = "turbo-maze";
 function cloudConfigured(){ return /^https?:\/\//.test(SUPABASE_URL) && !!SUPABASE_ANON_KEY; }
 
 // Lazy, on-demand load of the VENDORED supabase-js (vendor/supabase.umd.js, pinned 2.110.7, self-contained
@@ -3578,7 +3583,7 @@ async function cloudPull(){
   const c = await cloudClient();
   if(!c || !cloud.session) return null;
   try {
-    const { data, error } = await c.from("saves").select("data").eq("user_id", cloud.session.userId).maybeSingle();
+    const { data, error } = await c.from("game_saves").select("data").eq("user_id", cloud.session.userId).eq("game", GAME_ID).maybeSingle();
     if(error || !data) return null;
     return coerceStore(data.data);                 // shape-tolerant: a corrupt row can't inject a bad shape
   } catch(e){ return null; }
@@ -3597,9 +3602,9 @@ async function _flushCloud(){
   const data = _cloudPending; _cloudPending = null;
   if(!c || !cloud.session || !data) return;
   try {
-    await c.from("saves").upsert(
-      { user_id: cloud.session.userId, data, updated_at: new Date().toISOString() },
-      { onConflict: "user_id" }
+    await c.from("game_saves").upsert(
+      { user_id: cloud.session.userId, game: GAME_ID, data, updated_at: new Date().toISOString() },
+      { onConflict: "user_id,game" }
     );
   } catch(e){ _cloudPending = data; }              // offline / transient → re-queue for the next save or 'online'
 }
