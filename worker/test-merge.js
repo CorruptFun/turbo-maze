@@ -195,6 +195,56 @@ const DEVICE_B = {
   eq("merge with undefined side preserves stars", m.stars, { 0: 3 });
 })();
 
+// ── cloud reconcile semantics ────────────────────────────────────────────────
+// The Google/Supabase path (index.html `cloudSyncNow`) reconciles with the SAME merge as the 4-word
+// worker, called as mergeStore(LOCAL, remote). A Supabase upsert does no server-side merge, so these
+// client-side properties are the whole data-safety guarantee. (index.html's inlined `syncMerge` mirrors
+// `mergeStore` — these lock the semantics the cloud engine depends on.)
+(function cloudFreshDeviceGetsCloud() {
+  // A brand-new device (empty local) signs in and pulls a rich cloud row → gets EVERYTHING, loses nothing.
+  const emptyLocal = {};
+  const richCloud = { unlocked: 6, coinsBank: 400, stars: { 0: 3, 1: 3, 2: 3 },
+                      ownedCars: ["rocket", "ufo"], customLevels: [{ id: 1, grid: ["z"] }] };
+  const m = mergeStore(emptyLocal, richCloud);
+  ok("fresh device: unlocked pulled", m.unlocked === 6);
+  eq("fresh device: stars pulled", m.stars, { 0: 3, 1: 3, 2: 3 });
+  eq("fresh device: cars pulled", m.ownedCars.sort(), ["rocket", "ufo"]);
+  ok("fresh device: custom track pulled", m.customLevels.length === 1);
+})();
+
+(function cloudFirstSignInEmptyCloud() {
+  // The inverse the reconcile-gate guards: a device with real progress reconciles against an EMPTY cloud
+  // (first-ever sign-in) → keeps all local progress (then pushes it up). Merge must never drop it.
+  const richLocal = { unlocked: 6, coinsBank: 400, stars: { 0: 3, 1: 3 }, ownedCars: ["rocket", "van"] };
+  const m = mergeStore(richLocal, {});
+  ok("first sign-in: local unlocked survives empty cloud", m.unlocked === 6);
+  eq("first sign-in: local stars survive", m.stars, { 0: 3, 1: 3 });
+  eq("first sign-in: local cars survive", m.ownedCars.sort(), ["rocket", "van"]);
+})();
+
+(function cloudIdenticalNoClobber() {
+  // An identical cloud reconciles to the same values (tie prefers local `a`): signing in twice, or a
+  // redundant syncNow, never changes anything.
+  const s = { unlocked: 4, coinsBank: 120, stars: { 0: 3, 1: 2 }, ownedCars: ["rocket"] };
+  const m = mergeStore(s, JSON.parse(JSON.stringify(s)));
+  eq("identical cloud → same stars", m.stars, { 0: 3, 1: 2 });
+  ok("identical cloud → same unlocked/coins", m.unlocked === 4 && m.coinsBank === 120);
+})();
+
+(function cloudReconcileNeverBelowLocal() {
+  // The core guarantee cloudSyncNow leans on: Object.assign(store, mergeStore(local, remote)) can only
+  // ADD — the merged result is >= local on every synced field, for an ARBITRARY remote.
+  const local = DEVICE_A, remote = DEVICE_B;
+  const m = mergeStore(local, remote);
+  let below = false;
+  for (const k of MAX_SCALARS)
+    if (typeof local[k] === "number" && m[k] < local[k]) below = true;
+  for (const map of MAX_MAPS)
+    for (const [k, v] of Object.entries(local[map] || {}))
+      if (typeof v === "number" && (m[map][k] === undefined || m[map][k] < v)) below = true;
+  ok("reconcile never drops local below its own value", !below);
+})();
+
 // ── report ───────────────────────────────────────────────────────────────────
 console.log(`\nmerge tests: ${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

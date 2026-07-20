@@ -1,2 +1,5 @@
 .claude/
 .DS_Store
+# never commit secrets — the game's cloud config is inline (safe anon key only), never a .env
+.env
+.env.*

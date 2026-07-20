@@ -34,6 +34,35 @@
   #a2hs .a2-x { flex:none; width:30px; height:30px; border:none; border-radius:9px;
     background:rgba(255,255,255,0.11); color:#cfd5e4; font-size:19px; font-weight:900; line-height:1; cursor:pointer; }
   #a2hs .a2-add:active, #a2hs .a2-x:active { filter:brightness(.9); }
+  /* ☁️ Cloud & Backup modal (see openCloudModal in the script) */
+  #tmcloud { position:fixed; inset:0; z-index:120; display:flex; align-items:center; justify-content:center;
+    padding:16px; box-sizing:border-box; background:rgba(6,8,14,0.72);
+    font-family:'Avenir Next Condensed','Arial Narrow',system-ui,sans-serif; animation:tmcFade .18s ease; }
+  @keyframes tmcFade { from{opacity:0;} to{opacity:1;} }
+  #tmcloud .tmc-card { position:relative; box-sizing:border-box; width:100%; max-width:380px;
+    max-height:calc(100vh - 32px); overflow-y:auto; -webkit-overflow-scrolling:touch;
+    background:#141824; color:#f4f6ff; border:1px solid rgba(255,255,255,0.10); border-radius:20px;
+    padding:calc(22px + var(--sat)) 18px 18px; box-shadow:0 18px 60px rgba(0,0,0,0.6); }
+  #tmcloud .tmc-title { font-size:22px; font-weight:900; font-style:italic; letter-spacing:.4px; color:#9ae6ff; margin:0 42px 2px 0; }
+  #tmcloud .tmc-sub { font-size:12px; font-weight:800; letter-spacing:.5px; color:#8b93ad; margin:0 0 14px; }
+  #tmcloud .tmc-x { position:absolute; top:calc(10px + var(--sat)); right:12px; width:38px; height:38px; border:none; border-radius:11px;
+    background:rgba(255,255,255,0.10); color:#cfd5e4; font-size:22px; font-weight:900; line-height:1; cursor:pointer; }
+  #tmcloud .tmc-x:active { filter:brightness(.85); }
+  #tmcloud .tmc-stack { display:flex; flex-direction:column; gap:10px; }
+  #tmcloud .tmc-note { font-size:14px; line-height:1.5; font-weight:600; color:#c7ccda; margin:0; }
+  #tmcloud .tmc-head { font-size:12px; font-weight:900; letter-spacing:.8px; text-transform:uppercase; color:#9ae6ff; margin:0; }
+  #tmcloud .tmc-btn { display:block; width:100%; box-sizing:border-box; min-height:48px; padding:12px 16px; margin:0;
+    border:none; border-radius:13px; background:#9ae64a; color:#12151f; letter-spacing:.3px; cursor:pointer;
+    font:900 16px 'Avenir Next Condensed','Arial Narrow',sans-serif; }
+  #tmcloud .tmc-btn.g { background:#ffffff; color:#1a1f2b; }
+  #tmcloud .tmc-btn.ghost { background:rgba(255,255,255,0.06); color:#e6eaf5; border:1.5px solid rgba(255,255,255,0.14); }
+  #tmcloud .tmc-btn:active { filter:brightness(.92); }
+  #tmcloud .tmc-btn[disabled] { opacity:.55; cursor:default; }
+  #tmcloud .tmc-code { width:100%; box-sizing:border-box; text-align:center; padding:14px 10px; border-radius:13px;
+    background:rgba(10,14,24,0.9); border:1px dashed rgba(154,230,255,0.4); color:#f4f6ff;
+    font-size:18px; font-weight:900; letter-spacing:.5px; cursor:pointer; word-break:break-word; }
+  #tmcloud .tmc-err { font-size:13px; font-weight:800; color:#ffb0b0; margin:0; }
+  #tmcloud .tmc-div { height:1px; background:rgba(255,255,255,0.08); margin:5px 0; }
 </style>
 </head>
 <body>
@@ -3326,7 +3355,9 @@ function resize(){
 window.addEventListener("resize", resize); resize();
 
 /* ---------------- save data ---------------- */
-let store = { unlocked:1, stars:{}, aura:0, coinsBank:0, muted:false, customLevels:[], nextTrackId:0,
+// storeDefaults() mints a FRESH default save (own arrays/objects, never aliased). Used for the initial
+// store AND as the template for coerceStore() below.
+function storeDefaults(){ return { unlocked:1, stars:{}, aura:0, coinsBank:0, muted:false, customLevels:[], nextTrackId:0,
   ownedCars:["rocket"], car:"rocket", ownedPets:[], pet:null, carNum:67, shopGift:false,
   curSeries:0, seriesCleared:{}, coopUnlocked:1, coopStars:{},
   // ♿ grown-up settings (Settings screen): calm the game for a sensitive/young kid. See ▸FX + drawSettings.
@@ -3340,8 +3371,30 @@ let store = { unlocked:1, stars:{}, aura:0, coinsBank:0, muted:false, customLeve
   // Keys namespaced "upg:engine" / "pu:rocket" / "cos:trail_flame" / "cur:pouch". Both default {} → Object.assign-safe.
   found:{}, seenItems:{},
   // 👻 ghost time-trials — per campaign-level best runs: { [levelIx]: {t:seconds, d:base64 blob} }. Default {} → Object.assign keeps old saves safe.
-  ghosts:{} };
-try { const s = localStorage.getItem("turboMaze"); if(s) store = Object.assign(store, JSON.parse(s)); } catch(e){}
+  ghosts:{} }; }
+// 🛡️ coerceStore(raw) — the SINGLE shape-tolerant ingress for every save that enters the game
+// (localStorage load, ☁️ cloud pull, 💾 backup restore). Starts from fresh DEFAULTS, TYPE-VALIDATES every
+// known field (so a corrupt/foreign blob can never inject a bad shape — e.g. stars as a string, unlocked
+// as an object), and PASSES UNKNOWN keys through untouched (forward-compat: never drop a field we don't
+// recognise yet, e.g. the lazily-minted syncCode). Never throws.
+function coerceStore(raw){
+  const base = storeDefaults();
+  if(!raw || typeof raw !== "object") return base;
+  for(const k in raw){
+    if(!Object.prototype.hasOwnProperty.call(raw, k)) continue;
+    const dv = base[k], rv = raw[k];
+    if(dv === undefined){ base[k] = rv; continue; }                                       // unknown key → pass through
+    if(dv === null){ base[k] = rv; continue; }                                            // nullable (pet/cosmetic/armed) → accept as-is
+    if(typeof dv === "number"){ if(typeof rv === "number" && isFinite(rv)) base[k] = rv; }
+    else if(typeof dv === "boolean"){ base[k] = !!rv; }
+    else if(Array.isArray(dv)){ if(Array.isArray(rv)) base[k] = rv; }
+    else if(typeof dv === "object"){ if(rv && typeof rv === "object" && !Array.isArray(rv)) base[k] = rv; }  // maps
+    else if(typeof dv === "string"){ if(typeof rv === "string") base[k] = rv; }
+  }
+  return base;
+}
+let store = storeDefaults();
+try { const s = localStorage.getItem("turboMaze"); if(s) store = coerceStore(JSON.parse(s)); } catch(e){}
 // ♿ first run only: inherit the OS "Reduce Motion" preference so accessibility is on by default
 // for kids who need it — after that the in-game Settings toggles are authoritative.
 if(!store.a11ySeen){
@@ -3357,7 +3410,30 @@ function grantRewardCars(){
 }
 grantRewardCars();
 function saveLocal(){ try { localStorage.setItem("turboMaze", JSON.stringify(store)); } catch(e){} }
-function save(){ saveLocal(); schedulePush(); }   // local write is instant; cloud push is debounced (no-op until sync is deployed)
+// 🔌 persist listeners — the save layer stays backend-agnostic: each cloud MIRROR (4-word Cloudflare +
+// Google/Supabase) registers here and is fired (guarded) after every local write. A cloud hiccup must
+// NEVER break the authoritative local save, so saveLocal() runs FIRST and each listener is try/caught.
+const _persistListeners = [];
+function addPersistListener(fn){ if(typeof fn === "function") _persistListeners.push(fn); }
+function firePersist(){ for(const fn of _persistListeners){ try { fn(store); } catch(e){} } }
+function save(){ saveLocal(); firePersist(); }   // local write is instant + authoritative; cloud mirrors are best-effort
+// 💾 base64 backup code — a portable snapshot of the WHOLE save, no account + no backend. exportSave()
+// produces a code (also written to a downloadable .txt in the Cloud & Backup modal); importSave() restores
+// it on any device. importSave MERGES via the monotonic join, so restoring an OLDER backup can never lower
+// progress; a bad code returns false and cannot touch the save. escape/unescape bridge btoa's Latin-1 limit
+// so any UTF-8 in the blob survives the round-trip.
+function exportSave(){ try { return btoa(unescape(encodeURIComponent(JSON.stringify(store)))); } catch(e){ return ""; } }
+function importSave(code){
+  try {
+    const raw = JSON.parse(decodeURIComponent(escape(atob(String(code||"").trim()))));
+    const incoming = coerceStore(raw);
+    Object.assign(store, syncMerge(store, incoming));                                          // fold in progress — never regress
+    for(const k of ["car","pet","cosmetic","carNum","curSeries"]) if(incoming[k] !== undefined) store[k] = incoming[k];  // adopt selection prefs
+    grantRewardCars();
+    saveLocal(); firePersist();                                                                // persist + mirror the restored state outward
+    return true;
+  } catch(e){ return false; }
+}
 
 /* ================= ☁️ CLOUD SYNC (progress by a 4-word code) ================= */
 // One localStorage blob → the cloud, keyed by a memorable 4-word code. No
@@ -3402,6 +3478,7 @@ function syncMerge(a,b){ a=a||{}; b=b||{}; const o={};
 const sync = { state:"idle", msg:"", inflight:false };   // state: idle|syncing|ok|err
 let _pushTimer = 0;
 function schedulePush(){ if(!syncEnabled()) return; clearTimeout(_pushTimer); _pushTimer = setTimeout(()=>syncNow("push"), 3500); }
+addPersistListener(schedulePush);   // ☁️ 4-word Cloudflare mirror — fired after every save() (self-guards via syncEnabled)
 function applyRemote(remote){
   if(!remote || typeof remote!=="object") return;
   // join the LIVE store with the returned blob → never regress progress earned
@@ -3436,6 +3513,159 @@ function promptEnterCode(){
   else sticker("THAT CODE LOOKS OFF","#ff8f8f");
 }
 function copyCode(){ try { navigator.clipboard.writeText(store.syncCode||""); sticker("CODE COPIED! 📋","#9ae6ff"); } catch(e){ sticker(store.syncCode||"","#9ae6ff"); } }
+
+/* ================= 🔵 GOOGLE CLOUD SAVE (Supabase, per-account) ================= */
+// An OPTIONAL, account-based mirror of the authoritative local save, gated behind one-tap "Sign in with
+// Google". A second, independent transport alongside the 4-word Cloudflare code above — both mirror the
+// SAME local `store` through the SAME monotonic syncMerge(), so using either or both can never lose data.
+//
+// DORMANT until the two constants below are filled (see docs/CLOUD_SAVE_GOOGLE_SIGNIN.md): with empty
+// config every path no-ops, the game runs BYTE-FOR-BYTE local-only, and @supabase is never fetched.
+//
+// SAFETY MODEL — why progress can't be lost: localStorage stays AUTHORITATIVE; the cloud is a mirror.
+// Unlike the Cloudflare worker, a Supabase upsert does NO server-side merge, so the CLIENT must never push
+// a regressed save. Two guards enforce that: (1) on a null→session transition — exactly what a Google
+// redirect return produces — we RECONCILE FIRST (pull → merge local-first → persist winner → push) BEFORE
+// any local push can mirror a fresh/empty save over real cloud progress; (2) a reconcile-GATE (cloud.ready)
+// suppresses the debounced push until that first reconcile completes. ⚠️ The null→session cloudSyncNow()
+// in initCloud() is the single most important line in this file for data safety.
+
+// ⬅️ DEPLOY STEP: paste your Supabase Project URL + anon (publishable) key. SAFE to ship publicly — RLS
+//    gates every row to its owner. NEVER put the service_role key or the database password here.
+const SUPABASE_URL      = "";
+const SUPABASE_ANON_KEY = "";
+function cloudConfigured(){ return /^https?:\/\//.test(SUPABASE_URL) && !!SUPABASE_ANON_KEY; }
+
+// Lazy, on-demand load of the VENDORED supabase-js (vendor/supabase.umd.js, pinned 2.110.7, self-contained
+// UMD exposing window.supabase). Injected as a <script> ONLY when configured — a dormant build never
+// fetches it. Memoised so it loads at most once.
+let _sbLoad = null;
+function cloudLib(){
+  if(!cloudConfigured()) return Promise.resolve(null);
+  if(!_sbLoad) _sbLoad = new Promise((resolve)=>{
+    if(window.supabase && window.supabase.createClient){ resolve(window.supabase); return; }
+    const s = document.createElement("script");
+    s.src = "vendor/supabase.umd.js"; s.async = true;
+    s.onload  = ()=> resolve(window.supabase && window.supabase.createClient ? window.supabase : null);
+    s.onerror = ()=> resolve(null);   // offline / blocked → cloud stays inert, game unaffected
+    document.head.appendChild(s);
+  });
+  return _sbLoad;
+}
+let _sbClient = null;
+async function cloudClient(){
+  if(!cloudConfigured()) return null;
+  if(_sbClient) return _sbClient;
+  const lib = await cloudLib();
+  if(!lib) return null;
+  try {
+    _sbClient = lib.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
+    });
+  } catch(e){ _sbClient = null; }
+  return _sbClient;
+}
+
+// live session + change listeners (the Cloud & Backup modal re-renders on sign-in/out)
+const cloud = { session:null, ready:false, state:"idle" };   // session = {userId,email} | null ; ready = reconcile-gate
+const _cloudListeners = new Set();
+function onCloudChange(cb){ _cloudListeners.add(cb); return ()=> _cloudListeners.delete(cb); }
+function _cloudNotify(){ for(const l of _cloudListeners){ try { l(); } catch(e){} } }
+function cloudSession(){ return cloud.session; }
+
+// ---- pull / push (never throw) ----
+async function cloudPull(){
+  const c = await cloudClient();
+  if(!c || !cloud.session) return null;
+  try {
+    const { data, error } = await c.from("saves").select("data").eq("user_id", cloud.session.userId).maybeSingle();
+    if(error || !data) return null;
+    return coerceStore(data.data);                 // shape-tolerant: a corrupt row can't inject a bad shape
+  } catch(e){ return null; }
+}
+let _cloudPushTimer = 0, _cloudPending = null;
+// Debounced upsert. No-op unless signed in AND past the reconcile-gate (cloud.ready) — a fresh/empty local
+// must never be pushed before it has pulled+merged the cloud. cloudSyncNow() bypasses the gate via _flushCloud.
+function cloudPush(){
+  if(!cloud.session || !cloud.ready) return;
+  _cloudPending = store;
+  if(_cloudPushTimer) return;
+  _cloudPushTimer = setTimeout(()=>{ _cloudPushTimer = 0; _flushCloud(); }, 1500);
+}
+async function _flushCloud(){
+  const c = await cloudClient();
+  const data = _cloudPending; _cloudPending = null;
+  if(!c || !cloud.session || !data) return;
+  try {
+    await c.from("saves").upsert(
+      { user_id: cloud.session.userId, data, updated_at: new Date().toISOString() },
+      { onConflict: "user_id" }
+    );
+  } catch(e){ _cloudPending = data; }              // offline / transient → re-queue for the next save or 'online'
+}
+
+// ---- reconcile: pull → merge (LOCAL FIRST, so a tie keeps local) → persist winner → push. Never throws.
+async function cloudSyncNow(){
+  if(!cloud.session) return;
+  cloud.state = "syncing"; _cloudNotify();
+  try {
+    const remote = await cloudPull();
+    if(remote){ Object.assign(store, syncMerge(store, remote)); grantRewardCars(); saveLocal(); }
+    cloud.ready = true;                             // open the gate: debounced pushes may now flow
+    _cloudPending = store; await _flushCloud();     // create a first-ever cloud row even if local was newest
+    cloud.state = "ok";
+  } catch(e){ cloud.state = "err"; }
+  _cloudNotify();
+}
+
+// ---- auth (Google OAuth — leaves to Google, returns on a fresh page load) ----
+async function cloudSignIn(){
+  const c = await cloudClient();
+  if(!c) return { ok:false, error:"Cloud sign-in isn't set up on this build." };
+  try {
+    const { error } = await c.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.href.split("#")[0] }   // return to a clean app URL, no hash
+    });
+    return error ? { ok:false, error:error.message } : { ok:true };
+  } catch(e){ return { ok:false, error:"Couldn't start Google sign-in. Please try again." }; }
+}
+async function cloudSignOut(){
+  const c = await cloudClient();
+  if(!c) return;
+  try { await c.auth.signOut(); } catch(e){}
+}
+
+// ---- boot ----
+function _cloudApplySession(s){ cloud.session = (s && s.user) ? { userId:s.user.id, email:(s.user.email||null) } : null; }
+async function initCloud(){
+  const c = await cloudClient();
+  if(!c) return;
+  c.auth.onAuthStateChange((_ev, s)=>{
+    const had = cloud.session !== null;
+    _cloudApplySession(s);
+    if(!cloud.session) cloud.ready = false;         // signed out → re-close the reconcile-gate
+    _cloudNotify();
+    // ⚠️ THE critical line: a Google redirect returns via a fresh page load with NO explicit verify step,
+    // so the null→session transition MUST reconcile (pull → merge → persist → push) before any local push
+    // can mirror a fresh/empty save over the player's real cloud progress. Not on token refresh / sign-out.
+    if(cloud.session && !had) cloudSyncNow();
+  });
+  try { const { data } = await c.auth.getSession(); _cloudApplySession(data && data.session); } catch(e){ cloud.session = null; }
+  window.addEventListener("online", ()=>{ if(_cloudPending) _flushCloud(); });
+  _cloudNotify();
+}
+// Boot entry: init the client + reconcile a returning signed-in player BEFORE the game leans on the save,
+// bounded by a timeout so a slow/offline network can never stall boot. Never throws.
+async function cloudBootstrap(timeoutMs){
+  if(!cloudConfigured()) return;
+  try {
+    await initCloud();
+    if(cloud.session) await Promise.race([ cloudSyncNow(), new Promise(r=>setTimeout(r, timeoutMs||3000)) ]);
+  } catch(e){}
+}
+// register the Supabase mirror: fired after every save() (self-guards via cloud.session + cloud.ready)
+addPersistListener(cloudPush);
 
 /* ---------------- audio (all synth, no files) ---------------- */
 // 🎵 procedural chiptune — PER-WORLD personality (index 0-6 == SERIES world). root = lead reference (Hz),
@@ -9148,6 +9378,121 @@ function drawSync(){
   }
 }
 
+/* ---------------- ☁️ Cloud & Backup modal (DOM overlay over the canvas) ---------------- */
+// Framework-free DOM overlay (same pattern as the #a2hs coach) layered above the WebGL canvas, opened from
+// Settings → CLOUD & BACKUP, the Home ☁️ icon, or the pause menu. Renders by Supabase auth state and ALWAYS
+// shows the no-account blocks (4-word code + downloadable file backup). Idempotent; fully torn down on close.
+function openCloudModal(){
+  if(document.getElementById("tmcloud")) return;   // already open (guard on the live DOM, never a stale ref)
+  let unsub = null, authErr = "", restoreErr = "";
+
+  const overlay = document.createElement("div"); overlay.id = "tmcloud";
+  const card = document.createElement("div"); card.className = "tmc-card";
+  card.setAttribute("role","dialog"); card.setAttribute("aria-modal","true"); card.setAttribute("aria-label","Cloud and Backup");
+  overlay.appendChild(card);
+
+  function close(){ if(unsub){ try{ unsub(); }catch(e){} unsub=null; } document.removeEventListener("keydown", onKey); overlay.remove(); }
+  function onKey(e){ if(e.key==="Escape") close(); }
+  overlay.addEventListener("pointerdown", e=> e.stopPropagation());           // don't leak taps to the canvas
+  overlay.addEventListener("click", e=>{ if(e.target===overlay) close(); });   // scrim click closes
+  document.addEventListener("keydown", onKey);
+
+  function el(tag, cls, txt){ const e=document.createElement(tag); if(cls) e.className=cls; if(txt!==undefined) e.textContent=txt; return e; }
+  function btn(cls, label, onClick){ const b=el("button", cls, label); b.type="button"; b.addEventListener("click", onClick); return b; }
+
+  const content = el("div","tmc-stack");
+
+  // ── Google account block (Supabase) — varies by state ────────────────────────────────────
+  function buildAuth(){
+    const wrap = el("div","tmc-stack");
+    if(!cloudConfigured()){
+      wrap.appendChild(el("p","tmc-note","Google account sync isn't switched on for this build yet — but your progress is safe on this device, and you can still sync by code or back up to a file below."));
+      return wrap;
+    }
+    const sess = cloudSession();
+    if(sess){
+      wrap.appendChild(el("p","tmc-note", (sess.email ? ("Signed in as "+sess.email+".") : "Signed in.") + " Your progress syncs automatically. ☁️"));
+      const out = btn("tmc-btn ghost","Sign out", ()=>{ out.disabled=true; out.textContent="Signing out…"; cloudSignOut().then(()=>location.reload()).catch(()=>{ out.disabled=false; out.textContent="Sign out"; }); });
+      wrap.appendChild(out);
+      return wrap;
+    }
+    wrap.appendChild(el("p","tmc-note","Sign in with Google to save your progress to the cloud and get it back on any device — even after clearing the browser or on a brand-new tablet."));
+    const gin = btn("tmc-btn g","Sign in with Google", ()=>{
+      authErr=""; gin.disabled=true; gin.textContent="Continuing…";
+      Promise.resolve(cloudSignIn()).then(res=>{ if(!res || !res.ok){ authErr = (res && res.error) || "Couldn't start Google sign-in."; render(); } })   // on success the page redirects to Google — nothing else runs here
+                                    .catch(()=>{ authErr="Couldn't start Google sign-in."; render(); });
+    });
+    wrap.appendChild(gin);
+    return wrap;
+  }
+
+  // ── 4-word code block (no-account sync) — always shown ───────────────────────────────────
+  function buildCode(){
+    const wrap = el("div","tmc-stack");
+    wrap.appendChild(el("div","tmc-head","Sync by secret code (no account)"));
+    wrap.appendChild(el("p","tmc-note","This 4-word code IS your save. Type it on another device to carry everything over."));
+    const codeStr = ()=> (store.syncCode||"").toUpperCase().replace(/-/g," · ");
+    ensureSyncCode();
+    const code = el("div","tmc-code", codeStr()); code.title = "Tap to copy";
+    code.addEventListener("click", ()=>{ copyCode(); code.textContent="COPIED! 📋"; setTimeout(()=>{ code.textContent = codeStr(); }, 1400); });
+    wrap.appendChild(code);
+    if(syncEnabled()){
+      const sb = btn("tmc-btn","🔄  Sync now", ()=>{ sb.disabled=true; sb.textContent="Syncing…"; Promise.resolve(syncNow("modal")).then(ok=>{ sb.disabled=false; sb.textContent = ok?"Synced ✓":"🔄  Sync now"; setTimeout(()=>{ if(sb.isConnected) sb.textContent="🔄  Sync now"; }, 1500); }); });
+      wrap.appendChild(sb);
+    }
+    wrap.appendChild(btn("tmc-btn ghost","⌨️  Enter a code from another device", ()=>{ promptEnterCode(); render(); }));
+    return wrap;
+  }
+
+  // ── File backup block (no account, no backend) — always shown ────────────────────────────
+  function buildBackup(){
+    const wrap = el("div","tmc-stack");
+    wrap.appendChild(el("div","tmc-head","Back up to a file"));
+    wrap.appendChild(el("p","tmc-note","Save a backup file to keep your progress safe even after clearing the browser. Restore it here anytime — restoring never lowers your progress."));
+    wrap.appendChild(btn("tmc-btn ghost","⬇️  Download backup file", ()=>{
+      try {
+        const a=document.createElement("a");
+        const url=URL.createObjectURL(new Blob([exportSave()], {type:"text/plain"}));
+        a.href=url; a.download="turbo-maze-backup.txt"; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(()=>URL.revokeObjectURL(url), 2000);
+      } catch(e){}
+    }));
+    const file = document.createElement("input"); file.type="file"; file.accept="text/plain,.txt"; file.style.display="none";
+    file.addEventListener("change", ()=>{
+      const f = file.files && file.files[0]; file.value="";   // allow re-picking the same file later
+      if(!f) return;
+      f.text().then(txt=>{ if(importSave(txt)){ location.reload(); } else { restoreErr="That file didn't work."; render(); } })
+              .catch(()=>{ restoreErr="Couldn't read that file."; render(); });
+    });
+    wrap.appendChild(btn("tmc-btn ghost","📂  Restore from a file", ()=> file.click()));
+    wrap.appendChild(file);
+    if(restoreErr) wrap.appendChild(el("p","tmc-err", restoreErr));
+    return wrap;
+  }
+
+  function render(){
+    content.textContent = "";
+    content.appendChild(buildAuth());
+    if(authErr) content.appendChild(el("p","tmc-err", authErr));
+    content.appendChild(el("div","tmc-div"));
+    content.appendChild(buildCode());
+    content.appendChild(el("div","tmc-div"));
+    content.appendChild(buildBackup());
+  }
+
+  const x = btn("tmc-x","×", close); x.setAttribute("aria-label","Close");
+  card.appendChild(x);
+  card.appendChild(el("div","tmc-title","☁️ CLOUD & BACKUP"));
+  card.appendChild(el("div","tmc-sub","YOUR PROGRESS — SAFE & ON ANY DEVICE"));
+  card.appendChild(content);
+  render();
+  // re-render in place whenever auth state changes (sign-in/out, session resolve). Only meaningful on a
+  // configured build, so the friendly not-configured path never depends on a live cloud client.
+  if(cloudConfigured()) unsub = onCloudChange(()=>{ authErr=""; render(); });
+
+  document.body.appendChild(overlay);
+}
+
 function drawTitle(dt){
   nightSky();
   // attract car doing donuts
@@ -9249,6 +9594,7 @@ function drawSettings(){
     {act:"music",  emoji:"🎵", label:"MUSIC",            on:!store.musicOff,     hint:"the background race tunes"},
     {act:"flash",  emoji:"✨", label:"REDUCE FLASHING",  on:store.reduceFlash,   hint:"calmer confetti & sparkles"},
     {act:"motion", emoji:"🌀", label:"REDUCE MOTION",    on:store.reduceMotion,  hint:"no screen shake · gentle fades"},
+    {act:"cloud",  emoji:"☁️", label:"CLOUD & BACKUP",   nav:true,               hint:"sign in · sync by code · back up"},
   ];
   const cardW = Math.min(470, W-2*PADX);
   const rowH = clamp(Math.round(H*0.135), 64, 94), gap = 14;
@@ -9257,14 +9603,19 @@ function drawSettings(){
   let y = Math.max(84+safeT, (H-totalH)/2 + 14);
   for(const r of rows){
     UI.card(x, y, cardW, rowH, 16);
-    UI.badge(x+rowH*0.56, y+rowH/2, Math.round(rowH*0.56), r.emoji, r.on? UI.accent : UI.mut);
+    UI.badge(x+rowH*0.56, y+rowH/2, Math.round(rowH*0.56), r.emoji, (r.on||r.nav)? UI.accent : UI.mut);
     ctx.textAlign="left"; ctx.textBaseline="alphabetic";
     ctx.fillStyle=UI.txt; ctx.font=UI.font(clamp(Math.round(rowH*0.27),17,24),900);
     ctx.fillText(r.label, x+rowH, y+rowH*0.44);
     ctx.fillStyle=UI.mut; ctx.font=UI.font(clamp(Math.round(rowH*0.17),11,14),700);
     ctx.fillText(r.hint, x+rowH, y+rowH*0.7);
-    const tw=Math.round(rowH*0.86), th=Math.round(rowH*0.4);
-    UI.toggle(x+cardW-tw-18, y+rowH/2-th/2, tw, th, r.on);
+    if(r.nav){   // ☁️ nav row — opens the Cloud & Backup modal, not a toggle → chevron affordance
+      ctx.fillStyle=UI.accent; ctx.textAlign="right"; ctx.textBaseline="middle"; ctx.font=UI.font(Math.round(rowH*0.42),900);
+      ctx.fillText("›", x+cardW-22, y+rowH/2); ctx.textAlign="left"; ctx.textBaseline="alphabetic";
+    } else {
+      const tw=Math.round(rowH*0.86), th=Math.round(rowH*0.4);
+      UI.toggle(x+cardW-tw-18, y+rowH/2-th/2, tw, th, r.on);
+    }
     hudBtns.push({x, y, w:cardW, h:rowH, act:"set:"+r.act});
     y += rowH+gap;
   }
@@ -9272,6 +9623,7 @@ function drawSettings(){
     for(const b of hudBtns) if(tp.x>=b.x&&tp.x<=b.x+b.w&&tp.y>=b.y&&tp.y<=b.y+b.h){
       AU.ui();
       if(b.act==="home"){ game.state="home"; return; }
+      if(b.act==="set:cloud"){ openCloudModal(); return; }   // ☁️ opens the Cloud & Backup modal (no toggle, no save)
       if(b.act==="set:sound"){ store.muted=!store.muted; if(AU.master) AU.master.gain.value = store.muted?0:0.5; }
       else if(b.act==="set:music"){ store.musicOff=!store.musicOff; }
       else if(b.act==="set:flash"){ store.reduceFlash=!store.reduceFlash; }
@@ -9294,7 +9646,7 @@ function drawHome(){
   const hS = navS();
   drawIconBtn(W-PADX-hS, 12+safeT, hS, store.muted?"🔇":"🔊", "mute");
   drawIconBtn(W-PADX-hS*2-8, 12+safeT, hS, "⚙️", "settings");
-  if(syncEnabled()) drawIconBtn(W-PADX-hS*3-16, 12+safeT, hS, "☁️", "sync");
+  drawIconBtn(W-PADX-hS*3-16, 12+safeT, hS, "☁️", "sync");   // ☁️ Cloud & Backup — always available (Google sign-in / 4-word code / file backup)
   // ── mode cards ──
   const starsWon = Object.keys(store.stars).filter(k=>!String(k).startsWith("c:") && store.stars[k]>0).length;
   const newN = CONFIG.cratesEnabled ? Object.keys(store.found||{}).filter(k=>!(store.seenItems||{})[k]).length : 0;
@@ -9351,7 +9703,7 @@ function drawHome(){
       AU.ui();
       if(b.act==="mute"){ AU.toggleMute(); return; }
       if(b.act==="settings"){ game.state="settings"; return; }
-      if(b.act==="sync"){ game.state="sync"; return; }
+      if(b.act==="sync"){ openCloudModal(); return; }
       game.importedTrack = null;
       if(b.act==="worlds") game.state="series";
       else if(b.act==="garage"){ sh.garageMode=true; sh.tab="cars"; shopSyncSel(); game.state="shop"; }
@@ -11749,7 +12101,7 @@ function tick(now){
         if(b.act==="resume") paused=false;
         if(b.act==="map"){ paused=false; game.state = game.fromBuilder? "build" : game.coop? "cooppick" : (game.vs||game.ko)? "vspick" : "map"; }
         if(b.act==="home"){ paused=false; game.state = "home"; }   // 🏠 straight to the main dashboard
-        if(b.act==="sync"){ paused=false; game.state = "sync"; }    // ☁️ manage your cloud code
+        if(b.act==="sync"){ openCloudModal(); }    // ☁️ open Cloud & Backup (Google sign-in / 4-word code / file)
       }
     }
   }
@@ -11796,8 +12148,13 @@ function tick(now){
 
 requestAnimationFrame(frame);
 
-// ☁️ pull cloud progress on boot (no-op until a Worker URL is wired in)
-if(syncEnabled()){ syncNow("open"); }   // syncNow() calls ensureSyncCode() itself
+// 💾 ask the browser NOT to evict our localStorage (the save) under storage pressure — a real durability
+// win for an installed PWA. Fire-and-forget; browsers without the API just skip it.
+try { if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch(e){}
+
+// ☁️ pull cloud progress on boot (both mirrors self-guard when unconfigured — byte-for-byte local-only):
+if(syncEnabled()){ syncNow("open"); }   // 4-word Cloudflare — syncNow() calls ensureSyncCode() itself
+cloudBootstrap();                        // 🔵 Google/Supabase — no-op unless configured; reconciles a signed-in player, timeout-bounded
 
 // debug handle (safe to ignore)
 window.__tm = { game, loadLevel, loadCustom, store, CONFIG, CRATES, spawnGolden, grabGolden, bl, enterBuilder, encodeTrack, decodeTrack,
@@ -11806,7 +12163,9 @@ window.__tm = { game, loadLevel, loadCustom, store, CONFIG, CRATES, spawnGolden,
   COOP_LEVELS, startCoop, KO_ARENAS, startKo,
   AU, ghostEnc, ghostDec, ghostAt, ghostEligible, musicMode,   // 🎵/👻 test hooks
   sh, shopRoster, hudBtns, input,                              // 🚗 garage/showroom test hooks
-  sync, syncNow, syncMerge, syncEnabled, syncUrl, ensureSyncCode, genCode, applyRemote,   // ☁️ cloud-sync test hooks
+  sync, syncNow, syncMerge, syncEnabled, syncUrl, ensureSyncCode, genCode, applyRemote,   // ☁️ 4-word cloud-sync test hooks
+  cloud, cloudConfigured, cloudSession, cloudPull, cloudPush, cloudSyncNow, cloudSignIn, cloudSignOut, cloudBootstrap,   // 🔵 Google/Supabase test hooks
+  coerceStore, exportSave, importSave, openCloudModal, storeDefaults,   // 💾 backup + modal test hooks
   step(sec){ paused = false; let n = last; for(let i=0;i<sec*60;i++){ n += 1000/60; tick(n); } last = performance.now(); } };
 </script>
 </body>

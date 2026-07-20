@@ -1,5 +1,10 @@
 # ☁️ Cloud Sync — design + deploy runbook
 
+> **See also:** [`CLOUD_SAVE_GOOGLE_SIGNIN.md`](CLOUD_SAVE_GOOGLE_SIGNIN.md) — the newer,
+> account-based **"Sign in with Google"** cloud save (Supabase). It's a second, independent mirror that
+> runs **alongside** the 4-word code described here; both use the same `syncMerge`, so a player can use
+> either or both and never lose progress.
+
 Turbo Maze progress (stars, coins, unlocks, cars, pets, cosmetics, crate ledger,
 custom tracks, ghost best-times) is one `localStorage["turboMaze"]` blob. Cloud
 sync mirrors that blob to a tiny Cloudflare Worker + KV store, keyed by a
