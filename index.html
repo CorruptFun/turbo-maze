@@ -9321,26 +9321,61 @@ function nightSky(){
   }
   ctx.globalAlpha = 1;
 }
+// 🏁 THE WORDMARK — a premium racing lockup matched to the glossy vehicle art: a chunky 3D-extruded,
+// gold-gloss title with a top sheen + crisp dark outline, over a checkered start/finish band. Still fully
+// CONFIG.title/subtitle-driven, so renaming the game keeps the whole treatment (see the ▸TWEAK ZONE).
 function bigTitle(y){
   ctx.textAlign="center"; ctx.textBaseline="middle";
-  const t = CONFIG.title;
+  const t = CONFIG.title, fs = Math.min(92, W/7);
   ctx.save();
   ctx.translate(W/2, y);
   ctx.rotate(-0.03);
-  ctx.font = "900 italic "+Math.min(92, W/7)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-  ctx.fillStyle = "rgba(12,14,22,0.9)"; ctx.fillText(t, 5, 6);
+  ctx.font = "900 italic "+fs+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  ctx.lineJoin = "round";
+
+  // (a) warm bloom haloing the wordmark off the dark sky
+  ctx.save();
+  ctx.shadowColor = (store.reduceFlash? "rgba(255,140,40,0.35)":"rgba(255,140,40,0.55)");
+  ctx.shadowBlur = fs*0.55; ctx.shadowOffsetY = fs*0.05;
   ctx.fillStyle = "#ffb742"; ctx.fillText(t, 0, 0);
-  ctx.font = "900 italic "+Math.min(30, W/22)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
-  ctx.fillStyle = "#f4f6ff";
-  const sub = "— "+CONFIG.subtitle+" —";
-  ctx.fillText(sub, 0, Math.min(62, W/10));
   ctx.restore();
-  // checkered strip
-  const cw = 18, y2 = y+Math.min(95, W/6.2);
-  for(let i=0;i<W/cw+1;i++){
-    ctx.fillStyle = i%2? "rgba(244,246,255,0.85)" : "rgba(12,14,22,0.9)";
-    ctx.fillRect(i*cw, y2, cw, 10);
+
+  // (b) chunky 3D extrude — dark-amber base stepped down-right for depth
+  ctx.fillStyle = "#5e2606";
+  const steps = Math.max(5, Math.round(fs*0.075));
+  for(let i=steps;i>=1;i--) ctx.fillText(t, i*0.45, i*0.9);
+
+  // (c) crisp dark outline (the face fills over its inner half → clean thin edge)
+  ctx.lineWidth = Math.max(2, fs*0.05); ctx.strokeStyle = "#3a1c06"; ctx.strokeText(t, 0, 0);
+
+  // (d) glossy top-lit gold face — same hot-top → deep-bottom recipe as the car paint
+  let face = ctx.createLinearGradient(0,-fs*0.55, 0,fs*0.55);
+  face.addColorStop(0,"#ffe7a6"); face.addColorStop(0.42,"#ffc247"); face.addColorStop(0.64,"#ff9d2b"); face.addColorStop(1,"#e8761a");
+  ctx.fillStyle = face; ctx.fillText(t, 0, 0);
+
+  // (e) top sheen — re-fill the glyphs with a white gradient that fades by mid-height (wet gloss)
+  let sheen = ctx.createLinearGradient(0,-fs*0.55, 0,fs*0.08);
+  sheen.addColorStop(0,"rgba(255,255,255,0.85)"); sheen.addColorStop(0.5,"rgba(255,255,255,0.16)"); sheen.addColorStop(1,"rgba(255,255,255,0)");
+  ctx.fillStyle = sheen; ctx.fillText(t, 0, 0);
+
+  // (f) subtitle — clean caps with a soft drop shadow
+  ctx.font = "900 italic "+Math.min(30, W/22)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
+  const sub = "— "+CONFIG.subtitle+" —";
+  ctx.fillStyle = "rgba(8,10,16,0.8)"; ctx.fillText(sub, 1.5, Math.min(62, W/10)+1.5);
+  ctx.fillStyle = "#f4f6ff"; ctx.fillText(sub, 0, Math.min(62, W/10));
+  ctx.restore();
+
+  // (g) checkered START/FINISH band — two glossy rows, amber lit edge + soft cast shadow
+  const cw = clamp(Math.round(W/58), 11, 17), y2 = y + Math.min(100, W/6), bh = cw*2;
+  ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(0, y2+3, W, bh);                  // cast shadow
+  for(let r=0;r<2;r++) for(let i=0;i<W/cw+1;i++){
+    ctx.fillStyle = ((i+r)%2)? "#f4f6ff" : "#12151f"; ctx.fillRect(i*cw, y2+r*cw, cw+0.5, cw+0.5);
   }
+  let bandGloss = ctx.createLinearGradient(0,y2, 0,y2+bh);                            // glass gloss down the band
+  bandGloss.addColorStop(0,"rgba(255,255,255,0.22)"); bandGloss.addColorStop(0.5,"rgba(255,255,255,0)"); bandGloss.addColorStop(1,"rgba(0,0,0,0.28)");
+  ctx.fillStyle = bandGloss; ctx.fillRect(0, y2, W, bh);
+  ctx.fillStyle = "#ffb742"; ctx.fillRect(0, y2-2, W, 2);                             // amber lit top edge
+  ctx.fillStyle = "rgba(255,255,255,0.14)"; ctx.fillRect(0, y2-2.5, W, 0.5);
 }
 /* ---------------- ☁️ CLOUD SYNC screen (your profile / find-your-code) ---------------- */
 function drawSync(){
@@ -9527,9 +9562,15 @@ function drawTitle(dt){
     ctx.save(); ctx.globalAlpha=0.6;
     ctx.drawImage(game._attractSk,0,0,W,H); ctx.restore();   // draw under the ambient DPR transform → full-screen (was squished into the top-left 1/DPR quadrant)
   }
-  const fakeCar = { x:ax, y:ay, heading:game.attract.a+Math.PI/2+0.7, sq:1, invuln:0, boost:0, trail:[] };
+  const heading = game.attract.a+Math.PI/2+0.7;
+  game._attractTrail = game._attractTrail || [];                 // persistent drift trail as it carves donuts
+  game._attractTrail.push({x:ax, y:ay, a:heading});
+  if(game._attractTrail.length>16) game._attractTrail.shift();
+  const fakeCar = { x:ax, y:ay, heading, sq:1, invuln:0, boost:1, trail:game._attractTrail.slice() };
   const saveLv = game.lv; game.lv = LEVELS[0];
+  ctx.save(); ctx.translate(ax,ay); ctx.scale(1.5,1.5); ctx.translate(-ax,-ay);   // hero-scale the showcase ride
   drawCar(fakeCar);
+  ctx.restore();
   game.lv = saveLv;
   bigTitle(H*0.3);
   if(CONFIG.playerName){
