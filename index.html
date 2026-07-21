@@ -3397,10 +3397,11 @@ let store = storeDefaults();
 try { const s = localStorage.getItem("turboMaze"); if(s) store = coerceStore(JSON.parse(s)); } catch(e){}
 // ♿ first run only: inherit the OS "Reduce Motion" preference so accessibility is on by default
 // for kids who need it — after that the in-game Settings toggles are authoritative.
+let a11yNudge = false;   // ♿ one-time (in-memory) cue → point a grown-up at the calm-settings gear on the first Home visit
 if(!store.a11ySeen){
   try { const rm = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         store.reduceMotion = !!rm; store.reduceFlash = !!rm; } catch(e){}
-  store.a11ySeen = true;
+  store.a11ySeen = true; a11yNudge = true;
   try { localStorage.setItem("turboMaze", JSON.stringify(store)); } catch(e){}   // persist so we never re-seed over a later choice
 }
 // 🎁 retroactively grant each world's reward car for any world ALREADY beaten (older saves recorded the clear before reward cars existed)
@@ -6145,7 +6146,7 @@ const FX = {
 };
 // hard particle ceiling → bounded fill-rate on a cheap tablet (cookbook §10); tighter when motion is reduced
 const PART_CAP = 280;
-function partsFull(){ return game.parts.length >= (store.reduceMotion ? 90 : PART_CAP); }
+function partsFull(){ return game.parts.length >= (store.reduceMotion ? 90 : store.reduceFlash ? 150 : PART_CAP); }   // ♿ Reduce Flashing thins sparkles/puffs too (was only confetti)
 
 /* ---------------- fx ---------------- */
 function puff(x,y,col){ if(partsFull())return; game.parts.push({x,y,vx:rand(-24,24),vy:rand(-24,24),t:0,life:rand(0.4,0.8),size:rand(4,10),col,fade:true}); }
@@ -6224,7 +6225,6 @@ function drawPresses(dt){
 // (clear/cooked/vsend/koend) animate themselves, so they're left out.
 const WIPE_STATES = {title:1, home:1, series:1, map:1, shop:1, crates:1, build:1, vspick:1, cooppick:1, play:1, sync:1, settings:1};
 function startWipe(){ game.tr = { t:0, dur: store.reduceMotion ? FX.D.wipeCalm : FX.D.wipe }; }
-function wipeCovering(){ return game.tr && game.tr.t < game.tr.dur*0.5; }   // true while the veil hides most of the screen
 function drawWipe(dt){
   const tr = game.tr; if(!tr) return;
   tr.t += dt; const k = Math.min(1, tr.t/tr.dur);
@@ -6278,9 +6278,10 @@ function updateFx(dt){
 // Shows at the maze edges/fit-views now; will show THROUGH the void in World 6 Space.
 function drawBackdrop(dt){
   const T = worldTheme(), t = game.t||0, B = T.back;
-  const sky = ctx.createLinearGradient(0,0,0,H);
-  sky.addColorStop(0, T.sky[0]); sky.addColorStop(1, T.sky[1]);
-  ctx.fillStyle = sky; ctx.fillRect(0,0,W,H);
+  // sky gradient is identical every frame — bake once per theme/resize instead of rebuilding it 60×/s (cookbook §10)
+  const skyKey = T.sky[0]+"|"+T.sky[1]+"|"+H;
+  if(game._skyKey !== skyKey){ game._sky = ctx.createLinearGradient(0,0,0,H); game._sky.addColorStop(0, T.sky[0]); game._sky.addColorStop(1, T.sky[1]); game._skyKey = skyKey; }
+  ctx.fillStyle = game._sky; ctx.fillRect(0,0,W,H);
   const px = (game.cam?game.cam.x:0);
   ctx.save();
   if(B==="snow"){
@@ -7767,7 +7768,7 @@ ctx.lineCap = "butt";
   }
   else if(vid==="glitch"){
     // 🌀 GLITCH GT — faceted neon digital racer (nose = +x): chromatic-split edges + CRT scan sweep
-const flick = 0.5 + 0.5*Math.sin(game.t*22);              // fast pixel flicker
+const flick = FX.pulse(22, 0, 1);              // fast pixel flicker — steady under Reduce Flashing (was raw ~3.5Hz strobe)
 const glow  = 0.55 + 0.45*Math.sin(game.t*6.1);           // slow neon breathe
 const jit   = Math.sin(game.t*13)*0.7;                    // horizontal glitch jitter
 const split = 1.1 + 0.55*flick;                           // pulsing chromatic-aberration width
@@ -8206,7 +8207,7 @@ for(const [sx,sph,sr] of [[-14,0,0.85],[-9.5,1.7,0.7],[-4.5,3.2,0.6],[-1,4.6,0.5
 function drawRocketBody(bodyCol, stripeCol){
   // 🚀 RED ROCKET — sculpted aero racer (nose = +x). Body art is color-agnostic
   // (white/black alpha overlays) so it also skins P2 and the garage preview.
-  const flick = 0.55 + 0.45*Math.sin(game.t*20);            // idle thruster flicker
+  const flick = FX.pulse(20, 0.1, 1);            // idle thruster flicker — steady under Reduce Flashing
   const hue = (game.lv && game.lv.hue) || "#5a6cff";        // world light, for the shadow-side bounce
   const outline = () => {                                    // aero silhouette: pointed nose, haunched middle, rounded tail
     ctx.beginPath();
@@ -8362,7 +8363,7 @@ function drawCar(car){
   if(meltP>0){
     ctx.translate(0, meltP*10);                     // sinks screen-down into the pool
     ctx.scale(1-meltP*0.7, 1-meltP*0.7);            // melts down to a puddle
-    ctx.rotate(Math.sin(game.t*30)*0.15*meltP);     // fast molten shudder
+    ctx.rotate((FX.motion?Math.sin(game.t*30):0)*0.15*meltP);     // fast molten shudder — frozen under Reduce Motion
   }
   // underglow — 💡 a kind:"glow" cosmetic (v3) recolours it, brighter + pulsing (pure looks, player car only)
   let glowCol = game.lv.hue, glowA = 0.3, glowR = 1;
@@ -8388,7 +8389,7 @@ function drawCar(car){
   if(vid==="ufo"){ const hov = 1+Math.sin(game.t*4)*0.04; ctx.scale(hov,hov); }
   const sq = clamp(car.sq, 0.55, 1.35);
   ctx.scale(sq, 2-sq>1.3?1.3:2-sq);
-  if(car.invuln>0 && (car.invuln*10|0)%2) ctx.globalAlpha = 0.4;
+  if(car.invuln>0) ctx.globalAlpha = (store.reduceFlash||store.reduceMotion) ? 0.72 : ((car.invuln*10|0)%2 ? 0.4 : 1);   // ♿ respawn blink — steady translucent (no 5Hz strobe) under Reduce Flashing/Motion
   // headlight cones (the saucer gets one wide beam)
   ctx.fillStyle = "rgba(255,240,190,0.13)";
   if(v.noLights){
@@ -9066,6 +9067,13 @@ function drawHintArrow(){
 function roundedPanel(x,y,w,h,r,fill){
   ctx.fillStyle = fill||"rgba(14,17,26,0.82)";
   ctx.beginPath(); ctx.roundRect(x,y,w,h,r); ctx.fill();
+  // cheap depth (cookbook §3): flat top-gloss band + top-lit hairline — NO per-frame gradient, so the in-race
+  // HUD hot-path stays lean. Gloss is clipped to the panel so it can never poke past a corner as an "ear" (§2a).
+  ctx.save(); ctx.beginPath(); ctx.roundRect(x,y,w,h,r); ctx.clip();
+  ctx.fillStyle = "rgba(255,255,255,0.05)"; ctx.fillRect(x, y, w, h*0.46);
+  ctx.restore();
+  ctx.strokeStyle = "rgba(255,255,255,0.10)"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(x+0.5, y+0.5, Math.max(0,w-1), Math.max(0,h-1), r); ctx.stroke();
 }
 function drawHUD(){
   const car = game.car;
@@ -9515,8 +9523,10 @@ function drawTitle(dt){
   sk.fillStyle = "rgba(10,10,14,0.2)";
   sk.beginPath(); sk.arc(ax - Math.cos(game.attract.a+1.2)*12, ay - Math.sin(game.attract.a+1.2)*7, 2.5, 0, TAU); sk.fill();
   sk.beginPath(); sk.arc(ax - Math.cos(game.attract.a+1.9)*12, ay - Math.sin(game.attract.a+1.9)*7, 2.5, 0, TAU); sk.fill();
-  ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.globalAlpha=0.6;
-  ctx.drawImage(game._attractSk,0,0,W,H); ctx.restore();
+  if(game._attractSk.width>0 && game._attractSk.height>0){   // guard: drawImage throws on a 0×0 buffer (degenerate 0-size viewport)
+    ctx.save(); ctx.globalAlpha=0.6;
+    ctx.drawImage(game._attractSk,0,0,W,H); ctx.restore();   // draw under the ambient DPR transform → full-screen (was squished into the top-left 1/DPR quadrant)
+  }
   const fakeCar = { x:ax, y:ay, heading:game.attract.a+Math.PI/2+0.7, sq:1, invuln:0, boost:0, trail:[] };
   const saveLv = game.lv; game.lv = LEVELS[0];
   drawCar(fakeCar);
@@ -9543,13 +9553,21 @@ function drawTitle(dt){
 const UI = {
   bg1:"#1b2133", bg0:"#0f1420", line:"rgba(255,255,255,0.09)", txt:"#f4f6ff", mut:"#8b93ad", accent:"#ffb742",
   font(px,w){ return (w||800)+" "+px+"px 'Avenir Next Condensed','Arial Narrow',sans-serif"; },
-  card(x,y,w,h,r){ r=(r==null)?16:r;
-    ctx.fillStyle="rgba(0,0,0,0.30)"; ctx.beginPath(); ctx.roundRect(x+2,y+5,w,h,r); ctx.fill();            // soft drop shadow (depth)
+  card(x,y,w,h,r,tint){ r=(r==null)?16:r;
+    ctx.fillStyle="rgba(0,0,0,0.30)"; ctx.beginPath(); ctx.roundRect(x+2,y+5,w,h,r); ctx.fill();            // soft drop shadow (one light)
     const g=ctx.createLinearGradient(0,y,0,y+h); g.addColorStop(0,this.bg1); g.addColorStop(1,this.bg0);    // top-lit body
     ctx.fillStyle=g; ctx.beginPath(); ctx.roundRect(x,y,w,h,r); ctx.fill();
+    // §2a fix: clip the gloss to the body so its TOP corners always match r — a short card no longer gets a
+    // corner "step" where canvas would auto-shrink a band's radius (invisible at 1×, visible at DPR 2–3).
+    ctx.save(); ctx.beginPath(); ctx.roundRect(x,y,w,h,r); ctx.clip();
     const gl=ctx.createLinearGradient(0,y,0,y+h*0.55); gl.addColorStop(0,"rgba(255,255,255,0.07)"); gl.addColorStop(1,"rgba(255,255,255,0)");
-    ctx.fillStyle=gl; ctx.beginPath(); ctx.roundRect(x,y,w,Math.max(2,h*0.55),r); ctx.fill();               // glass gloss
+    ctx.fillStyle=gl; ctx.fillRect(x,y,w,Math.max(2,h*0.55)); ctx.restore();                                // glass gloss (flat cut, no mismatched-radius band)
     ctx.strokeStyle=this.line; ctx.lineWidth=1; ctx.beginPath(); ctx.roundRect(x+0.5,y+0.5,w-1,h-1,r); ctx.stroke();
+    if(tint){                                                                                                // §4: accent-tinted lit rim on the TOP edge only — makes dark cards read "expensive"
+      ctx.save(); ctx.beginPath(); ctx.rect(x,y,w,h*0.5); ctx.clip();
+      ctx.strokeStyle=tint; ctx.globalAlpha=0.4; ctx.lineWidth=1.5; ctx.beginPath(); ctx.roundRect(x+1,y+1,w-2,h-2,r); ctx.stroke();
+      ctx.restore(); ctx.globalAlpha=1;
+    }
   },
   badge(cx,cy,s,emoji,col){                                                                                 // rounded icon chip, mode-tinted
     ctx.save();
@@ -9642,6 +9660,7 @@ function drawSettings(){
 function drawHome(){
   nightSky();
   hudBtns.length = 0;
+  if(a11yNudge){ a11yNudge = false; sticker("⚙️ Grown-ups: tap the gear for calmer visuals", "#9ae6ff"); }   // ♿ one-time first-run nudge toward Reduce Motion/Flashing
   UI.header(CONFIG.title);
   // status pills (aura + coins) under the wordmark
   let cx = PADX;
@@ -9697,7 +9716,7 @@ function drawHome(){
       fillTextC(EMOJIS[cl.emojiIx||0], gcx+25, cy0+16);
       ctx.font=UI.font(11,800); ctx.fillStyle = st? "#ffd76a" : UI.mut;
       fillTextC(st? "⭐".repeat(st) : cl.name.replace("TRACK","T"), gcx+25, cy0+36);
-      if(game.importedTrack===cl){ ctx.strokeStyle="#ffd76a"; ctx.lineWidth=3+Math.sin(game.t*5)*1.5;
+      if(game.importedTrack===cl){ ctx.strokeStyle="#ffd76a"; ctx.lineWidth=FX.pulse(5,1.5,4.5);
         ctx.beginPath(); ctx.roundRect(gcx-3, cy0-3, 56, 54, 14); ctx.stroke(); }
       hudBtns.push({x:gcx,y:cy0,w:50,h:48,act:"pc:"+cl.id});
       gcx += 56; if(gcx > W-PADX-56) break;
@@ -9756,15 +9775,15 @@ function drawSeries(){
     const upNext = open && !done;
     // hue drives the accent: real hue for playable + coming-soon teaser, muted for locked
     const tint = (open || S.comingSoon) ? S.hue : UI.mut;
-    // premium card
-    UI.card(x, y, cw, chh, 16);
+    // premium card (accent lit rim in the world's hue)
+    UI.card(x, y, cw, chh, 16, tint);
     // locked worlds read recessed (coming-soon stays teased in its hue)
     if(!open && !S.comingSoon){
       ctx.fillStyle="rgba(15,20,32,0.30)"; ctx.beginPath(); ctx.roundRect(x,y,cw,chh,16); ctx.fill();
     }
     // pulsing ring on the world you're up to
     if(upNext){
-      ctx.strokeStyle = S.hue; ctx.lineWidth = 3+Math.sin(game.t*4)*1.5;
+      ctx.strokeStyle = S.hue; ctx.lineWidth = FX.pulse(4,1.5,4.5);
       ctx.beginPath(); ctx.roundRect(x-2,y-2,cw+4,chh+4,18); ctx.stroke();
     }
     // world badge — emoji tinted with the world's hue
@@ -9867,11 +9886,18 @@ function drawMap(){
     const [x,y] = pts[i];
     const unlocked = gi < store.unlocked || i===0;   // first level of an open world is always playable
     const stars = store.stars[gi]||0;
-    ctx.beginPath(); ctx.arc(x,y,R,0,TAU);
-    ctx.fillStyle = unlocked? "#f4f6ff" : "rgba(60,66,86,0.9)";
-    ctx.fill();
+    // premium node — UI.card language (contact shadow · top-lit body · gloss · hairline), matching the co-op map
+    ctx.fillStyle="rgba(0,0,0,0.30)"; ctx.beginPath(); ctx.arc(x+1.5,y+4,R,0,TAU); ctx.fill();
+    if(unlocked){ const ng=ctx.createLinearGradient(0,y-R,0,y+R); ng.addColorStop(0,"#ffffff"); ng.addColorStop(1,"#d5dcf0"); ctx.fillStyle=ng; }
+    else ctx.fillStyle="rgba(60,66,86,0.9)";
+    ctx.beginPath(); ctx.arc(x,y,R,0,TAU); ctx.fill();
+    ctx.save(); ctx.beginPath(); ctx.arc(x,y,R,0,TAU); ctx.clip();
+    const ngl=ctx.createLinearGradient(0,y-R,0,y+R*0.1);
+    ngl.addColorStop(0, unlocked?"rgba(255,255,255,0.6)":"rgba(255,255,255,0.08)"); ngl.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=ngl; ctx.fillRect(x-R,y-R,2*R,R*1.1); ctx.restore();
+    ctx.strokeStyle = unlocked? "rgba(255,255,255,0.55)" : UI.line; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(x,y,R-0.5,0,TAU); ctx.stroke();
     if(unlocked && gi===store.unlocked-1){
-      ctx.strokeStyle = LEVELS[gi].hue; ctx.lineWidth = 4+Math.sin(game.t*4)*1.5;
+      ctx.strokeStyle = LEVELS[gi].hue; ctx.lineWidth = FX.pulse(4, 2.5, 5.5);   // next-up ring — steady under Reduce Flashing (was raw Math.sin)
       ctx.beginPath(); ctx.arc(x,y,R+6,0,TAU); ctx.stroke();
     }
     ctx.font = "900 "+Math.round(R*0.62)+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
@@ -10190,7 +10216,7 @@ function drawBuild(dt){
       fillTextC(EMOJIS[cl.emojiIx||0], cx2+22, chipsY+14);
       ctx.font="800 11px 'Avenir Next Condensed',sans-serif"; ctx.fillStyle = cur? "#12151f":"#8b93ad";
       ctx.fillText("T"+cl.id, cx2+22, chipsY+32);
-      hudBtns.push({x:cx2,y:chipsY,w:44,h:42,act:"edit:"+cl.id});
+      hudBtns.push({x:cx2,y:chipsY-1,w:44,h:44,act:"edit:"+cl.id});   // ♿ ≥44pt (was 44×42)
       cx2 += 50;
       if(cx2 > W-60) break;
     }
@@ -10329,7 +10355,7 @@ function drawCoopMap(){
     ctx.fillStyle=gl; ctx.fillRect(x-R,y-R,2*R,R*1.1); ctx.restore();
     ctx.strokeStyle = unlocked? "rgba(255,255,255,0.55)" : UI.line; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(x,y,R-0.5,0,TAU); ctx.stroke();
     // pulsing ring on the level you're up to
-    if(unlocked && i===unlockedN-1){ ctx.strokeStyle=hue; ctx.lineWidth=4+Math.sin(game.t*4)*1.5; ctx.beginPath(); ctx.arc(x,y,R+6,0,TAU); ctx.stroke(); }
+    if(unlocked && i===unlockedN-1){ ctx.strokeStyle=hue; ctx.lineWidth=FX.pulse(4,2.5,5.5); ctx.beginPath(); ctx.arc(x,y,R+6,0,TAU); ctx.stroke(); }
     ctx.textAlign="center"; ctx.textBaseline="middle";
     if(unlocked){
       ctx.fillStyle="#0b2a30"; ctx.font="900 "+Math.round(R*0.62)+"px 'Avenir Next Condensed',sans-serif";
@@ -10395,7 +10421,6 @@ function drawKoHUD(pad, top){
   const nSk = navS();
   drawIconBtn(W-pad-nSk, top+52, nSk, "⏸️", "pause");
   drawIconBtn(W-pad-nSk*2-8, top+52, nSk, "↩️", "map");
-  hudBtns.push({x:W-pad-42, y:top+52, w:40, h:40, act:"map"});
   if(input.hasTouch){
     for(const j of [input.joy, input.joy2]){ if(!j) continue;
       ctx.globalAlpha=0.35; ctx.strokeStyle="#f4f6ff"; ctx.lineWidth=3;
@@ -10477,7 +10502,7 @@ function drawVsPick(){
       ctx.strokeStyle=UI.line; ctx.lineWidth=1; ctx.beginPath(); ctx.roundRect(x+0.5,tY+0.5,tW-1,tH-1,10); ctx.stroke(); }
     ctx.fillStyle= on?"#12151f":UI.mut; ctx.font=UI.font(15,900);
     ctx.textAlign="center"; ctx.textBaseline="middle"; fillTextC(lbl, x+tW/2, tY+tH/2+1);
-    hudBtns.push({x,y:tY,w:tW,h:tH,act:isKo?"mode:ko":"mode:race"});
+    hudBtns.push({x, y:tY-Math.max(0,(44-tH)/2), w:tW, h:Math.max(tH,44), act:isKo?"mode:ko":"mode:race"});   // ♿ ≥44pt tap target (invisible grow — pill art unchanged)
   });
   ctx.font = UI.font(14,600); ctx.fillStyle=UI.mut; ctx.textAlign="center"; ctx.textBaseline="middle";
   ctx.fillText(input.hasTouch ? pName(0)+" = left thumb · "+pName(1)+" = right thumb"
@@ -10494,7 +10519,7 @@ function drawVsPick(){
   arenas.forEach((a,i)=>{
     const row=(i/perRow)|0, col=i%perRow;
     const x = PADX + col*(cw+12), y = gridTop + row*(chh+10);
-    UI.card(x, y, cw, chh, 14);
+    UI.card(x, y, cw, chh, 14, a.hue);
     UI.badge(x+cw/2, y+chh*0.37, clamp(Math.round(chh*0.44),30,52), a.emoji, a.hue);
     ctx.fillStyle = a.hue; ctx.font = UI.font(15,900);
     ctx.textAlign="center"; ctx.textBaseline="middle"; fillTextC(a.name, x+cw/2, y+chh*0.74);
@@ -10978,7 +11003,7 @@ function crateCard(x, y, w, h, key){
   ctx.save(); ctx.beginPath(); ctx.roundRect(ox, oy2, ow, 7, 3.5); ctx.clip();
   let sx2=ox; c.odds.forEach((o,i2)=>{ if(o<=0) return;
     ctx.fillStyle=RARITY[i2].col;
-    if(i2===RARITY.length-1) ctx.globalAlpha=0.7+0.3*Math.sin(game.t*4);
+    if(i2===RARITY.length-1) ctx.globalAlpha=FX.pulse(4,0.4,1);
     ctx.fillRect(sx2, oy2, ws2[i2], 7); ctx.globalAlpha=1; sx2+=ws2[i2]; });
   ctx.restore();
   ctx.font = "800 14px 'Avenir Next Condensed','Arial Narrow',sans-serif";
@@ -10993,7 +11018,7 @@ function upgChip(x, y, w, h, k){
   const u = CRATE_UPG[k]; if(!u) return;
   const t = Math.min(store.upg[k]||0, u.mult.length-1), gold = t>RARITY.length;   // 🥇 tier 6 = GOLD prestige (v3)
   roundedPanel(x, y, w, h, 10, gold? "rgba(255,225,77,0.14)" : "rgba(14,17,26,0.85)");
-  if(gold){ ctx.strokeStyle=PRESTIGE.col; ctx.globalAlpha=0.7+0.3*Math.sin(game.t*5); ctx.lineWidth=2;
+  if(gold){ ctx.strokeStyle=PRESTIGE.col; ctx.globalAlpha=FX.pulse(5,0.4,1); ctx.lineWidth=2;
     ctx.beginPath(); ctx.roundRect(x+1,y+1,w-2,h-2,9); ctx.stroke(); ctx.globalAlpha=1; }
   ctx.font = "20px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
   ctx.globalAlpha = t? 1 : 0.4; fillTextC(u.emoji, x+w/2, y+19); ctx.globalAlpha = 1;
@@ -11145,7 +11170,7 @@ function drawCrates(dt){
     ctx.save(); ctx.beginPath(); ctx.roundRect(barX, barY, barW, barH, barH/2); ctx.clip();
     let sx2=barX; c.odds.forEach((o,i2)=>{ if(o<=0) return;
       ctx.fillStyle=RARITY[i2].col;
-      if(i2===RARITY.length-1) ctx.globalAlpha=0.7+0.3*Math.sin(game.t*4);
+      if(i2===RARITY.length-1) ctx.globalAlpha=FX.pulse(4,0.4,1);
       ctx.fillRect(sx2, barY, ws2[i2], barH); ctx.globalAlpha=1; sx2+=ws2[i2]; });
     ctx.restore();
     hudBtns.push({x, y, w, h, act:"buy:"+key});
@@ -11156,7 +11181,7 @@ function drawCrates(dt){
     const t = Math.min(store.upg[k]||0, u.mult.length-1), gold = t>RARITY.length;   // 🥇 tier 6 = GOLD prestige
     const rc = gold ? PRESTIGE.col : (t>0 ? RARITY[Math.min(t,RARITY.length)-1].col : UI.mut);
     UI.card(x, y, w, h, 10);
-    if(gold){ ctx.strokeStyle=PRESTIGE.col; ctx.globalAlpha=0.6+0.4*Math.sin(game.t*5); ctx.lineWidth=2;
+    if(gold){ ctx.strokeStyle=PRESTIGE.col; ctx.globalAlpha=FX.pulse(5,0.2,1); ctx.lineWidth=2;
       ctx.beginPath(); ctx.roundRect(x+1,y+1,w-2,h-2,9); ctx.stroke(); ctx.globalAlpha=1; }
     else if(t){ ctx.strokeStyle=rc; ctx.globalAlpha=0.5; ctx.lineWidth=1.5;
       ctx.beginPath(); ctx.roundRect(x+1,y+1,w-2,h-2,9); ctx.stroke(); ctx.globalAlpha=1; }
@@ -11182,7 +11207,7 @@ function drawCrates(dt){
     UI.card(x, y, w, h, 10);
     if(armed){
       ctx.fillStyle="rgba(126,247,255,0.10)"; ctx.beginPath(); ctx.roundRect(x,y,w,h,10); ctx.fill();
-      ctx.strokeStyle="#7ef7ff"; ctx.globalAlpha=0.85+0.15*Math.sin(game.t*5); ctx.lineWidth=2.5;
+      ctx.strokeStyle="#7ef7ff"; ctx.globalAlpha=FX.pulse(5,0.7,1); ctx.lineWidth=2.5;
       ctx.beginPath(); ctx.roundRect(x+1.5,y+1.5,w-3,h-3,9); ctx.stroke(); ctx.globalAlpha=1;
     } else {
       ctx.strokeStyle=rc; ctx.globalAlpha=0.5; ctx.lineWidth=1.5;
@@ -11203,7 +11228,7 @@ function drawCrates(dt){
     UI.card(x, y, w, h, 10);
     if(on){
       ctx.fillStyle="rgba(255,183,66,0.12)"; ctx.beginPath(); ctx.roundRect(x,y,w,h,10); ctx.fill();
-      ctx.strokeStyle=UI.accent; ctx.globalAlpha=0.85+0.15*Math.sin(game.t*5); ctx.lineWidth=2.5;
+      ctx.strokeStyle=UI.accent; ctx.globalAlpha=FX.pulse(5,0.7,1); ctx.lineWidth=2.5;
       ctx.beginPath(); ctx.roundRect(x+1.5,y+1.5,w-3,h-3,9); ctx.stroke(); ctx.globalAlpha=1;
     } else {
       ctx.strokeStyle=rc; ctx.globalAlpha=0.5; ctx.lineWidth=1.5;
@@ -11367,7 +11392,7 @@ function bookPanel(x, y, w, h, s){
   ctx.fillStyle = done? "#ffd76a" : "#9ae64a"; ctx.textAlign="right";
   ctx.fillText(n+" / "+s.items.length, x+w-10, y+16);
   if(done){  // completion shimmer — gold underline (drawn mark, no ✓ glyph: iOS-safe)
-    ctx.globalAlpha = 0.55+0.45*Math.sin(game.t*3);
+    ctx.globalAlpha = FX.pulse(3,0.1,1);
     ctx.fillStyle="#ffd76a"; ctx.fillRect(x+10, y+26, w-20, 2); ctx.globalAlpha=1;
   }
   // tile grid autosizes so ANY v3 item count fits with no scroll (54px down to 36px)
@@ -11675,7 +11700,7 @@ function shopBuy(r, btn){
   const pending = shopPending && shopPending.act===btn.act;
   ctx.fillStyle="rgba(12,14,22,0.9)"; ctx.beginPath(); ctx.roundRect(r.x+3, r.y+4, r.w, r.h, 14); ctx.fill();
   ctx.fillStyle=btn.bg; ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 14); ctx.fill();
-  if(pending){ ctx.strokeStyle="#9ae64a"; ctx.lineWidth=3+Math.sin(game.t*8)*1.5; ctx.beginPath(); ctx.roundRect(r.x+1.5, r.y+1.5, r.w-3, r.h-3, 13); ctx.stroke(); }
+  if(pending){ ctx.strokeStyle="#9ae64a"; ctx.lineWidth=FX.pulse(8,1.5,4.5); ctx.beginPath(); ctx.roundRect(r.x+1.5, r.y+1.5, r.w-3, r.h-3, 13); ctx.stroke(); }
   let fs = 24; ctx.font="900 "+fs+"px 'Avenir Next Condensed','Arial Narrow',sans-serif";
   while(ctx.measureText(btn.label).width + emojiPad(btn.label) > r.w-26 && fs>12){ fs--; ctx.font="900 "+fs+"px 'Avenir Next Condensed','Arial Narrow',sans-serif"; }
   ctx.fillStyle=btn.fg; ctx.textAlign="center"; ctx.textBaseline="middle";
@@ -11724,7 +11749,7 @@ function drawShop(dt){
         ctx.strokeStyle=UI.line; ctx.lineWidth=1; ctx.beginPath(); ctx.roundRect(x+0.5,tabY+0.5,w-1,tabH-1,10); ctx.stroke(); }
       ctx.fillStyle= on?"#12151f":UI.mut; ctx.font=UI.font(15,900);
       ctx.textAlign="center"; ctx.textBaseline="middle"; fillTextC(lbl, x+w/2, tabY+tabH/2+1);
-      hudBtns.push({x, y:tabY, w, h:tabH, act});
+      hudBtns.push({x, y:tabY-Math.max(0,(44-tabH)/2), w, h:Math.max(tabH,44), act});   // ♿ ≥44pt tap target (invisible grow)
     });
   }
 
@@ -11934,8 +11959,8 @@ function drawCooked(dt){
 let paused = false;
 function togglePause(){ if(game.state==="play"){ paused=!paused; AU.ui(); } }
 document.addEventListener("visibilitychange", ()=>{
-  if(document.hidden && game.state==="play") paused = true;
-  if(!document.hidden){ AU.resume(); if(syncEnabled()) syncNow("resume"); }   // ☁️ pull latest when the kid comes back / hops devices
+  if(document.hidden){ if(game.state==="play") paused = true; try{ AU.ctx && AU.ctx.suspend(); }catch(e){} }   // 🔋 hidden → suspend audio (biggest battery win on a tablet)
+  else { AU.resume(); if(syncEnabled()) syncNow("resume"); }   // ☁️ visible again → resume audio + pull latest (device hop)
 });
 
 /* ---------------- 📲 Add-to-Home-Screen coach (PWA install nudge — roadmap item 10) ---------------- */
@@ -12010,6 +12035,7 @@ function a2hsMenu(onMenu){                       // show on menus, hide during p
 let last = performance.now();
 function frame(now){
   requestAnimationFrame(frame);
+  if(document.hidden){ last = now; return; }   // 🔋 hidden → keep the loop alive but skip all update+draw (audio suspended via visibilitychange); last=now avoids a resume dt-spike
   tick(now);
 }
 function tick(now){
@@ -12027,7 +12053,7 @@ function tick(now){
     if(WIPE_STATES[game.state] && game._lastState !== undefined) startWipe();
     game._lastState = game.state;
   }
-  if(wipeCovering()) input.taps.length = 0;   // anti-double-tap: swallow taps while the veil hides the screen
+  if(game.tr) input.taps.length = 0;   // anti-double-tap: swallow taps for the WHOLE wipe, not just the covering half (a fast double-tap used to slip through the back half)
 
   if(game.state==="title"){ drawTitle(dt); }
   else if(game.state==="series"){ drawSeries(); updateStickers(dt); drawStickers(); }
