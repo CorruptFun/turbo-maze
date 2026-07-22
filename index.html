@@ -9546,8 +9546,20 @@ function drawTitle(dt){
   // attract car doing donuts
   game.attract.a += dt*2.1;
   const r = Math.min(W,H)*0.26;
+  // 🏁 keep the donut orbit cleanly BELOW the checkered finish band — on short/wide screens the loop used to
+  //    reach up into it and the (later-drawn) band sliced the car in half, reading as a collision. Track the
+  //    real band bottom (mirrors bigTitle()'s math) and slide/shrink the loop into the free zone beneath it.
+  const bandBottom = H*0.3 + Math.min(100, W/6) + clamp(Math.round(W/58),11,17)*2;
+  const carR = 46;                                 // hero car's visual half-height (~30px body × 1.5 hero scale + margin)
+  let ampY = r*0.55, ay0 = H*0.62;                 // default elliptical donut (unchanged on tall/portrait layouts)
+  const topLimit = bandBottom + carR + 8;          // highest the car's CENTRE may reach without touching the band
+  if(ay0 - ampY < topLimit){                        // loop would clip the finish band → drop it down…
+    ay0 = topLimit + ampY;
+    const botLimit = H*0.84 - carR;                // …but hold clear of the TAP-TO-START prompt; if squeezed, shrink
+    if(ay0 + ampY > botLimit){ ay0 = (topLimit + botLimit)/2; ampY = Math.max(0, (botLimit - topLimit)/2); }
+  }
   const ax = W/2 + Math.cos(game.attract.a)*r;
-  const ay = H*0.62 + Math.sin(game.attract.a)*r*0.55;
+  const ay = ay0 + Math.sin(game.attract.a)*ampY;
   if(!game._attractSk || game._attractSkW!==W){
     game._attractSk = document.createElement("canvas");
     game._attractSk.width=W*DPR; game._attractSk.height=H*DPR;
