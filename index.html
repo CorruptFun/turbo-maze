@@ -61,6 +61,9 @@
   #tmcloud .tmc-code { width:100%; box-sizing:border-box; text-align:center; padding:14px 10px; border-radius:13px;
     background:rgba(10,14,24,0.9); border:1px dashed rgba(154,230,255,0.4); color:#f4f6ff;
     font-size:18px; font-weight:900; letter-spacing:.5px; cursor:pointer; word-break:break-word; }
+  #tmcloud .tmc-ta { width:100%; box-sizing:border-box; min-height:88px; padding:10px 12px; border-radius:13px;
+    background:rgba(10,14,24,0.9); border:1.5px dashed rgba(154,230,255,0.4); color:#e6eaf5;
+    font:700 12px/1.45 ui-monospace,Menlo,monospace; word-break:break-all; resize:vertical; }
   #tmcloud .tmc-err { font-size:13px; font-weight:800; color:#ffb0b0; margin:0; }
   #tmcloud .tmc-div { height:1px; background:rgba(255,255,255,0.08); margin:5px 0; }
 </style>
@@ -3448,6 +3451,17 @@ function importSave(code){
 const SYNC_URL_BUILTIN = "";   // ⬅️ DEPLOY STEP: set to "https://turbo-maze-sync.<your-subdomain>.workers.dev"
 function syncUrl(){ try { return ((localStorage.getItem("tmSyncUrl")||"").trim()) || SYNC_URL_BUILTIN; } catch(e){ return SYNC_URL_BUILTIN; } }
 function syncEnabled(){ return /^https?:\/\//.test(syncUrl()); }
+// 🏠 self-host hook: visiting  ?sync=http://<your-server>:8787  pins that server as this device's sync
+// backend (persisted in tmSyncUrl, so kiosk start-URLs can carry it and re-assert it every boot);
+// ?sync=off clears it. Must run before the boot-time syncNow("open"). Strips itself from the URL.
+(function(){ try {
+  const u = new URL(location.href), v = (u.searchParams.get("sync")||"").trim();
+  if(!v) return;
+  if(v.toLowerCase()==="off") localStorage.removeItem("tmSyncUrl");
+  else if(/^https?:\/\//i.test(v)) localStorage.setItem("tmSyncUrl", v.replace(/\/+$/,""));
+  u.searchParams.delete("sync");
+  history.replaceState(null, "", u.pathname + u.search + u.hash);
+} catch(e){} })();
 
 // kid-safe wordlist — short, friendly, unambiguous. 256 words → 256⁴ ≈ 4.3B codes.
 const SYNC_WORDS = ("tiger lion panda otter koala zebra gecko robin eagle shark whale bunny puppy kitty pony foal moose bison camel llama sloth mouse goose duck swan finch hawk owl bat fox wolf bear seal crab clam snail frog toad newt deer elk ram goat pig cow hen rooster turkey parrot raven crow dove lark wren jay quail heron stork crane swift kiwi emu dodo lemur yak ox mule donkey ferret weasel beaver badger hedgehog mole shrew vole hare rabbit squirrel chipmunk raccoon possum skunk mink rocket comet meteor planet saturn nebula galaxy cosmos star moon sun cloud storm rain snow frost hail wind breeze thunder bolt spark flame ember blaze glow shine beam ray dawn dusk noon night sky ocean river lake pond creek brook wave tide reef coral pearl shell sand dune hill peak cliff cave canyon valley meadow forest jungle desert tundra swamp marsh apple mango berry cherry grape lemon lime melon peach pear plum banana orange coconut papaya guava fig date olive corn bean pea carrot potato tomato onion garlic ginger honey sugar candy cookie muffin waffle pancake donut pretzel bagel biscuit cracker jelly jam butter cheese cream milk cocoa mocha maple mint vanilla ruby amber jade opal topaz onyx quartz crystal copper silver golden bronze iron steel cobalt indigo violet purple crimson scarlet yellow emerald teal azure navy maroon rosy pink lilac lavender cyan minty red blue green gray brown black white brave mighty jolly happy sunny cheery lucky merry snappy zippy speedy turbo nitro drift zoom dash flash rush blitz racer rider driver champ hero legend").split(/\s+/);
@@ -3507,6 +3521,7 @@ async function syncNow(reason){
   } finally { sync.inflight = false; }
 }
 function promptEnterCode(){
+  if(!syncEnabled()){ sticker("CODE SYNC ISN'T ON YET","#ffd76a"); return; }   // honest no-op while the backend is undeployed — never fake a "CODE SET!"
   const v = window.prompt("Type your 4-word cloud code to load your stuff\n(like  tiger-comet-mango-turbo):", store.syncCode||"");
   if(v==null) return;
   const code = v.trim().toLowerCase().replace(/\s+/g,"-").replace(/[^a-z\-]/g,"");
@@ -9478,6 +9493,10 @@ function openCloudModal(){
   function buildCode(){
     const wrap = el("div","tmc-stack");
     wrap.appendChild(el("div","tmc-head","Sync by secret code (no account)"));
+    if(!syncEnabled()){   // backend not deployed yet → say so instead of dangling a code that goes nowhere (branch dies once the Worker URL is wired in)
+      wrap.appendChild(el("p","tmc-note","Secret-code sync isn't switched on for this build yet — it's on the way! For now, move progress with Google sign-in above or a backup below."));
+      return wrap;
+    }
     wrap.appendChild(el("p","tmc-note","This 4-word code IS your save. Type it on another device to carry everything over."));
     const codeStr = ()=> (store.syncCode||"").toUpperCase().replace(/-/g," · ");
     ensureSyncCode();
@@ -9495,8 +9514,8 @@ function openCloudModal(){
   // ── File backup block (no account, no backend) — always shown ────────────────────────────
   function buildBackup(){
     const wrap = el("div","tmc-stack");
-    wrap.appendChild(el("div","tmc-head","Back up to a file"));
-    wrap.appendChild(el("p","tmc-note","Save a backup file to keep your progress safe even after clearing the browser. Restore it here anytime — restoring never lowers your progress."));
+    wrap.appendChild(el("div","tmc-head","Back up & restore"));
+    wrap.appendChild(el("p","tmc-note","Save a backup to keep your progress safe even after clearing the browser. Restoring never lowers your progress."));
     wrap.appendChild(btn("tmc-btn ghost","⬇️  Download backup file", ()=>{
       try {
         const a=document.createElement("a");
@@ -9514,6 +9533,45 @@ function openCloudModal(){
     });
     wrap.appendChild(btn("tmc-btn ghost","📂  Restore from a file", ()=> file.click()));
     wrap.appendChild(file);
+
+    // 📋 save-as-TEXT twin of the file pair — kiosk / in-app WebView browsers (e.g. Fully Kiosk) silently
+    // drop blob downloads and refuse Google OAuth, so plain copy/paste text is the path that always works.
+    let taWrap=null, ta=null, taHint=null, taGo=null;
+    function saveTextArea(mode){
+      if(!taWrap){
+        taWrap = el("div","tmc-stack");
+        ta = document.createElement("textarea"); ta.className="tmc-ta";
+        ta.setAttribute("aria-label","Save text"); ta.spellcheck=false; ta.autocapitalize="off"; ta.setAttribute("autocorrect","off");
+        taHint = el("p","tmc-note","");
+        taGo = btn("tmc-btn","✅  Restore this save text", ()=>{
+          if(importSave(ta.value)) location.reload();
+          else { taHint.className="tmc-err"; taHint.textContent="Hmm, that text didn't work — make sure you copied the WHOLE thing."; }
+        });
+        taWrap.appendChild(ta); taWrap.appendChild(taHint); taWrap.appendChild(taGo);
+        wrap.appendChild(taWrap);
+      }
+      taHint.className="tmc-note";
+      if(mode==="copy"){
+        ta.value = exportSave(); ta.readOnly = true; taGo.style.display="none";
+        taHint.textContent = "Long-press the text → Select All → Copy, then paste it on your other device.";
+        ta.focus(); ta.select(); try{ ta.setSelectionRange(0, ta.value.length); }catch(e){}
+      } else {
+        if(ta.readOnly) ta.value = "";   // flipping over from copy mode → start clean; re-taps in paste mode keep what's typed
+        ta.readOnly = false; taGo.style.display="";
+        taHint.textContent = "Paste the save text from your other device, then tap restore.";
+        ta.focus();
+      }
+    }
+    const cp = btn("tmc-btn ghost","📋  Copy save text", ()=>{
+      saveTextArea("copy");
+      const done = ok => { if(ok){ cp.textContent="Copied ✓"; taHint.textContent="Copied to the clipboard ✓ — it's also shown below, just in case."; }
+                           setTimeout(()=>{ if(cp.isConnected) cp.textContent="📋  Copy save text"; }, 2600); };
+      if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value).then(()=>done(true), ()=>done(false));
+      else { let ok=false; try{ ta.select(); ok=document.execCommand("copy"); }catch(e){} done(ok); }
+    });
+    wrap.appendChild(cp);
+    wrap.appendChild(btn("tmc-btn ghost","⌨️  Paste save text", ()=> saveTextArea("paste")));
+
     if(restoreErr) wrap.appendChild(el("p","tmc-err", restoreErr));
     return wrap;
   }
