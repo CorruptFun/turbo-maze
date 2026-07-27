@@ -4,3 +4,5 @@
 .env
 .env.*
 supabase/.temp/
+worker/server-local.js
+scripts/sync-server-install.sh

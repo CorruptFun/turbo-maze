@@ -28,7 +28,7 @@
      browser notice an update and fire the nudge. Navigations are network-first regardless,
      so players still get fresh HTML on the next launch — the nudge is the in-session offer.
 */
-const CACHE_VERSION = "20260727-174500";
+const CACHE_VERSION = "20260727-175544";
 const CACHE_NAME    = `turbo-maze-${CACHE_VERSION}`;
 
 // The offline shell, precached at install so the very FIRST offline launch works even

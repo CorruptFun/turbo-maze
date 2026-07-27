@@ -11,14 +11,14 @@ sync mirrors that blob to a tiny Cloudflare Worker + KV store, keyed by a
 memorable **4-word code**, so it survives a wiped browser and follows the player
 to another device.
 
-> **Status (2026-07-27): LIVE, self-hosted.** The backend runs on the Mac mini as a
-> launchd service (see **Self-hosting** below) instead of Cloudflare. The public
-> build still ships **dormant** (`SYNC_URL_BUILTIN` stays empty — strangers' devices
-> never probe the home server); each family device opts in once via the
-> `?sync=http://<mac-ip>:8787` URL param. While a device is un-opted-in, the Cloud &
-> Backup modal now says honestly that code sync is off (instead of a silent no-op).
-> The Cloudflare path below remains fully valid — it's the "works from anywhere"
-> upgrade whenever wanted, same contract, same `merge.js`.
+> **Status: built + tested — SHELVED (owner's call, 2026-07-27).** Two backends exist:
+> this Cloudflare Worker (undeployed), and an off-repo self-hosted twin that was stood
+> up on home hardware, verified end-to-end, then retired the same day. The public build
+> ships **dormant** (`SYNC_URL_BUILTIN=""`); the Cloud & Backup modal says honestly
+> that code sync is off, and players move progress with Google sign-in, backup files,
+> or copy/paste **save text**. When code sync is wanted for real, this runbook is the
+> path — and any single device can be pointed at a compatible server once via the
+> `?sync=<url>` param (persists to `tmSyncUrl`, strips itself from the URL).
 
 ---
 
@@ -216,67 +216,17 @@ did **not** cross over.
   and are far under this in practice (≈105 levels × a few KB). Raise `MAX_BODY` or
   prune oldest ghosts if it's ever approached.
 
-## Self-hosting on your own machine (the path that's LIVE — Mac mini, 2026-07-27)
+## Self-hosting note (built, verified, shelved)
 
-The Cloudflare Worker's twin, running on always-on home hardware instead of the
-edge. Same contract (`POST {code, store}` → `{ok, store}`), same `merge.js`, same
-read-error-aborts data-safety rule; storage is one JSON file per code.
-
-| Piece | Where |
-|---|---|
-| Server | [`worker/server-local.js`](../worker/server-local.js) — Node, zero deps, port `8787` |
-| Service | `~/Library/LaunchAgents/com.turbomaze.sync.plist` (`RunAtLoad` + `KeepAlive` — restarts if it dies, starts on login) |
-| Installer | [`scripts/sync-server-install.sh`](../scripts/sync-server-install.sh) — also `--status` / `--uninstall` |
-| Save data | `~/Library/Application Support/turbo-maze-sync/<code>.json` |
-| Logs | `~/Library/Logs/turbo-maze-sync.log` |
-
-```bash
-scripts/sync-server-install.sh            # install/refresh + start + verify
-scripts/sync-server-install.sh --status   # loaded? answering?
-curl http://<mac-ip>:8787/                # from any LAN device → "turbo-maze-sync local ok"
-```
-
-### Pointing a device at it
-
-Open the game once with the param (it persists in `localStorage.tmSyncUrl`, strips
-itself from the URL, and everything — boot pull, resume pull, debounced push,
-Enter-a-Code — lights up from then on):
-
-```
-https://corruptfun.github.io/turbo-maze/?sync=http://<mac-ip>:8787
-?sync=off   ← same idea, turns a device back off
-```
-
-### The mixed-content catch (read this before blaming the server)
-
-The game is served over **HTTPS**, and browsers block an HTTPS page from calling a
-plain-HTTP LAN server ("mixed content") unless told otherwise. Per browser:
-
-| Browser | Works? | What to do |
-|---|---|---|
-| **Fully Kiosk** (the tablet) | ✅ | Settings → **Web Content Settings → Enable Mixed Content** ON, and put the `?sync=` URL (with param) as the **Start URL** so every boot re-asserts it |
-| Desktop Chrome / Edge | ✅ | Site settings for the game → **Insecure content → Allow** |
-| Android Chrome | ❌ | No per-site override on mobile — use Google sign-in / save-text instead |
-| iOS Safari / iPhone PWA | ❌ | Mixed content is always blocked — use Google sign-in / save-text instead |
-| Any browser, away from home | ❌ | The server is LAN-only (nothing is exposed to the internet — also the security model, don't port-forward it) |
-
-Blocked devices lose nothing: local saves stay authoritative, and Google sign-in,
-backup files, and copy/paste save text all still work. The graceful-failure path
-is the normal one ("Offline — will try again").
-
-### Care & feeding
-
-- **The Mac's IP is in device start-URLs** — give the Mac a DHCP reservation in the
-  router so it never moves (today: `ipconfig getifaddr en0`).
-- **The plist pins the absolute Node path** (launchd can't see nvm) — re-run the
-  installer after removing/upgrading that Node version.
-- **Backups:** the data dir is tiny plain JSON — it rides along with any normal Mac
-  backup. Deleting a `<code>.json` deletes that code's cloud copy (devices re-push
-  on their next save).
-- **Moving to Cloudflare later:** deploy the Worker per the runbook above, then
-  point devices at the new URL (fresh `?sync=`, or set `SYNC_URL_BUILTIN`). Backends
-  don't share storage — either replay each `<code>.json` at the new URL with one
-  `curl POST {code, store}` each, or just let every device push itself up naturally.
+A LAN self-hosted twin of the Worker (same contract, same `merge.js`, one JSON
+file per code, launchd-managed) was built and end-to-end verified on 2026-07-27,
+then retired the same day — the owner opted not to run a home backend, and home
+network details don't belong in a public repo. The server + installer are kept
+**outside the repo** (untracked, local to the host machine); ask in-session if
+it's ever wanted again. Findings that outlive it: kiosk / in-app WebView browsers
+silently drop `blob:` downloads and are refused by Google OAuth (hence the
+copy/paste **save text** backup in the modal), and an HTTPS page may only call a
+plain-HTTP LAN server where the browser explicitly permits mixed content.
 
 ## Future (parked)
 
