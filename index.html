@@ -13,6 +13,34 @@
 <link rel="icon" type="image/png" sizes="64x64" href="favicon.png">
 <link rel="manifest" href="manifest.json">
 <title>TURBO MAZE 🏁</title>
+<meta name="description" content="A drift-racing maze game built by a dad and his 7-year-old co-designer. Drift around corners for aura, grab every coin, find the key. One HTML file, no dependencies, free.">
+<meta name="author" content="Corrupt Solutions LLC">
+
+<!-- Share cards. Two rules here, both learned the hard way:
+     1. Absolute URLs — Slack, Discord, iMessage and X resolve og:image against
+        their own host, not the page's, so a relative path yields no preview.
+     2. The IMAGE points at the always-warm Pages origin, never at the
+        corrupt.solutions proxy: X fetches it exactly once, on a tight timeout,
+        at post time, and a serverless cold start loses that race — after which
+        X caches the imageless card per URL and it is stuck there for days.
+     og:url stays the canonical corrupt.solutions path so the card is credited
+     to the branded domain and one URL owns the card identity. -->
+<link rel="canonical" href="https://corrupt.solutions/games/turbo-maze/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="TURBO MAZE">
+<meta property="og:locale" content="en_US">
+<meta property="og:url" content="https://corrupt.solutions/games/turbo-maze/">
+<meta property="og:title" content="TURBO MAZE — a drift-racing maze game">
+<meta property="og:description" content="Drift around corners for aura, grab every coin, find the key. Built by a dad and his 7-year-old co-designer. Free, works on a tablet.">
+<meta property="og:image" content="https://corruptfun.github.io/turbo-maze/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="TURBO MAZE — Drift Edition, over a checkered flag with the number 67 kart">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="TURBO MAZE — a drift-racing maze game">
+<meta name="twitter:description" content="Drift for aura, grab every coin, find the key. Built dad + kid. Free.">
+<meta name="twitter:image" content="https://corruptfun.github.io/turbo-maze/og-image.png">
+<meta name="twitter:image:alt" content="TURBO MAZE — Drift Edition, over a checkered flag with the number 67 kart">
 <style>
   :root { --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
           --sal:env(safe-area-inset-left,0px); --sar:env(safe-area-inset-right,0px); }
