@@ -140,7 +140,7 @@ const CONFIG = {
   speed:      0.78,                // 👈 car speed: 1 = fast & furious, 0.7 = kid cruise (eased down from 0.85 — "a little fast")
   bossSpeed:  95,                  // 👈 base boss speed; each boss level's rival:{mult:…} scales it (mults climb across the campaign — see LEVELS)
   zoom:       1.3,                 // 👈 bigger cars on screen! (1 = old view, up to 2)
-  vsCarSize:  1.8,                 // 👈 VS/co-op/knockout zoom way out to fit the arena — cars get blown up this much (max) so you can spot them (1 = tiny old cars)
+  vsCarSize:  2.3,                 // 👈 VS/co-op/knockout zoom way out to fit the arena — cars get blown up this much (max) so you can spot them (1 = tiny old cars)
   easyMode:   false,               // true = slower goober, more nitro
   powerUpsInVs: false,             // 🎁 true = crate upgrades & power-ups also work in VS/Knockout (default: campaign only, keeps VS fair)
   goldenCrateChance: 0.3,          // 🎁 chance a campaign level spawns one free GOLDEN crate to grab (0 = off, 1 = every level)
@@ -6533,9 +6533,9 @@ function drawWorld(dt){
     }
   }
   // 🔍 2P screens zoom way out to fit the arena → blow the cars back up so they never look
-  // smaller than at zoom 0.9 (capped by CONFIG.vsCarSize). Looks only — hitboxes untouched, VS stays fair.
+  // smaller than at zoom 1.15 (capped by CONFIG.vsCarSize). Looks only — hitboxes untouched, VS stays fair.
   const twoP = game.vs || game.coop || game.ko;
-  const vis = twoP ? clamp(0.9/z, 1, CONFIG.vsCarSize||1) : 1;
+  const vis = twoP ? clamp(1.15/z, 1, CONFIG.vsCarSize||1) : 1;
   const pCol = i => i? "#b06ee8" : vehicleById(store.car).trail();
   if(twoP){
     // 🎯 player-coloured ring under each car — "which one's me?" at a glance
